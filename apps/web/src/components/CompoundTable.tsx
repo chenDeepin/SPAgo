@@ -9,6 +9,8 @@ interface CompoundTableProps {
   selectedIds: Set<string>;
   scopeLabel: string;
   sarMode: boolean;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
   onToggleSelection: (compoundId: string, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onClearSelection: () => void;
@@ -47,6 +49,8 @@ export function CompoundTable({
   selectedIds,
   scopeLabel,
   sarMode,
+  onLoadMore,
+  loadingMore,
   onToggleSelection,
   onToggleSelectAll,
   onClearSelection,
@@ -279,6 +283,11 @@ export function CompoundTable({
               Clear selection
             </button>
           </span>
+        )}
+        {onLoadMore && page.offset + page.items.length < page.total && (
+          <button className="show-all-occ" onClick={onLoadMore} disabled={loadingMore}>
+            {loadingMore ? "Loading…" : `Load more (${page.total - page.offset - page.items.length} remaining)`}
+          </button>
         )}
         <span className="fineprint">
           All identifiers and structures are illustrative (demo dataset).

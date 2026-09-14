@@ -283,6 +283,10 @@ button {
   align-items: baseline;
   gap: 12px;
   margin-bottom: 8px;
+  /* narrow screens: action buttons wrap below the heading instead of
+     overflowing the page horizontally */
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 .table-header h1 {

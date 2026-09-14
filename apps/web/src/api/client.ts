@@ -97,8 +97,13 @@ export const api = {
       `/api/v1/patents/${encodeURIComponent(publicationNumber)}`,
       signal,
     ),
-  compounds: (familyId: string, documentId: string | null, signal?: AbortSignal) => {
-    const params = new URLSearchParams({ limit: "100" });
+  compounds: (
+    familyId: string,
+    documentId: string | null,
+    signal?: AbortSignal,
+    limit = 100,
+  ) => {
+    const params = new URLSearchParams({ limit: String(limit) });
     if (documentId) params.set("document_id", documentId);
     return getJson<import("./types").CompoundPage>(
       `/api/v1/families/${familyId}/compounds?${params.toString()}`,

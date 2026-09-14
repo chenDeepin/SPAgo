@@ -375,6 +375,9 @@ def structure_search(
 ):
     from spago_core.services import structure_search as ss
 
+    offset, limit = services.clamp_page(
+        body.offset, body.limit, settings.default_page_size, settings.max_page_size
+    )
     try:
         result = ss.search_family_structures(
             engine,
@@ -384,8 +387,8 @@ def structure_search(
             document_id=body.document_id,
             threshold=body.threshold if body.threshold is not None else ss.DEFAULT_SIMILARITY_THRESHOLD,
             filters=ss.MoleculeFilters(**(body.filters.model_dump() if body.filters else {})),
-            offset=body.offset,
-            limit=body.limit,
+            offset=offset,
+            limit=limit,
         )
     except ss.StructureParseError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

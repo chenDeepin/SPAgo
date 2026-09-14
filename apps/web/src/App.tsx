@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api/client";
-import type { CompoundPage, CompoundRow } from "./api/types";
+import type { CompoundRow } from "./api/types";
 import { CompoundTable } from "./components/CompoundTable";
 import { EvidencePanel } from "./components/EvidencePanel";
 import { ExportMenu } from "./components/ExportMenu";
@@ -13,7 +13,7 @@ const StructureSearchDialog = lazy(() => import("./components/StructureSearchDia
 import { SearchBar } from "./components/SearchBar";
 import { TopBar } from "./components/TopBar";
 import { EmptyState, NoStructuresNote, SkeletonRows, StateBanner } from "./components/states";
-import { readUrlState, writeUrlState, type UrlState } from "./state/url";
+import { readUrlState, subscribeUrlState, writeUrlState, type UrlState } from "./state/url";
 
 export function App() {
   const queryClient = useQueryClient();
@@ -27,10 +27,13 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [sarMode, setSarMode] = useState(false);
   const [searchSummary, setSearchSummary] = useState<StructureSearchSummary | null>(null);
+  // Server-side page size for the plain compound table; grows via Load more up
+  // to the API hard cap (500). Reset with the context.
+  const [compoundsLimit, setCompoundsLimit] = useState(100);
 
-  const updateUrl = useCallback((next: UrlState) => {
+  const updateUrl = useCallback((next: UrlState, mode: "push" | "replace" = "replace") => {
     setUrlState(next);
-    writeUrlState(next);
+    writeUrlState(next, mode);
   }, []);
 
   const { data: datasetInfo } = useQuery({
@@ -51,8 +54,9 @@ export function App() {
 
   // Compounds for the family, optionally scoped to one document.
   const compoundsQuery = useQuery({
-    queryKey: ["compounds", familyId, urlState.doc],
-    queryFn: ({ signal }) => api.compounds(familyId as string, urlState.doc, signal),
+    queryKey: ["compounds", familyId, urlState.doc, compoundsLimit],
+    queryFn: ({ signal }) =>
+      api.compounds(familyId as string, urlState.doc, signal, compoundsLimit),
     enabled: familyId !== null,
     staleTime: 5 * 60_000,
   });
@@ -78,7 +82,8 @@ export function App() {
       return;
     }
     setSubmittedQuery(value);
-    updateUrl({ q: value, doc: null, c: null });
+    // A new query is a navigation step: browser Back returns to the previous search.
+    updateUrl({ q: value, doc: null, c: null }, "push");
   };
 
   const handleCancelSearch = () => {
@@ -90,6 +95,17 @@ export function App() {
   useEffect(() => {
     if (patentQuery.isSuccess) setLastGoodQuery(submittedQuery);
   }, [patentQuery.isSuccess, submittedQuery]);
+
+  // Browser Back/Forward restores the encoded context (q/doc/c).
+  useEffect(
+    () =>
+      subscribeUrlState((restored) => {
+        setUrlState(restored);
+        setSubmittedQuery(restored.q);
+        setLastGoodQuery(restored.q);
+      }),
+    [],
+  );
 
   const handleSelectDoc = (docId: string | null) => {
     updateUrl({ ...urlState, doc: docId });
@@ -135,7 +151,62 @@ export function App() {
   useEffect(() => {
     setSelectedIds(new Set());
     setSearchSummary(null);
+    setCompoundsLimit(100);
   }, [familyId, urlState.doc, submittedQuery]);
+
+  // Apply search results only if they belong to the family still on screen
+  // (the dialog also aborts on close; this guards late responses after a
+  // context switch that outlived the dialog).
+  const applySearchResults = useCallback(
+    (summary: StructureSearchSummary) => {
+      if (!patentQuery.data || patentQuery.data.family.id !== summary.familyId) return;
+      setSearchSummary(summary);
+      setSelectedIds(new Set());
+      setSearchOpen(false);
+    },
+    [patentQuery.data],
+  );
+
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const loadMoreResults = useCallback(async () => {
+    if (!searchSummary || !searchSummary.requestParams || loadingMore) return;
+    const ctxFamily = searchSummary.familyId;
+    setLoadingMore(true);
+    try {
+      const body = await api.structureSearch(ctxFamily, {
+        ...searchSummary.requestParams,
+        offset: searchSummary.rows.length,
+        limit: searchSummary.limit,
+      });
+      // The context may have changed while the page was loading.
+      if (patentQuery.data && patentQuery.data.family.id !== ctxFamily) return;
+      const items = body.items.map((it) => ({
+        compound: it.compound,
+        mentions: it.mentions,
+        activity: [],
+      }));
+      setSearchSummary((prev) => {
+        if (!prev || prev.familyId !== ctxFamily || prev.requestKey !== searchSummary.requestKey)
+          return prev;
+        const scores = { ...prev.scores };
+        for (const it of body.items) {
+          if (it.score != null) scores[it.compound.inchikey] = it.score;
+        }
+        return {
+          ...prev,
+          offset: body.offset,
+          total: body.total,
+          rows: [...prev.rows, ...items],
+          scores,
+        };
+      });
+    } catch {
+      // Load-more failures keep the loaded rows; the chip stays actionable.
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [searchSummary, loadingMore, patentQuery.data]);
 
   const structureRow: CompoundRow | null = useMemo(() => {
     if (!structureOpenId || !compoundsQuery.data) return null;
@@ -261,15 +332,17 @@ export function App() {
                 searchSummary.rows.length > 0 ? (
                   <CompoundTable
                     page={{
-                      total: searchSummary.rows.length,
+                      total: searchSummary.total,
                       offset: 0,
-                      limit: searchSummary.rows.length,
+                      limit: searchSummary.limit,
                       items: searchSummary.rows,
-                    } as CompoundPage}
+                    }}
                     selectedCompoundId={urlState.c}
                     selectedIds={selectedIds}
                     sarMode={sarMode}
                     scopeLabel={`${scopeLabel} (structure search)`}
+                    onLoadMore={loadMoreResults}
+                    loadingMore={loadingMore}
                     onToggleSelection={toggleSelection}
                     onToggleSelectAll={toggleSelectAllLoaded}
                     onClearSelection={() => setSelectedIds(new Set())}
@@ -295,6 +368,10 @@ export function App() {
                     selectedIds={selectedIds}
                     sarMode={sarMode}
                     scopeLabel={scopeLabel}
+                    onLoadMore={() =>
+                      setCompoundsLimit((n) => Math.min(n + 100, 500))
+                    }
+                    loadingMore={compoundsQuery.isFetching}
                     onToggleSelection={toggleSelection}
                     onToggleSelectAll={toggleSelectAllLoaded}
                     onClearSelection={() => setSelectedIds(new Set())}
@@ -368,10 +445,7 @@ export function App() {
           familyId={patentQuery.data.family.id}
           scopeLabel={patentQuery.data.family.family_key}
           onClose={() => setSearchOpen(false)}
-          onResults={(summary) => {
-            setSearchSummary(summary);
-            setSearchOpen(false);
-          }}
+          onResults={applySearchResults}
         />
         </Suspense>
       )}

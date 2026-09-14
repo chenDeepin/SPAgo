@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { CompoundRow } from "../api/types";
 import { Modal } from "./Modal";
@@ -7,33 +7,43 @@ interface StructureSearchDialogProps {
   familyId: string;
   scopeLabel: string;
   onClose: () => void;
-  onResults: (results: StructureSearchSummary | null) => void;
+  onResults: (results: StructureSearchSummary) => void;
 }
 
+/** Search results carry the full server paging contract plus the context they
+ * were produced in, so stale responses can never be applied to a newer view. */
 export interface StructureSearchSummary {
+  familyId: string;
+  requestKey: string;
   mode: string;
-  total: number;
   query_canonical_smiles: string;
   threshold: number | null;
+  total: number;
+  offset: number;
+  limit: number;
   rows: CompoundRow[];
   scores: Record<string, number>;
+  requestParams: Record<string, unknown>;
 }
 
 const DEFAULT_THRESHOLD = 0.6;
+const PAGE_SIZE = 100;
 
-function looksLikeSmiles(value: string): boolean {
-  // Cheap client-side guard: non-empty, no whitespace blobs, contains at least
-  // one atom token. Authoritative validation happens server-side via RDKit.
+/** Basic format boundary only: a SMILES draft is a single token with no
+ * whitespace. Chemical validity is decided server-side by RDKit (a 422 there
+ * surfaces its reason) — [Na+], S, or any other legal but unusual input must
+ * reach the server instead of being guessed away here. */
+function formatBoundaryOk(value: string): boolean {
   const v = value.trim();
-  if (!v || /\s/.test(v)) return false;
-  return /[A-Za-z]/.test(v) && /[CNOc]/.test(v);
+  return v.length > 0 && !/\s/.test(v);
 }
 
-/** Structure search dialog (M2, design contract 8).
+/** Structure search dialog (design contract 8).
  *
  * Query input is a SMILES draft: editing/pasting only changes the draft —
  * nothing executes until "Run search" (explicit user action). Scope is fixed
- * to the current family; stereochemistry is preserved where specified.
+ * to the current family. Closing the dialog aborts a running request; a late
+ * response is discarded and never reaches the results view.
  *
  * Note: the embedded Ketcher editor was planned here, but ketcher 2.28 and
  * 3.14 both crash at mount inside the Vite production build (packaging-level
@@ -51,43 +61,73 @@ export function StructureSearchDialog({
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const closedRef = useRef(false);
 
-  const draftValid = looksLikeSmiles(smiles);
+  // Closing cancels the in-flight request: no state updates, no onResults.
+  useEffect(
+    () => () => {
+      closedRef.current = true;
+      abortRef.current?.abort();
+    },
+    [],
+  );
+
+  const draftValid = formatBoundaryOk(smiles);
 
   const runSearch = async () => {
     setError(null);
     if (!draftValid) {
       setError(
         smiles.trim()
-          ? "This does not look like a SMILES string — paste a structure such as CC(=O)Oc1ccccc1C(=O)O."
+          ? "A SMILES string must be a single token without spaces."
           : "Draw or paste a structure first — the query is empty.",
       );
       return;
     }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setRunning(true);
     try {
-      const params: Record<string, unknown> = { mode, smiles: smiles.trim(), limit: 100 };
+      const params: Record<string, unknown> = {
+        mode,
+        smiles: smiles.trim(),
+        limit: PAGE_SIZE,
+      };
       if (mode === "similarity") params.threshold = threshold;
-      const body = await api.structureSearch(familyId, params);
+      const body = await api.structureSearch(familyId, params, controller.signal);
+      if (controller.signal.aborted) return;
       const scores: Record<string, number> = {};
       const rows: CompoundRow[] = body.items.map((it) => {
         if (it.score != null) scores[it.compound.inchikey] = it.score;
         return { compound: it.compound, mentions: it.mentions, activity: [] };
       });
       onResults({
+        familyId,
+        requestKey: `${mode}|${body.query_inchikey}|${body.threshold ?? ""}|${Date.now()}`,
         mode,
-        total: body.total,
         query_canonical_smiles: body.query_canonical_smiles,
         threshold: body.threshold,
+        total: body.total,
+        offset: body.offset,
+        limit: body.limit,
         rows,
         scores,
+        requestParams: params,
       });
     } catch (err) {
+      if (controller.signal.aborted) return; // dialog closed or superseded
       setError(err instanceof ApiError ? err.message : "Search failed.");
     } finally {
-      setRunning(false);
+      if (!controller.signal.aborted) setRunning(false);
     }
   };
+
+  const stereoNote =
+    mode === "similarity"
+      ? "Fingerprint-based (Morgan radius 2): stereoisomers are not distinguished by similarity."
+      : "Stereochemistry preserved where the query specifies it.";
 
   return (
     <Modal title="Structure search" onClose={onClose}>
@@ -110,7 +150,7 @@ export function StructureSearchDialog({
           />
           <p className="hint-note">
             The embedded structure editor (Ketcher) is deferred — paste a SMILES string for now.
-            Editing does not start a search.
+            Editing does not start a search; chemical validity is checked when the search runs.
           </p>
 
           <div className="input-label">Search mode</div>
@@ -149,7 +189,6 @@ export function StructureSearchDialog({
                 onChange={(e) => setThreshold(Number(e.target.value))}
               />
               <span className="mono">{threshold.toFixed(2)}</span>
-              <p className="hint-note">Morgan fingerprints (radius 2), Tanimoto similarity.</p>
             </div>
           )}
 
@@ -157,7 +196,7 @@ export function StructureSearchDialog({
           <div className="scope-static">Current family — {scopeLabel}</div>
 
           <div className="input-label">Stereochemistry</div>
-          <div className="scope-static">Preserve where specified</div>
+          <div className="scope-static">{stereoNote}</div>
 
           {error && (
             <div className="state-banner error" role="alert">

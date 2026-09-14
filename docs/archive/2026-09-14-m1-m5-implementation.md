@@ -1,10 +1,11 @@
 # M1–M5 Implementation Record
 
-Date: 2026-09-14. Status: DONE (implemented and verified same day, following M0).
+Date: 2026-09-14. Status: local demo implementation record; full milestone acceptance remains incomplete. Follow-up: [UI review and next round](2026-09-14-ui-review-next-round.md).
 Parent plan: `2026-09-14-m0-foundation.md`. Contracts: root `PROMPT.md`, `docs/design/2026-09-14-ui-direction.md`.
 
-Each milestone below is implemented, tested, and verified against the running
-compose stack unless explicitly noted. M6 (PDF/OCSR) remains excluded per
+The entries below preserve the original implementation and verification report;
+they are not a fresh rerun or proof that deferred capabilities are complete.
+M4 Chrome loading, M2 drawing, and full M5 LLM workflows remain open. M6 (PDF/OCSR) remains excluded per
 PROMPT.md §14 ("not MVP scope").
 
 ## M1 — Patent Chemistry Viewer
@@ -107,7 +108,7 @@ PROMPT.md §14 ("not MVP scope").
   (deferred); main bundle ≈ 248 KB / 77 KB gzip.
 - Full stack `docker compose up -d --build` healthy; migrations 1–5 applied at
   container start; live endpoint checks passed for every milestone.
-- Browser sessions verified M1–M5 workflows with screenshots.
+- The prior record reports browser sessions for the web workflows; M4 Chrome loading was explicitly not verified. Screenshot artifacts are not linked here, so this statement alone is not reproducible visual acceptance.
 - Benchmarks re-measured post-M3/M5 (`benchmarks/m0-baseline.json`):
   patent lookup p50 1.95 ms, compounds page (with activity) p50 4.99 ms /
   9.1 KB, depiction 1.48 ms cold.

@@ -1,6 +1,10 @@
 # SPAgo Architecture Overview
 
-Status: current for Milestone 0. Source constraints: root `AGENTS.md`, `PROMPT.md`.
+Status: **current contract** (matches the implemented M0–M5 code; consolidated
+during the 2026-09-14 UI review round as tracked in
+`docs/plans/2026-09-14-ui-review-next-round.md`). History: the M0-only framing
+is preserved in `docs/archive/2026-09-14-m0-foundation.md`; decisions in
+`docs/adr/`. Source constraints: root `AGENTS.md`, `PROMPT.md`.
 
 ## Shape
 
@@ -11,75 +15,79 @@ apps/web (React + TypeScript + Vite)          ← browser workspace
         ↓ HTTP /api/v1
 services/core (FastAPI, Python)
     ├─ api/        HTTP routes (typed request/response models)
-    ├─ services    read/query orchestration over PG
-    ├─ adapters/   external-source contracts + implementations
-    ├─ chemistry/  RDKit engine (deterministic chemistry)
+    ├─ services/   core reads · projects · export · bioactivity ·
+    │              structure search · AI summaries
+    ├─ adapters/   external-source contracts: patent fixtures,
+    │              bioactivity fixture, ChEMBL (webservice),
+    │              BindingDB (user-provided TSV)
+    ├─ chemistry/  RDKit engine (canonicalization, InChIKey,
+    │              descriptors, Murcko scaffolds, depictions)
     ├─ queries/    DuckDB bulk analytical layer (Parquet)
     ├─ db/         engine + versioned SQL migrations
     └─ domain/     typed domain models + provenance states
-        ↓                        ↓
-PostgreSQL 15 + RDKit cartridge      DuckDB over Parquet
-(workload B+C: interactive            (workload A: bulk analytical
- chemistry state, projects,            filtering of external bulk
- evidence, normalized compounds)       datasets; no duplication into PG)
+        ↓
+PostgreSQL 15 + RDKit cartridge        DuckDB over Parquet
+(molecule column + GIST/GIN indexes;   (bulk analytical reads of the
+ patents, compounds, mentions,          fixture; future bulk releases)
+ evidence, targets/assays/measurements,
+ projects, ai_analyses)
 ```
 
-No Redis, queue, search engine, or additional database is present or justified at M0
-(see `AGENTS.md` §6 and `docs/adr/0001-m0-foundation-data-path.md`).
+No Redis, queue, search engine, or additional database exists
+(`AGENTS.md` §6). `apps/chrome-extension/` is a thin MV3 context bridge:
+URL-only publication-number detection → side panel → `?q=` deep link.
 
-## Workload separation (PROMPT.md §11)
+## Implemented workload separation (PROMPT.md §11)
 
-| Workload | Store | M0 use |
+| Workload | Store | Current use |
 | --- | --- | --- |
-| A. Bulk analytical patent filtering | DuckDB + Parquet | fixture adapter input; `/api/v1/bulk/compound-counts`; benchmarks |
-| B. Interactive chemical search | PostgreSQL + RDKit cartridge | M0: normalized compound rows only (Python RDKit); cartridge indexing lands with M2 structure search |
-| C. Project and evidence state | PostgreSQL | patents, families, mentions, evidence, datasets (projects table exists; save UI is M1) |
+| A. Bulk analytical filtering | DuckDB + Parquet | fixture adapter input; `/api/v1/bulk/compound-counts`; benchmarks |
+| B. Interactive chemistry | PostgreSQL + RDKit cartridge (`mol` column, GIST/GIN) | exact / substructure / similarity search, molecule filters |
+| C. Project and evidence state | PostgreSQL | patents, mentions, evidence, measurements, projects, AI analyses |
 
-## Data path at M0
+## Current data paths
 
 ```text
-data/fixtures (synthetic Parquet, versioned demo-fixture-v1)
-      ↓  adapters/surechembl_fixture.py  (DuckDB read; envelope with source + retrieval metadata)
-      ↓  chemistry/engine.py             (RDKit parse → canonical SMILES, InChIKey, descriptors)
-      ↓  seed.py                         (idempotent upsert into PostgreSQL; dedupe by InChIKey;
-      ↓                                   malformed structures recorded as warnings, never as compounds)
-      ↓  api routes                       (server-paged reads; lazy depictions with disk cache)
-apps/web                                  (search → family → compounds → evidence)
+data/fixtures (synthetic Parquet, demo-fixture-v1)
+      ↓  adapters (DuckDB read; source envelope with provenance)
+      ↓  chemistry/engine.py (RDKit canonical SMILES, InChIKey,
+      ↓                        descriptors, Murcko scaffold)
+      ↓  seed.py (idempotent upsert; dedupe by InChIKey; malformed
+      ↓          structures → ingestion_issues, never compounds)
+PostgreSQL  →  api routes (server-paged, cap 500)
+apps/web     (search → family → compounds → evidence/structure search)
 ```
 
-Interactive serving reads PostgreSQL only. The Parquet/DuckDB path is the bulk/analytics
-lane and the future SureChEMBL ingestion route.
+- Structure search: exact = isomeric InChIKey; substructure = cartridge `@>`
+  plus a chirality-aware RDKit re-check when the query specifies stereo;
+  similarity = explicit `tanimoto_sml >= threshold` (this cartridge's `%`
+  operator is fixed at 0.5 and would silently drop lower thresholds). Morgan
+  fingerprints do not distinguish stereoisomers — the UI states this per mode.
+- Depictions: RDKit SVG per request with disk cache; only rendered rows fetch.
+- Bioactivity: only typed measurements surface; cross-assay values are never
+  ranked or combined into selectivity numbers.
+- AI: offline extractive provider cites evidence and labels
+  `machine_extracted`; an LLM provider behind the same protocol labels
+  `llm_inferred`. The planner parses publication-number identifiers only.
+- URL state: `?q=&doc=&c=`; new searches push history entries, selection
+  replaces; Back/Forward restore via popstate.
 
-## Domain model (M0 subset)
+## Deliberate boundaries
 
-`PatentFamily`, `PatentDocument`, `Compound`, `CompoundMention`, `EvidenceRecord`,
-`DatasetInfo`, `SourceEnvelope`. `Compound` is the normalized chemical entity
-(identity keyed by InChIKey); `CompoundMention` is a patent-local occurrence
-(label + document). They are separate tables and separate API objects.
-
-Provenance states: `source_fact`, `database_curated`, `machine_extracted`,
-`llm_inferred`, `user_curated`. Nothing may upgrade a state silently.
-
-## External-source isolation (AGENTS.md §8)
-
-Adapters return normalized domain models plus a `SourceEnvelope`
-(source name, source version, dataset version, retrieved-at, warnings).
-UI and services never see native Parquet/external schemas. Adding OPS/ChEMBL/BindingDB
-later means adding adapters, not touching the UI domain model.
-
-## Deliberate M0 boundaries
-
-- Projects table exists but no save/export UI (M1).
-- No Ketcher, no structure search (M2). Substructure/similarity will require
-  the RDKit cartridge index — the first milestone that needs it.
-- No bioactivity (M3), no extension (M4), no LLM (M5), no PDF/OCSR (M6).
-- Pagination: default 100 rows, hard cap 500, enforced server-side.
-- Depictions: generated on request per compound, cached on disk
-  (`data/cache/depictions/`, gitignored), only fetched for rendered rows.
+- Export is synchronous up to 5000 rows (documented cap); larger scopes need
+  the future persisted background-job mechanism.
+- The embedded Ketcher editor is deferred (packaging incompatibility with the
+  Vite production build, recorded in the UI review round); SMILES paste is the
+  structure-search input.
+- No PDF/OCSR (M6), no live ChEMBL/BindingDB calls in the demo seed, and no
+  cross-family structure search (family-scoped by contract).
+- Pagination: default 100, hard cap 500, enforced server-side on every list
+  and search endpoint.
 
 ## Performance baseline
 
-Tracked by `services/core/benchmarks/run_benchmarks.py` against the synthetic
-fixture; committed baseline lives in `benchmarks/` (`m0-baseline.json`).
-Fixture-based numbers are not representative of bulk-dataset scale; they exist
-so regressions become measurable from day one.
+Tracked by `services/core/benchmarks/run_benchmarks.py`;
+`benchmarks/m0-baseline.json` (fixture scale) and
+`benchmarks/paging-measurement-2026-09-14.md` (150-compound paging /
+virtualization round) are retained measurements — neither is overwritten by
+later runs.

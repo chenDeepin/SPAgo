@@ -1,5 +1,14 @@
 import { useEffect, useRef } from "react";
 
+const FOCUSABLE = [
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "a[href]",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
 interface ModalProps {
   title: string;
   onClose: () => void;
@@ -7,22 +16,44 @@ interface ModalProps {
   wide?: boolean;
 }
 
-/** Minimal dialog with focus trap-in, Escape to close, focus return on close. */
+/** Minimal dialog: focus moves in on open, Tab/Shift+Tab cycle inside the
+ * panel (aria-modal alone does not constrain focus), Escape closes, and focus
+ * returns to the triggering control on close. */
 export function Modal({ title, onClose, children, wide }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const focusable = panelRef.current?.querySelector<HTMLElement>(
-      "button, input, select, textarea, [tabindex]:not([tabindex='-1'])",
-    );
-    focusable?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const first = panelRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    first?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusable.length === 0) {
+        e.preventDefault();
+        panelRef.current.focus();
+        return;
+      }
+      const firstEl = focusable[0];
+      const lastEl = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === firstEl || !panelRef.current.contains(active))) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && (active === lastEl || !panelRef.current.contains(active))) {
+        e.preventDefault();
+        firstEl.focus();
+      }
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKeyDown, true);
     return () => {
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKeyDown, true);
       previous?.focus();
     };
   }, [onClose]);

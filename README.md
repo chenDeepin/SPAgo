@@ -8,7 +8,7 @@ The project is designed for medicinal chemists, computational chemists, patent r
 
 ---
 
-# Current status: Milestones 0–5 implemented and verified
+# Current status: M0–M5 local demo implementation, with open acceptance gaps
 
 - one-command local startup: `docker compose up -d --build` → `http://localhost:8000`;
 - **M0 Foundation**: FastAPI core + React workspace (search → family → compounds → evidence),
@@ -26,10 +26,12 @@ The project is designed for medicinal chemists, computational chemists, patent r
   link); detection contract covered by `apps/chrome-extension/check.js`;
 - **M5 Evidence-Grounded AI**: offline extractive provider with evidence citations and honest
   `machine_extracted` labeling; deterministic query planner; AI as an inspector tab;
-- 88 automated tests; benchmark baseline under `benchmarks/`.
+- Prior implementation record reports 88 passing automated tests; benchmark baseline under `benchmarks/`. These results are not a fresh verification of every current workflow.
 
 M6 (PDF/OCSR) is intentionally not started. Gaps (e.g. Ketcher embedding, Chrome-in-Chrome
-verification, live ChEMBL calls) are recorded in `docs/plans/2026-09-14-m1-m5-implementation.md`.
+verification, live ChEMBL calls) are recorded in `docs/archive/2026-09-14-m1-m5-implementation.md`.
+The follow-up review and proposed acceptance work are in
+[the UI review plan](docs/plans/2026-09-14-ui-review-next-round.md).
 
 The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*` identifiers).
 It is not scientific data.

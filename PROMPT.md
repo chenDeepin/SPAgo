@@ -1,13 +1,19 @@
 # SPAgo — Initial Engineering Prompt
 
-> **Handoff note (2026-09-14):** Milestones 0 through 5 are implemented and
-> verified; M6 (PDF/OCSR) remains intentionally unbuilt. Records:
-> `docs/plans/2026-09-14-m0-foundation.md` and
-> `docs/plans/2026-09-14-m1-m5-implementation.md` (implemented / verified /
+> **Handoff note (2026-09-14):** M0–M5 have local demo implementations with
+> incomplete acceptance (including deferred Ketcher, untested Chrome loading,
+> and offline-only summaries); M6 (PDF/OCSR) remains intentionally unbuilt. Records:
+> `docs/archive/2026-09-14-m0-foundation.md` and
+> `docs/archive/2026-09-14-m1-m5-implementation.md` (implemented / verified /
 > known gaps, including the deferred Ketcher embedding and the un-instantiated
 > Chrome extension), `docs/architecture/overview.md`,
 > `docs/adr/0001-m0-foundation-data-path.md`, and the README status section.
 > The rest of this document remains the standing product/engineering contract.
+>
+> Current review and proposed next round:
+> `docs/plans/2026-09-14-ui-review-next-round.md`. Fix existing interaction and
+> evidence gaps before broadening scope. Its implementation work is proposed,
+> not completed or a blanket instruction to rebuild all milestones below.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.
 

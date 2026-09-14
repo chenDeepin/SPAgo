@@ -839,6 +839,8 @@ Working code alone is not sufficient.
 
 For UI behavior or layout changes, verify the affected workflow in a browser served from the current checkout. Use settled screenshots for visual changes and interaction/network evidence for behavior; DOM presence alone is insufficient. Record the tested viewport and source mode, and server freshness when stale processes could affect the result.
 
+For design-only or documentation-only changes, check references, scope, and consistency against current files; label mockups as proposals. Browser execution is required when claiming implemented UI behavior, not merely to deliver a design draft.
+
 Checks must cover relevant loading, empty, unavailable-source, error, and stale-response states as well as success. Scope browser locators to their owning surface and use visible controls rather than force-clicking hidden navigation. If browser or live-source checks cannot run, record that gap explicitly instead of marking them passed.
 
 ---
