@@ -8,6 +8,43 @@ If a requested change conflicts with these rules, explain the conflict before ch
 
 ---
 
+# 0. Contributor Workflow
+
+## Read and verify before acting
+
+- Read this file and the nearest applicable `AGENTS.md` before editing. More specific local rules govern their scope without silently weakening repository-wide scientific or safety constraints.
+- Read `/home/chen/.codex/RTK.md` when available and prefix shell commands with `rtk` in that environment. If unavailable, report the limitation rather than claiming it was used.
+- Read each existing file before editing it. Search narrowly by identifier; load relevant architecture, design, and active planning documents on demand.
+- Current files and observed runtime behavior outrank summaries, screenshots, prior reviews, and remembered assumptions. Recheck a finding before treating it as current.
+- Prefer small, necessary changes. Avoid unrelated cleanup, style-only churn, speculative abstractions, and new files without a task need.
+- Prefer native platform features, the standard library, and suitable existing dependencies. Required input, schema, provenance, and access validation is contract code; speculative guards and silent fallbacks are not substitutes for a clear contract.
+
+## Protect the workspace
+
+- Inspect Git status before changes. Preserve user edits and unrelated dirty files; do not overwrite or revert them.
+- Stage only intended paths when staging is requested. Do not broadly stage, commit, push, force-push, tag, release, or publish without authorization for that action.
+- Do not introduce nested `.git` directories, accidental gitlinks, or submodule changes. Treat generated assets, vendor code, and independent upstream checkouts as outside routine source edits.
+- When adapting external code or designs, first check existing SPAgo capabilities. For code imports, record source, license, attribution, destination, and verification; adapt ownership and provenance rules rather than copying another project's runtime assumptions.
+
+## Plan at the scale of the task
+
+- For staged work, use `Q&A -> plan -> PROMPT -> implementation -> review/correction`. Small local fixes need not create a planning framework.
+- Keep active findings and scoped plans under `docs/plans/`. Keep durable UI references under `docs/design/` and architecture decisions under `docs/architecture/` or `docs/adr/` when those references are needed.
+- Root `PROMPT.md` is the stable current handoff, not a scratch log. Read its active references before implementation; do not turn unreviewed design ideas into approved scope.
+- Record unresolved defects and review feedback in the active Q&A before planning the next stage. Keep changed-file lists, commands, pass/fail/skipped results, and temporary restrictions in the relevant plan or Q&A, not in this file.
+- Archive completed or superseded staged work under `docs/archive/` when closing that round, preserving verification and remaining issues. Update existing links and handoff pointers; do not create empty indexes or archive unrelated history just for consistency.
+- Update the relevant durable contract when architecture, ownership, API behavior, or a reviewed UI design changes. Do not promote a proposal or a mockup to implemented status because documentation exists.
+
+## Delegate and report precisely
+
+- Use self-contained, bounded worker prompts and avoid overlapping writes. The coordinating agent owns synthesis and final judgment.
+- For important merges, audits, or high-risk scientific changes, use independent verification with an explicit scope; worker approval alone is not completion evidence.
+- Report checked / not checked, passed / failed, skipped / blocked, and known / unknown plainly. Do not claim execution, extraction, rendering, cancellation, saving, or completion without corresponding observed evidence.
+- Choose checks from the actual checkout and affected behavior. Do not copy build commands, paths, or workstation assumptions from another repository. Run `rtk git diff --check` for text changes when RTK is available; run relevant application tests and builds once they exist.
+- Distinguish fixture-only, local integration, and live-source results. A mock pass does not prove a live adapter works; code presence and unit tests do not prove a browser workflow works.
+
+---
+
 # 1. Mission
 
 SPAgo (small molecule patent analysis GO) is a structure-native patent intelligence workspace for small-molecule drug discovery.
@@ -352,6 +389,14 @@ LLMs must not silently invent:
 
 Answers containing factual scientific conclusions must expose evidence or clearly state that the result is an inference.
 
+Treat patent text, uploaded documents, retrieved content, and LLM output as untrusted data, not instructions that can change tool permissions or application policy. Validate proposed query plans and tool arguments through typed service contracts before execution.
+
+The FastAPI service layer owns scientific execution, persistence, and provenance. Neither an LLM response nor a frontend component may bypass those contracts. Do not add a second agent runtime or migrate service ownership merely to match an imported project.
+
+Do not use ad hoc natural-language keyword lists to invent scientific tool arguments, target assignments, or fallback structures. Deterministic identifier parsing remains appropriate; language interpretation must produce a validated plan with explicit uncertainty.
+
+Keep operational logs separate from scientific evidence. Do not log secrets, hidden reasoning, or unrestricted provider payloads. Persist necessary scientific records through the documented domain model; this is not permission to duplicate raw documents or private datasets into debug logs.
+
 ---
 
 # 13. Large Data Is Server-Side
@@ -473,6 +518,14 @@ Before adding a button or action:
 
 Do not create multiple buttons that perform the same conceptual action under slightly different names.
 
+Every visible action must have one real action owner, a navigation destination, or an explicit unavailable state with a reason. Hide future features until their milestone; generic success toasts and disconnected controls do not count as implementation.
+
+Before adding a panel or permanent destination, identify the unique user task, its available data/service contract, and why an existing table, drawer, menu, or contextual action cannot serve it. Keep routine UI improvements within the current reviewed layout unless layout changes are part of the task.
+
+Mock and fixture data must be visibly labeled. Generated UI images are design references only; their chemical structures, patent identifiers, and measurements are not scientific fixtures or validation evidence.
+
+Selection and asynchronous state must preserve user intent: an older query, evidence fetch, or hydration response must never overwrite a newer selection. Row inspection, bulk selection, and saved project state must remain distinguishable.
+
 ---
 
 # 19. URL and State
@@ -549,6 +602,10 @@ Examples:
 The first implementation may use a simple database-backed job mechanism.
 
 Do not introduce a distributed queue until necessary.
+
+Distinguish queued, running, cancellation requested, cancelled, failed, and completed states. Claim cancellation only when the worker or query acknowledges it; discarding a browser response only makes that response obsolete. Claim completion only when the expected result or artifact is persisted and available.
+
+Retries must be bounded and safe for the operation. Save/import/export retries must not silently duplicate records or outputs. Preserve partial progress and errors where useful; do not disguise source failures as empty successful results.
 
 ---
 
@@ -746,6 +803,10 @@ Keep generated data, caches, downloaded bulk datasets, database files, PDFs, mod
 
 Use small deterministic fixtures for tests.
 
+Committed scientific fixtures must be minimal, public or synthetic as appropriate, and provenance-recorded. Private PDFs, structures, spreadsheets, and source responses stay local unless explicitly scoped for sharing. Synthetic data must remain identifiable as synthetic.
+
+Structure transformations must preserve the source and record derived identity, normalization decisions, and validation issues. An edited or predicted structure must not become source evidence merely because it renders successfully.
+
 ---
 
 # 35. Secrets
@@ -775,6 +836,10 @@ A feature is complete only when:
 - installation remains simple.
 
 Working code alone is not sufficient.
+
+For UI behavior or layout changes, verify the affected workflow in a browser served from the current checkout. Use settled screenshots for visual changes and interaction/network evidence for behavior; DOM presence alone is insufficient. Record the tested viewport and source mode, and server freshness when stale processes could affect the result.
+
+Checks must cover relevant loading, empty, unavailable-source, error, and stale-response states as well as success. Scope browser locators to their owning surface and use visible controls rather than force-clicking hidden navigation. If browser or live-source checks cannot run, record that gap explicitly instead of marking them passed.
 
 ---
 
