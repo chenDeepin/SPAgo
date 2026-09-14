@@ -1,0 +1,51 @@
+name: spago
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: docker/db/Dockerfile
+    image: spago-db:pg15-rdkit
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-spago}
+      POSTGRES_USER: ${POSTGRES_USER:-spago}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spago}
+    ports:
+      - "${SPAGO_DB_PORT:-5432}:5432"
+    volumes:
+      - spago-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=$$POSTGRES_PASSWORD psql -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB -c 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    image: spago-app:m0
+    environment:
+      SPAGO_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-spago}:${POSTGRES_PASSWORD:-spago}@db:5432/${POSTGRES_DB:-spago}
+      SPAGO_FIXTURE_DIR: /app/data/fixtures
+      SPAGO_MIGRATIONS_DIR: /app/migrations
+      SPAGO_DEPICTION_CACHE_DIR: /app/data/cache/depictions
+    ports:
+      - "${SPAGO_APP_PORT:-8000}:8000"
+    volumes:
+      - spago-depiction-cache:/app/data/cache/depictions
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/healthz >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  spago-db-data:
+  spago-depiction-cache:

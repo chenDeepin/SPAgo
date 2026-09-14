@@ -8,6 +8,44 @@ The project is designed for medicinal chemists, computational chemists, patent r
 
 ---
 
+# Current status: Milestones 0–5 implemented and verified
+
+- one-command local startup: `docker compose up -d --build` → `http://localhost:8000`;
+- **M0 Foundation**: FastAPI core + React workspace (search → family → compounds → evidence),
+  PostgreSQL 15 + RDKit cartridge, versioned migrations, idempotent seeding, DuckDB-over-Parquet
+  bulk layer, lazy cached RDKit depictions;
+- **M1 Patent Chemistry Viewer**: save-to-project (idempotent), CSV/SDF export with patent ids,
+  labels, evidence references and dataset version; structure detail drawer; bulk selection;
+- **M2 Structure Search**: exact / substructure / similarity against cartridge-indexed chemistry,
+  molecule filters, stereo-preserving matching, explicit run + removable results chip
+  (embedded Ketcher editor is deferred — see the M1–M5 plan record);
+- **M3 Bioactivity / SAR**: typed targets/assays/measurements with provenance, Murcko scaffold
+  grouping, ChEMBL + BindingDB adapter contracts (sealed-fixture tested), activity column and
+  evidence-panel bioactivity with "no ranking across assays" semantics;
+- **M4 Chrome Companion**: thin MV3 context bridge (URL-only detection → side panel → `?q=` deep
+  link); detection contract covered by `apps/chrome-extension/check.js`;
+- **M5 Evidence-Grounded AI**: offline extractive provider with evidence citations and honest
+  `machine_extracted` labeling; deterministic query planner; AI as an inspector tab;
+- 88 automated tests; benchmark baseline under `benchmarks/`.
+
+M6 (PDF/OCSR) is intentionally not started. Gaps (e.g. Ketcher embedding, Chrome-in-Chrome
+verification, live ChEMBL calls) are recorded in `docs/plans/2026-09-14-m1-m5-implementation.md`.
+
+The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*` identifiers).
+It is not scientific data.
+
+## Quick start (local)
+
+```bash
+docker compose up -d --build
+# open http://localhost:8000 and search: DEMO-PATENT-A
+```
+
+For development without Docker rebuilds, see `services/core/README.md`
+(backend hot reload against the compose `db` service, Vite dev server on :5173).
+
+---
+
 # Why SPAgo?
 
 A typical medicinal-chemistry patent workflow is fragmented:

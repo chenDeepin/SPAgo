@@ -1,0 +1,21 @@
+{
+  "source_name": "surechembl_simplified_fixture",
+  "dataset_version": "demo-fixture-v1",
+  "generated_on": "2026-09-14",
+  "synthetic": true,
+  "note": "Synthetic fixture for software verification. Not scientific data.",
+  "files": {
+    "patents/patent_documents_demo_fixture.parquet": {
+      "sha256": "8021c3c51c716c41a6d4b6d78eab89354e7b5696fb26d41cd805fb23b746306f",
+      "rows": 3
+    },
+    "surechembl/surechembl_demo_fixture.parquet": {
+      "sha256": "b745bee4d199a26e3c67ebd48b63c94f98d5d306e563713af7a1a3984f6cfc53",
+      "rows": 13
+    },
+    "bioactivity/bioactivity_demo_fixture.parquet": {
+      "sha256": "a6e0e840fde0f84b77c33dff886baed4f7389461fc3b7fc337b6cce269934c77",
+      "rows": 6
+    }
+  }
+}

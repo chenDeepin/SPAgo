@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-09-14T13:41:02.960488+00:00",
+  "base_url": "http://localhost:8000",
+  "dataset": "demo-fixture-v1 (synthetic; scale is not representative of bulk data)",
+  "benchmarks": {
+    "patent_lookup": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 1.95,
+      "p95_ms": 2.63,
+      "mean_ms": 1.99
+    },
+    "family_compounds_page": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 4.99,
+      "p95_ms": 5.99,
+      "mean_ms": 5.56
+    },
+    "depiction_cold_single_ms": 1.48,
+    "depiction_warm": {
+      "runs": 20,
+      "errors": 0,
+      "p50_ms": 1.15,
+      "p95_ms": 1.37,
+      "mean_ms": 1.23
+    },
+    "evidence_fetch": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 1.32,
+      "p95_ms": 1.74,
+      "mean_ms": 1.39
+    },
+    "bulk_compound_counts": {
+      "runs": 10,
+      "errors": 0,
+      "p50_ms": 4.5,
+      "p95_ms": 4.86,
+      "mean_ms": 4.44
+    },
+    "document_scoped_compounds": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 4.49,
+      "p95_ms": 5.56,
+      "mean_ms": 4.58
+    }
+  },
+  "health": {
+    "status": "ok",
+    "database": "up",
+    "chemistry": "ok",
+    "rdkit_cartridge": "installed",
+    "dataset_version": "demo-fixture-v1",
+    "ingestion_issues": 1,
+    "api_version": "0.1.0"
+  },
+  "payload_bytes": {
+    "compounds_page_default_100": 9118,
+    "depiction_svg_280x160": 7852,
+    "evidence_list": 735
+  }
+}

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SPAgo Companion</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        color: #172b3a;
+        margin: 0;
+        padding: 16px;
+        background: #ffffff;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 4px;
+      }
+      p {
+        color: #52616b;
+        font-size: 13px;
+        margin: 4px 0 12px;
+      }
+      .mono {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 13px;
+      }
+      a.button {
+        display: inline-block;
+        background: #087f8c;
+        color: #fff;
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        border: 1px solid #dce3e8;
+        border-radius: 6px;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SPAgo Companion</h1>
+    <p>Detects the patent on the current page. SPAgo itself runs in the web app.</p>
+    <div id="detected">No patent detected on this page.</div>
+    <p id="open-slot"></p>
+    <hr />
+    <label for="spago-url">SPAgo URL</label>
+    <input id="spago-url" type="url" placeholder="http://localhost:8000" />
+    <script src="sidepanel.js"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "SPAgo Companion",
+  "version": "0.1.0",
+  "description": "Detects the patent publication number on the current page and hands it to the SPAgo workspace. A thin context bridge: all data and logic live in the SPAgo web app.",
+  "permissions": ["sidePanel", "storage", "activeTab"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open SPAgo companion"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://worldwide.espacenet.com/*",
+        "https://patents.google.com/*"
+      ],
+      "js": ["detect.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

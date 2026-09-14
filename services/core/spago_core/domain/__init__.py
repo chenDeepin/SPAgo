@@ -1,0 +1,15 @@
+from spago_core.domain.models import (  # noqa: F401
+    AdapterResult,
+    Compound,
+    CompoundMention,
+    DatasetInfo,
+    EvidenceRecord,
+    EvidenceSourceType,
+    MentionRecord,
+    PatentDocument,
+    PatentFamily,
+    Page,
+    ProvenanceState,
+    SourceEnvelope,
+    StructureIssue,
+)
