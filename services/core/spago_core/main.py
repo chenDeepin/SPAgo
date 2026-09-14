@@ -1,8 +1,10 @@
 """SPAgo core FastAPI application factory."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,10 +17,20 @@ from spago_core.db import make_engine
 
 def create_app() -> FastAPI:
     settings = get_settings()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # One shared HTTP client for outbound model calls (LLM interface plan):
+        # redirects are never followed; per-request timeouts are set by the adapter.
+        app.state.llm_client = httpx.Client(follow_redirects=False)
+        yield
+        app.state.llm_client.close()
+
     app = FastAPI(
         title="SPAgo Core",
         version=__version__,
-        description="Structure-native patent intelligence workspace (M0 foundation).",
+        description="Structure-native patent intelligence workspace.",
+        lifespan=lifespan,
     )
     app.state.engine = make_engine(settings.database_url)
     app.state.version = __version__

@@ -66,9 +66,15 @@ apps/web     (search → family → compounds → evidence/structure search)
 - Depictions: RDKit SVG per request with disk cache; only rendered rows fetch.
 - Bioactivity: only typed measurements surface; cross-assay values are never
   ranked or combined into selectivity numbers.
-- AI: offline extractive provider cites evidence and labels
-  `machine_extracted`; an LLM provider behind the same protocol labels
-  `llm_inferred`. The planner parses publication-number identifiers only.
+- AI summaries: default is the offline extractive provider
+  (`machine_extracted`). With `SPAGO_LLM_BASE_URL`/`SPAGO_LLM_API_KEY`/
+  `SPAGO_LLM_MODEL` configured, the AI tab can call one OpenAI-compatible
+  Chat Completions endpoint (`adapters/llm.py`): bounded fact input
+  (≤50 items/kind, ≤32 KiB), typed fact citations validated server-side,
+  content-key caching (zero provider calls on cache hit), LLM output labeled
+  `llm_inferred`. `GET /api/v1/ai/status` reports
+  offline/configured/config_invalid without calling the provider. The planner
+  parses publication-number identifiers only.
 - URL state: `?q=&doc=&c=`; new searches push history entries, selection
   replaces; Back/Forward restore via popstate.
 

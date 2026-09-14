@@ -168,14 +168,44 @@ export interface StructureSearchResponse {
   items: { compound: Compound; mentions: Mention[]; score: number | null }[];
 }
 
-/* --- M5: evidence-grounded AI --- */
+/* --- M5 + LLM interface: evidence-grounded AI --- */
+
+export interface CitationRef {
+  fact_ref: string;
+  kind: "family" | "measurement" | "evidence";
+  label?: string;
+  evidence_id?: string;
+  inchikey?: string;
+  measurement_id?: string;
+}
+
+export interface CoverageEntry {
+  dataset_version: string;
+  synthetic: boolean | null;
+  documents: number;
+  compounds: number;
+  measurements: number;
+}
 
 export interface FamilySummaryResponse {
   analysis_id: string;
   provider: string;
   provenance_state: string;
   text: string;
-  citations: { evidence_id: string; inchikey: string }[];
+  citations: CitationRef[];
   dataset_version: string;
   created_at: string;
+  mode?: string;
+  model?: string | null;
+  cached?: boolean;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
+  coverage?: CoverageEntry[];
+  input_snapshot?: Record<string, unknown>;
+}
+
+export interface AiStatusResponse {
+  state: "offline" | "configured" | "config_invalid";
+  model: string | null;
+  target: string | null;
+  reason: string | null;
 }

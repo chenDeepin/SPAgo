@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Optional
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
@@ -480,6 +481,12 @@ class FamilySummaryResponse(BaseModel):
     citations: list[dict]
     dataset_version: str
     created_at: str
+    # Additive LLM-interface fields; offline calls leave them at defaults.
+    mode: str = "offline"
+    model: Optional[str] = None
+    cached: bool = False
+    usage: Optional[dict] = None
+    coverage: list[dict] = []
 
 
 class PlanQueryRequest(BaseModel):
@@ -492,14 +499,93 @@ class PlanQueryResponse(BaseModel):
     note: str
 
 
+def _ai_status_response(settings) -> dict:
+    from spago_core.adapters.llm import LLMConfigProblem, parse_endpoint
+
+    has_base = bool((settings.llm_base_url or "").strip())
+    has_model = bool((settings.llm_model or "").strip())
+    if not has_base and not has_model:
+        return {
+            "state": "offline",
+            "model": None,
+            "target": None,
+            "reason": "No LLM endpoint configured; summaries use the offline extractive provider.",
+        }
+    try:
+        endpoint = parse_endpoint(settings)
+    except LLMConfigProblem as exc:
+        return {
+            "state": "config_invalid",
+            "model": settings.llm_model or None,
+            "target": None,
+            "reason": str(exc),
+        }
+    parts = urlsplit(endpoint.base_url)
+    target = f"{parts.scheme}://{parts.netloc}{parts.path}"
+    return {
+        "state": "configured",
+        "model": endpoint.model,
+        "target": target,  # sanitized: scheme + host + path, never the key
+        "reason": "Configured endpoints are verified on first use, not by this status call.",
+    }
+
+
+@router.get("/ai/status")
+def ai_status(settings: Settings = Depends(get_settings)):
+    from spago_core.adapters.llm import LLMConfigProblem
+
+    return _ai_status_response(settings)
+
+
+class SummaryRequest(BaseModel):
+    mode: str = Field(default="offline", pattern="^(offline|llm)$")
+
+
 @router.post("/families/{family_id}/summary", response_model=FamilySummaryResponse)
-def family_summary(family_id: uuid.UUID, engine=Depends(get_engine)):
+def family_summary(
+    family_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+    body: SummaryRequest | None = None,
+):
+    """Family summary. Without a body (legacy callers) this stays offline; an
+    explicit {"mode": "llm"} is required before any paid model call is made."""
+    from spago_core.adapters.llm import LLMConfigProblem, OpenAICompatibleSummaryProvider, parse_endpoint
     from spago_core.services import ai as ai_svc
 
+    mode = body.mode if body else "offline"
+    llm_provider = None
+    if mode == "llm":
+        try:
+            endpoint = parse_endpoint(settings)
+        except LLMConfigProblem as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        llm_provider = OpenAICompatibleSummaryProvider(
+            endpoint, client=getattr(request.app.state, "llm_client", None)
+        )
+
     try:
-        return FamilySummaryResponse(**ai_svc.summarize_family(engine, family_id))
+        result = ai_svc.summarize_family(engine, family_id, mode=mode, llm_provider=llm_provider)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ai_svc.ContentInFlightError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.ProviderBusyError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMConfigError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMTimeoutError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMUpstreamError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    # Response fields the old callers can ignore; model/cached/usage/coverage
+    # are additive (plan §5).
+    result["mode"] = mode
+    return result
 
 
 @router.post("/ai/plan", response_model=PlanQueryResponse)

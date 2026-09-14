@@ -31,10 +31,21 @@ services:
       SPAGO_FIXTURE_DIR: /app/data/fixtures
       SPAGO_MIGRATIONS_DIR: /app/migrations
       SPAGO_DEPICTION_CACHE_DIR: /app/data/cache/depictions
+      # LLM endpoint: compose does not inject .env automatically — these three
+      # are passed explicitly. All empty → offline extractive summaries.
+      SPAGO_LLM_BASE_URL: ${SPAGO_LLM_BASE_URL:-}
+      SPAGO_LLM_API_KEY: ${SPAGO_LLM_API_KEY:-}
+      SPAGO_LLM_MODEL: ${SPAGO_LLM_MODEL:-}
     ports:
-      - "${SPAGO_APP_PORT:-8000}:8000"
+      # loopback binding by default: enable paid model keys only behind your own
+      # authentication layer before exposing this port on a LAN/hosted interface
+      - "${SPAGO_APP_BIND:-127.0.0.1}:${SPAGO_APP_PORT:-8000}:8000"
     volumes:
       - spago-depiction-cache:/app/data/cache/depictions
+    extra_hosts:
+      # lets SPAGO_LLM_BASE_URL use http://host.docker.internal:<port> for
+      # explicitly configured local model endpoints (Linux docker)
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy

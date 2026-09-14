@@ -24,8 +24,13 @@ The project is designed for medicinal chemists, computational chemists, patent r
   evidence-panel bioactivity with "no ranking across assays" semantics;
 - **M4 Chrome Companion**: thin MV3 context bridge (URL-only detection → side panel → `?q=` deep
   link); detection contract covered by `apps/chrome-extension/check.js`;
-- **M5 Evidence-Grounded AI**: offline extractive provider with evidence citations and honest
-  `machine_extracted` labeling; deterministic query planner; AI as an inspector tab;
+- **M5 Evidence-Grounded AI**: offline extractive provider with typed citations and honest
+  `machine_extracted` labeling; optional real-model path — configure
+  `SPAGO_LLM_BASE_URL` / `SPAGO_LLM_API_KEY` / `SPAGO_LLM_MODEL` (any
+  OpenAI-compatible `/chat/completions` endpoint, incl. local Ollama) and the AI
+  tab offers LLM summaries with content-key caching, bounded fact input,
+  citation validation, and `llm_inferred` labeling; deterministic query planner;
+  AI as an inspector tab;
 - Prior implementation record reports 88 passing automated tests; benchmark baseline under `benchmarks/`. These results are not a fresh verification of every current workflow.
 
 M6 (PDF/OCSR) is intentionally not started. Gaps (e.g. Ketcher embedding, Chrome-in-Chrome

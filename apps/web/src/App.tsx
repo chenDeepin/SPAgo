@@ -408,6 +408,7 @@ export function App() {
               compound={selectedRow.compound}
               mentions={selectedRow.mentions}
               familyId={patentQuery.data ? patentQuery.data.family.id : ""}
+              familyKey={patentQuery.data ? patentQuery.data.family.family_key : ""}
               evidence={evidenceQuery.data}
               evidenceLoading={evidenceQuery.isFetching}
               evidenceError={(evidenceQuery.error as Error | null)?.message ?? null}

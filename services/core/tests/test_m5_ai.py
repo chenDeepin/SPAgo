@@ -1,9 +1,13 @@
-"""M5 tests: extractive summary with citations, deterministic planner, API."""
+"""M5 + LLM-interface tests: extractive summary, typed citations, content-key
+caching, deterministic planner, status/mode API."""
 from __future__ import annotations
 
+import json
+import uuid
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from spago_core.db import run_migrations
 from spago_core.seed import seed
@@ -30,65 +34,169 @@ class TestPlanner:
 
 
 class TestFamilySummary:
-    def test_summary_is_extractive_with_citations(self, m5_engine):
+    def test_summary_is_extractive_with_typed_citations(self, m5_engine):
         result = ai.summarize_family(m5_engine, _family_id(m5_engine))
         assert result["provider"] == "offline-extractive"
         # No LLM configured: the output must NOT claim llm_inferred status.
         assert result["provenance_state"] == "machine_extracted"
-        # Measurements are cited to stored evidence rows.
-        assert len(result["citations"]) >= 5
-        assert all(c["evidence_id"] for c in result["citations"])
+        # Measurements are cited as measurement records, never as patent-text
+        # evidence (LLM-01).
+        assert result["citations"], "summary must carry citations"
+        assert result["citations"][0]["fact_ref"].startswith("family:")
+        measurement_citations = [c for c in result["citations"] if c["kind"] == "measurement"]
+        assert measurement_citations, "fixture has measurements"
+        for c in measurement_citations:
+            assert c["fact_ref"].startswith("measurement:")
+            assert "evidence_id" not in c  # never attributed to patent text
+            assert c["inchikey"]
         assert "610" in result["text"]  # S-ibuprofen demo value appears with its assay
         assert "not ranked" in result["text"]
+
+    def test_global_issues_excluded_from_family_summary(self, m5_engine):
+        # The fixture records one global ingestion issue; family conclusions
+        # must not absorb it (LLM-04).
+        result = ai.summarize_family(m5_engine, _family_id(m5_engine))
+        assert "failed validation" not in result["text"]
+
+    def test_scaffolds_counted_by_distinct_compound(self, m5_engine):
+        # Aspirin has two mentions but one compound: scaffold counts use
+        # compound granularity (LLM-04).
+        result = ai.summarize_family(m5_engine, _family_id(m5_engine))
+        benzene = next(
+            s for s in result["input_snapshot"]["scaffolds"] if s["scaffold"] == "c1ccccc1"
+        )
+        assert benzene["compounds"] >= 2  # aspirin + racemic ibuprofen share it
 
     def test_summary_is_stable_and_persisted(self, m5_engine):
         engine = m5_engine
         first = ai.summarize_family(engine, _family_id(engine))
         second = ai.summarize_family(engine, _family_id(engine))
         assert first["analysis_id"] == second["analysis_id"]
-        from sqlalchemy import text
-
+        assert second["cached"] is True  # served from the content cache
         with engine.connect() as conn:
             n = conn.execute(
-                text("SELECT count(*) FROM ai_analyses WHERE family_id = :f"),
+                text(
+                    "SELECT count(*) FROM ai_analyses "
+                    "WHERE family_id = :f AND provider = 'offline-extractive'"
+                ),
                 {"f": _family_id(engine)},
             ).scalar_one()
         assert n == 1
 
-    def test_unknown_family_404(self, m5_engine):
-        import uuid as uuid_mod
+    def test_value_change_changes_cache_key(self, m5_engine):
+        """LLM-02: identical record counts but a changed value must produce a
+        new input hash and a fresh analysis row."""
+        engine = m5_engine
+        fid = _family_id(engine)
+        before = ai.summarize_family(engine, fid)
 
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE measurements SET value = value + 1 WHERE value = 610"))
+        try:
+            after = ai.summarize_family(engine, fid)
+            assert after["analysis_id"] != before["analysis_id"]
+            assert after["cached"] is False
+            with engine.connect() as conn:
+                n = conn.execute(
+                    text(
+                        "SELECT count(*) FROM ai_analyses "
+                        "WHERE family_id = :f AND provider = 'offline-extractive'"
+                    ),
+                    {"f": fid},
+                ).scalar_one()
+            assert n == 2
+        finally:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("UPDATE measurements SET value = value - 1 WHERE value = 611")
+                )
+
+    def test_unknown_family_raises(self, m5_engine):
         from spago_core.services import NotFoundError
 
-        with pytest.raises(NotFoundError) as exc_info:
-            ai.summarize_family(m5_engine, uuid_mod.UUID(int=1))
-        assert "not found" in str(exc_info.value)
+        with pytest.raises(NotFoundError):
+            ai.summarize_family(m5_engine, uuid.UUID(int=1))
 
 
 class TestSummaryApi:
-    def test_summary_endpoint(self, m5_engine):
+    def _client(self, engine):
         from fastapi.testclient import TestClient
 
         from spago_core.main import create_app
 
         app = create_app()
-        app.state.engine = m5_engine
-        client = TestClient(app)
+        app.state.engine = engine
+        return TestClient(app)
+
+    def test_summary_endpoint_default_offline(self, m5_engine):
+        client = self._client(m5_engine)
+        # Legacy call shape: no body at all must stay offline.
         res = client.post(f"/api/v1/families/{_family_id(m5_engine)}/summary")
         assert res.status_code == 200
         body = res.json()
         assert body["provider"] == "offline-extractive"
         assert body["provenance_state"] == "machine_extracted"
+        assert body["mode"] == "offline"
+        assert body["cached"] is True  # cached by the earlier service-level test
         assert isinstance(body["citations"], list)
+        assert body["model"] is None
+
+    def test_summary_llm_without_config_is_503(self, m5_engine):
+        client = self._client(m5_engine)
+        res = client.post(
+            f"/api/v1/families/{_family_id(m5_engine)}/summary",
+            json={"mode": "llm"},
+        )
+        assert res.status_code == 503
 
     def test_plan_endpoint(self, m5_engine):
+        client = self._client(m5_engine)
+        res = client.post("/api/v1/ai/plan", json={"query": "patents like US10000000B2"})
+        assert res.status_code == 200
+        assert res.json()["patent_queries"] == ["US10000000B2"]
+
+
+class TestAiStatus:
+    def _client(self):
         from fastapi.testclient import TestClient
 
         from spago_core.main import create_app
 
-        app = create_app()
-        app.state.engine = m5_engine
-        client = TestClient(app)
-        res = client.post("/api/v1/ai/plan", json={"query": "patents like US10000000B2"})
-        assert res.status_code == 200
-        assert res.json()["patent_queries"] == ["US10000000B2"]
+        return TestClient(create_app())
+
+    def test_default_offline(self, monkeypatch):
+        from spago_core.config import get_settings
+
+        for var in ("SPAGO_LLM_BASE_URL", "SPAGO_LLM_MODEL", "SPAGO_LLM_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        get_settings.cache_clear()
+        body = self._client().get("/api/v1/ai/status").json()
+        assert body["state"] == "offline"
+        assert body["model"] is None and body["target"] is None
+        get_settings.cache_clear()
+
+    def test_config_invalid_when_half_configured(self, m5_engine, monkeypatch):
+        from spago_core.config import get_settings
+
+        monkeypatch.setenv("SPAGO_LLM_BASE_URL", "https://provider.example/v1")
+        monkeypatch.delenv("SPAGO_LLM_MODEL", raising=False)
+        get_settings.cache_clear()
+        body = self._client().get("/api/v1/ai/status").json()
+        assert body["state"] == "config_invalid"
+        assert "SPAGO_LLM_MODEL" in body["reason"]
+        get_settings.cache_clear()
+
+    def test_configured_reports_sanitized_target(self, m5_engine, monkeypatch):
+        from spago_core.config import get_settings
+
+        monkeypatch.setenv("SPAGO_LLM_BASE_URL", "https://provider.example/v1")
+        monkeypatch.setenv("SPAGO_LLM_MODEL", "demo-model")
+        monkeypatch.setenv("SPAGO_LLM_API_KEY", "sk-secret")
+        get_settings.cache_clear()
+        body = self._client().get("/api/v1/ai/status").json()
+        assert body["state"] == "configured"
+        assert body["model"] == "demo-model"
+        assert body["target"] == "https://provider.example/v1"
+        assert "sk-secret" not in json.dumps(body)
+        get_settings.cache_clear()
+        monkeypatch.delenv("SPAGO_LLM_API_KEY", raising=False)

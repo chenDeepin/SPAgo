@@ -10,10 +10,14 @@
 > `docs/adr/0001-m0-foundation-data-path.md`, and the README status section.
 > The rest of this document remains the standing product/engineering contract.
 >
-> Current review and proposed next round:
-> `docs/plans/2026-09-14-ui-review-next-round.md`. Fix existing interaction and
-> evidence gaps before broadening scope. Its implementation work is proposed,
-> not completed or a blanket instruction to rebuild all milestones below.
+> Current next-round proposal: `docs/plans/2026-09-14-llm-interface.md`.
+> Extend the existing summary provider with one OpenAI-compatible endpoint,
+> server-side configuration, bounded evidence input, and content-based caching.
+> Fix the identified summary citation/cache defects before enabling real LLM calls;
+> keep the offline API behavior compatible. No new agent runtime or proxy service.
+> The prior UI repair record remains in `docs/plans/2026-09-14-ui-review-next-round.md`;
+> the new plan records remaining pagination/error gaps. Planning is complete,
+> but LLM implementation and live verification have not been performed.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.
 

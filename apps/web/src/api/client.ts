@@ -147,12 +147,14 @@ export const api = {
       `/api/v1/compounds/${compoundId}/activity`,
       signal,
     ),
-  familySummary: (familyId: string, signal?: AbortSignal) =>
+  familySummary: (familyId: string, mode: "offline" | "llm", signal?: AbortSignal) =>
     postJson<import("./types").FamilySummaryResponse>(
       `/api/v1/families/${familyId}/summary`,
-      {},
+      { mode },
       signal,
     ),
+  aiStatus: (signal?: AbortSignal) =>
+    getJson<import("./types").AiStatusResponse>("/api/v1/ai/status", signal),
   // --- M2 ---
   structureSearch: (
     familyId: string,
