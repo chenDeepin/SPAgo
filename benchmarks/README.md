@@ -43,6 +43,14 @@ measurable — they are **not** capacity claims for bulk datasets.
   This has different data and runtime from M0 and the real-source run: it is
   not a controlled performance comparison or a production-scale claim. Current
   real-scale regression and memory measurements remain an acceptance gap.
+- `online06-reference-2026-09-15.md` (raw: `...json`) — the ONLINE-06
+  potency-reference read path (verdict, class-carrying candidate page, coverage
+  matrix) on the live TSLP investigation stored in the local stack, plus the
+  bounded ChEMBL document-lookup cost that an investigation now pays.
+- `online07-supplements-2026-09-15.md` (raw: `...json`) — the ONLINE-07 hand-added
+  literature rows: the import write path (normalization + compound upsert + per-row
+  outcome), the remark listing, and the verdict/candidate reads after an import.
+  An import makes no upstream call, so this record has no external-latency table.
 
 ## Reproduce
 

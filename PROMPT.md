@@ -11,6 +11,29 @@
 > record, and `docs/plans/ui-round-verification/online-beta-acceptance-2026-09-15.md`
 > for exactly what is verified versus still open.
 >
+> **ONLINE-06 (potency-reference verdict, ported from the author's `BindingDB_IO`
+> process) is implemented and browser-verified** on the local stack: deterministic
+> potency classes under a versioned policy, a screening-reference count per target
+> with its stated threshold and modality scope, and source-declared patent/DOI/PMID
+> per measurement. Records: `docs/plans/2026-09-15-bindingdb-io-port.md` §6
+> (files, commands, browser evidence, defects fixed, gaps) and
+> `benchmarks/online06-reference-2026-09-15.md`. The verdict is a **count under a
+> stated policy, not a biological or legal conclusion**; on live data TSLP has no
+> small-molecule active in these sources, and no live row carries a source-declared
+> patent number yet (that rendering path is fixture-tested only).
+>
+> **ONLINE-07 (hand-added literature rows, same port) is implemented and
+> browser-verified** on the local stack: `POST /targets/{id}/supplements` (bounded,
+> per-row outcomes), a mandatory per-row note, the same RDKit normalization and
+> InChIKey identity as a retrieved structure, `user_curated` provenance that nothing
+> promotes, a `target_supplement_remarks` table for rows whose structure is not
+> public, a remark count inside the reference verdict, and a candidate export that
+> derives its provenance states instead of claiming `database_curated`. Record:
+> `docs/plans/2026-09-15-bindingdb-io-port.md` §7 (files, commands, browser evidence,
+> open items) and `benchmarks/online07-supplements-2026-09-15.md`. Two clearly
+> labelled acceptance rows were stored in the local dev database by that pass
+> (target `0cd78fd9-…`); there is no delete path for a hand-added row yet.
+>
 > **What is NOT done — do not mistake the implementation for acceptance:**
 > no **hosted** deployment exists (ONLINE-04 acceptance is open) and no invited
 > user has been through the workflow (ONLINE-05 is open). One live model provider

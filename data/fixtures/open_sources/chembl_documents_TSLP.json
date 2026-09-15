@@ -1,0 +1,21 @@
+{
+  "documents": [
+    {
+      "doc_type": "PATENT",
+      "document_chembl_id": "CHEMBL3638439",
+      "doi": null,
+      "patent_id": "US-20130089624-A1",
+      "pubmed_id": null,
+      "year": 2013
+    },
+    {
+      "doc_type": "PUBLICATION",
+      "document_chembl_id": "CHEMBL4043230",
+      "doi": "10.1016/j.bmcl.2017.09.010",
+      "patent_id": null,
+      "pubmed_id": 28927768,
+      "year": 2017
+    }
+  ],
+  "page_meta": {"limit": 20, "offset": 0, "total_count": 2, "next": null, "previous": null}
+}

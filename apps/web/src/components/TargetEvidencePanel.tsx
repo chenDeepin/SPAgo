@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Candidate, ResolvedTarget, TargetMeasurement } from "../api/types";
 import { AiPanel, type AiScopeOption } from "./AiPanel";
+import { activityClassLabel } from "./ReferenceStrip";
 import { evidenceClassLabel, modalityLabel } from "./TargetHeader";
 
 interface TargetEvidencePanelProps {
@@ -182,6 +183,7 @@ export function TargetEvidencePanel({
                 <tr>
                   <th>Endpoint</th>
                   <th>Value</th>
+                  <th>Class</th>
                   <th>Evidence class</th>
                   <th>Context</th>
                 </tr>
@@ -197,6 +199,14 @@ export function TargetEvidencePanel({
                         <span className="fineprint"> (pChEMBL {m.pchembl_value})</span>
                       )}
                     </td>
+                    {/* The class of this one report under the stated threshold.
+                        Absent means the endpoint is not a potency (kinetic or
+                        percent readout), which is a fact, not a gap. */}
+                    <td title={m.activity_class_rule ?? undefined}>
+                      <span className={`badge badge-activity-${m.activity_class ?? "not_applicable"}`}>
+                        {activityClassLabel(m.activity_class ?? "not_applicable")}
+                      </span>
+                    </td>
                     <td>{evidenceClassLabel(m.evidence_class)}</td>
                     <td className="fineprint">
                       {[m.species, m.target_construct, m.variant_mutation]
@@ -206,6 +216,38 @@ export function TargetEvidencePanel({
                         <>
                           {" · "}
                           <span className="mono">{m.document_ref}</span>
+                        </>
+                      )}
+                      {/* Decomposed reference: what the source declared, kept
+                          separate from a corpus occurrence. */}
+                      {m.document_patent_number && (
+                        <>
+                          {" · patent declared by source "}
+                          <span className="mono">{m.document_patent_number}</span>
+                        </>
+                      )}
+                      {m.document_doi && (
+                        <>
+                          {" · DOI "}
+                          <a
+                            href={`https://doi.org/${m.document_doi}`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            {m.document_doi}
+                          </a>
+                        </>
+                      )}
+                      {m.document_pmid && (
+                        <>
+                          {" · PMID "}
+                          <a
+                            href={`https://pubmed.ncbi.nlm.nih.gov/${m.document_pmid}/`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            {m.document_pmid}
+                          </a>
                         </>
                       )}
                       {m.source_url && (
@@ -224,6 +266,11 @@ export function TargetEvidencePanel({
                       {m.validity_comment && !m.potential_duplicate && (
                         <div className="paging-error">source note: {m.validity_comment}</div>
                       )}
+                      {m.note && (
+                        <div className="user-note">
+                          note added with this row: {m.note}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -234,8 +281,10 @@ export function TargetEvidencePanel({
       })}
 
           <p className="fineprint">
-            Values are grouped by assay and shown as reported. Different endpoint types and assay
-            formats are not comparable, so no ranking or selectivity number is derived here.
+            Values are grouped by assay and shown as reported. The class column applies the potency
+            threshold stated in the reference strip above to this single report; different endpoint
+            types and assay formats are not comparable, so no ranking or selectivity number is
+            derived here.
           </p>
         </>
       )}

@@ -119,6 +119,24 @@ materials are covered by the root Apache-2.0 license:
 - `migrations`, `scripts`, `docs` (except where quoting third-party text)
 - Synthetic demo fixtures under `data/fixtures` (see below)
 
+### Adaptations from the author's own projects
+
+The ONLINE-06 activity-classification and publication-number logic was adapted
+from the same author's separate local project `BindingDB_IO` (reviewed
+2026-09-15; that project is not redistributed here and was not modified):
+
+| SPAgo file | Adapted from | What was taken |
+| --- | --- | --- |
+| `services/core/spago_core/chemistry/activities.py` | `bindingdb_io/activity.py` | The classification semantics: censored values (`<`, `>`, `~`), one explicit threshold, a deterministic reason string per branch. Unit handling, the endpoint allowlist and the `not_applicable` class are new here. |
+| `services/core/spago_core/domain/patent_numbers.py` | `bindingdb_io/patents.py` | Lenient extraction of publication numbers from *source-declared* text (country code plus a six-digit floor, kind code dropped). |
+| `services/core/spago_core/services/reference.py` | `bindingdb_io/activity.py` (`evaluate_gate`) | The screening-reference idea: a set with no compound at or below the threshold is reported as unusable, with the count that makes it so. Rewritten against SPAgo's stored measurements and its own modality scope. |
+| `services/core/spago_core/services/supplements.py`, `migrations/0014_user_supplements.sql` | `bindingdb_io/web_supplement.py` (`load_web_supplement_file`, `normalize_web_records`) | The supplement *contract*: a hand-added row is per-target, keeps its as-reported value and its document reference, and a row whose structure is not public stays visible instead of being dropped. The storage, the mandatory note, the structure identity path and the remark table are new here (the source project substitutes a default note and writes a spreadsheet row). |
+
+Both projects are the author's own work under the same Apache-2.0 grant, so no
+third-party license obligation is triggered. They are listed because provenance
+matters (AGENTS.md §0/§23), and so a reviewer can find the origin of these rules
+rather than treat them as SPAgo inventions.
+
 ---
 
 ## 5. Synthetic demo fixtures

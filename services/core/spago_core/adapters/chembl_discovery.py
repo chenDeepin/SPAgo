@@ -23,7 +23,7 @@ weakest reading the structured fields support.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Iterable, Optional
 
 from spago_core.adapters.bioactivity_base import ActivityRecord, ActivityResult
 from spago_core.adapters.http import SourceClient, SourceUnavailableError
@@ -35,6 +35,7 @@ from spago_core.domain import (
     TargetLookupResult,
     TargetType,
 )
+from spago_core.domain.patent_numbers import normalize_patent_number
 
 SOURCE_NAME = "chembl"
 SOURCE_VERSION = "chembl-web-services"
@@ -42,10 +43,19 @@ EXTRACTION_METHOD = "chembl_webclient"
 
 TARGET_PATH = "/chembl/api/data/target.json"
 ACTIVITY_PATH = "/chembl/api/data/activity.json"
+DOCUMENT_PATH = "/chembl/api/data/document.json"
 
 PAGE_LIMIT = 200
 DEFAULT_MAX_ACTIVITIES = 2000
 DEFAULT_MAX_MOLECULE_LOOKUPS = 25
+#: Document metadata is fetched for the distinct documents a page of activities
+#: cites. Both bounds are hard: a target with thousands of documents cannot turn
+#: one investigation into an unbounded crawl (AGENTS.md §16/§21).
+DOCUMENT_BATCH = 50
+MAX_DOCUMENT_LOOKUPS = 8
+#: Only the fields the product uses. A document record carries a full citation;
+#: requesting the subset keeps the response small and the stored facts typed.
+DOCUMENT_FIELDS = "document_chembl_id,patent_id,doi,pubmed_id,year,doc_type"
 
 #: ChEMBL `target_type` strings → the normalized vocabulary. A
 #: protein–protein interaction stays distinct from the single protein it is
@@ -138,6 +148,7 @@ class ChEMBLDiscoveryAdapter:
         client: Optional[SourceClient] = None,
         max_activities: int = DEFAULT_MAX_ACTIVITIES,
         max_molecule_lookups: int = DEFAULT_MAX_MOLECULE_LOOKUPS,
+        max_document_lookups: int = MAX_DOCUMENT_LOOKUPS,
     ) -> None:
         self.client = client or SourceClient(
             source_name=SOURCE_NAME,
@@ -147,7 +158,9 @@ class ChEMBLDiscoveryAdapter:
         )
         self.max_activities = max_activities
         self.max_molecule_lookups = max_molecule_lookups
+        self.max_document_lookups = max_document_lookups
         self._molecule_cache: dict[str, dict] = {}
+        self._document_cache: dict[str, Optional[dict]] = {}
 
     # -- 1. target identity ---------------------------------------------------
 
@@ -254,7 +267,101 @@ class ChEMBLDiscoveryAdapter:
         self._molecule_cache[molecule_chembl_id] = payload
         return payload
 
-    # -- 3. activities --------------------------------------------------------
+    # -- 3. document references (patent / DOI / PMID) -------------------------
+
+    def documents(self, document_ids: Iterable[str]) -> tuple[dict[str, dict], list[str]]:
+        """Bounded, cached document metadata for ChEMBL document ids.
+
+        The activity payload carries `document_chembl_id` only, so without this
+        step a discovered compound cannot be connected to the patent it was
+        reported in — the relation this product is built around. Requests are
+        batched and bounded; a failure returns what was already collected plus a
+        warning, never a fabricated identifier.
+
+        Returns ``(metadata_by_id, warnings)``. Only documents that answered are
+        present in the mapping: a missing key means "unknown", not "no patent".
+        """
+        wanted = [str(doc) for doc in document_ids if doc]
+        unique: list[str] = []
+        seen: set[str] = set()
+        for doc in wanted:
+            if doc not in seen:
+                seen.add(doc)
+                unique.append(doc)
+
+        metadata: dict[str, dict] = {}
+        missing = [doc for doc in unique if doc not in self._document_cache]
+        warnings: list[str] = []
+        requests_made = 0
+
+        for start in range(0, len(missing), DOCUMENT_BATCH):
+            if requests_made >= self.max_document_lookups:
+                warnings.append(
+                    f"Document metadata lookup stopped at the configured bound of "
+                    f"{self.max_document_lookups} request(s); patent/DOI references for "
+                    f"{len(missing) - start} further document(s) were not retrieved."
+                )
+                break
+            batch = missing[start : start + DOCUMENT_BATCH]
+            requests_made += 1
+            try:
+                payload = self.client.get_json(
+                    DOCUMENT_PATH,
+                    params={
+                        "document_chembl_id__in": ",".join(batch),
+                        "only": DOCUMENT_FIELDS,
+                    },
+                )
+            except SourceUnavailableError as exc:
+                warnings.append(
+                    f"Document metadata unavailable ({exc}); patent/DOI references are "
+                    "missing for this retrieval, which is not a statement that none exist."
+                )
+                break
+            answered = set()
+            for document in payload.get("documents") or []:
+                doc_id = document.get("document_chembl_id")
+                if not doc_id:
+                    continue
+                answered.add(doc_id)
+                self._document_cache[doc_id] = document
+                metadata[doc_id] = document
+            # A batch response omits ids it does not know; remember that so the
+            # next call in the same investigation does not re-ask for them.
+            for doc_id in batch:
+                if doc_id not in answered:
+                    self._document_cache[doc_id] = None
+
+        for doc_id in unique:
+            cached = self._document_cache.get(doc_id)
+            if cached:
+                metadata[doc_id] = cached
+        return metadata, warnings
+
+    def _attach_document_references(
+        self, records: list[ActivityRecord], warnings: list[str]
+    ) -> None:
+        """Fill patent/DOI/PMID on each record from its document's metadata."""
+        document_ids = [record.document_ref for record in records if record.document_ref]
+        if not document_ids:
+            return
+        metadata, doc_warnings = self.documents(document_ids)
+        warnings.extend(doc_warnings)
+        if not metadata:
+            return
+        for record in records:
+            document = metadata.get(record.document_ref or "")
+            if not document:
+                continue
+            record.document_patent_number = (
+                normalize_patent_number(document.get("patent_id")) or None
+            )
+            record.document_doi = document.get("doi") or None
+            record.document_pmid = (
+                str(document["pubmed_id"]) if document.get("pubmed_id") else None
+            )
+
+    # -- 4. activities --------------------------------------------------------
 
     def activities(
         self,
@@ -269,6 +376,7 @@ class ChEMBLDiscoveryAdapter:
         distinguish "no qualifying small molecules" from "nothing retrieved".
         """
         retrieved_at = datetime.now(timezone.utc)
+        dataset_version = f"chembl:{retrieved_at.date().isoformat()}"
         warnings: list[str] = []
         records: list[ActivityRecord] = []
         rejection_counts: dict[str, int] = {}
@@ -326,11 +434,22 @@ class ChEMBLDiscoveryAdapter:
         if status == RetrievalStatus.COMPLETE and not records:
             status = RetrievalStatus.EMPTY
 
+        # Patent/DOI/PMID live on the document, not the activity: resolve them
+        # once per distinct document so a discovered compound can be linked to
+        # the patent it was reported in (ONLINE-06).
+        self._attach_document_references(records, warnings)
+
+        # Each record carries the source and release it actually came from, so a
+        # stored measurement is never attributed to the resolver's source.
+        for record in records:
+            record.source_name = SOURCE_NAME
+            record.source_dataset_version = dataset_version
+
         return ActivityResult(
             envelope=SourceEnvelope(
                 source_name=SOURCE_NAME,
                 source_version=SOURCE_VERSION,
-                dataset_version=f"chembl:{retrieved_at.date().isoformat()}",
+                dataset_version=dataset_version,
                 retrieved_at=retrieved_at,
                 synthetic=False,
                 warnings=warnings,

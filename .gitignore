@@ -17,11 +17,14 @@ apps/web/dist/
 /backups/
 data/cache/
 benchmarks/results/
+docs/plans/ui-round-verification/
 *.log
 
 # Environment and secrets
 .env
 .env.local
+.codex
+.agents
 
 # OS / editor
 .DS_Store

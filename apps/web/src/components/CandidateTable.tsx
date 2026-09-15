@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Candidate, CandidatePage } from "../api/types";
 import { MoleculeImage } from "./MoleculeImage";
+import { activityClassLabel } from "./ReferenceStrip";
 import { evidenceClassLabel, modalityLabel } from "./TargetHeader";
 
 interface CandidateTableProps {
@@ -18,11 +19,18 @@ interface CandidateTableProps {
 const ROW_HEIGHT = 96;
 const COL_CHECK = 40;
 const COL_STRUCTURE = 160;
+const COL_ACTIVITY = 150;
 const COL_MODALITY = 150;
 const COL_EVIDENCE = 170;
 const COL_PATENT = 170;
 const MIN_TABLE_WIDTH =
-  COL_CHECK + COL_STRUCTURE + 260 + COL_MODALITY + COL_EVIDENCE + COL_PATENT;
+  COL_CHECK +
+  COL_STRUCTURE +
+  260 +
+  COL_ACTIVITY +
+  COL_MODALITY +
+  COL_EVIDENCE +
+  COL_PATENT;
 
 /** Virtualized candidate table for a target investigation.
  *
@@ -87,6 +95,7 @@ export function CandidateTable({
           </div>
           <div style={{ flex: `0 0 ${COL_STRUCTURE}px`, padding: "0 12px" }}>Structure</div>
           <div style={{ flex: 1 }}>Candidate</div>
+          <div style={{ flex: `0 0 ${COL_ACTIVITY}px`, padding: "0 12px" }}>Activity</div>
           <div style={{ flex: `0 0 ${COL_MODALITY}px`, padding: "0 12px" }}>Modality</div>
           <div style={{ flex: `0 0 ${COL_EVIDENCE}px`, padding: "0 12px" }}>Evidence class</div>
           <div style={{ flex: `0 0 ${COL_PATENT}px`, padding: "0 12px" }}>Patent linkage</div>
@@ -160,6 +169,14 @@ export function CandidateTable({
                     from {row.source_name} · {row.source_record_id}
                   </div>
                 </div>
+                <div style={{ flex: `0 0 ${COL_ACTIVITY}px`, padding: "0 12px" }}>
+                  <span className={`badge badge-activity-${row.activity_class}`}>
+                    {activityClassLabel(row.activity_class)}
+                  </span>
+                  <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
+                    {row.potency_label ?? "no potency value for this threshold"}
+                  </div>
+                </div>
                 <div style={{ flex: `0 0 ${COL_MODALITY}px`, padding: "0 12px" }}>
                   <span className={`badge badge-${row.modality}`}>{modalityLabel(row.modality)}</span>
                   <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
@@ -179,6 +196,14 @@ export function CandidateTable({
                   ) : (
                     <span className="not-provided">no patent mapping</span>
                   )}
+                  {/* A patent number the *source* declares is a different fact
+                      from an occurrence in the loaded corpus, so it is shown as
+                      such and never merged into the count above (AGENTS.md §10). */}
+                  {row.source_declared_patents.length > 0 && (
+                    <div className="fineprint" style={{ marginTop: 2 }}>
+                      source declares {row.source_declared_patents.join(", ")}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -192,8 +217,11 @@ export function CandidateTable({
             : `${page.offset + 1}–${page.offset + page.items.length} of ${page.total}`}
         </span>
         <span className="fineprint">
-          Showing {page.default_filter}. Classification and evidence labels are
-          deterministic; a candidate without a patent mapping is still usable and savable.
+          Showing {page.default_filter}. Potency classes are computed against{" "}
+          {page.policy ? page.policy.threshold_label : "the deployment threshold"} (
+          {page.policy ? page.policy.version : "policy unstated"}). Classification and evidence
+          labels are deterministic; a candidate without a patent mapping is still usable and
+          savable.
         </span>
         {selectedIds.size > 0 && (
           <span>

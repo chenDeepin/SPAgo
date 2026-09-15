@@ -18,6 +18,7 @@ and assay descriptions are the ones the services returned.
 | `chembl_targets_Q969D9.json` | `https://www.ebi.ac.uk/chembl/api/data/target.json?target_components__accession=Q969D9` | Full 1-record response with component text trimmed. |
 | `chembl_targets_P29965.json` | `...?target_components__accession=P29965` | 3 records (single protein + 2 interactions). |
 | `chembl_activities_TSLP.json` | `https://www.ebi.ac.uk/chembl/api/data/activity.json?target_chembl_id=CHEMBL3712931` | 4 of 114 records: a peptide percent-inhibition readout, a peptide Kd, a record without `standard_value`, and a genuine small molecule. |
+| `chembl_documents_TSLP.json` | `https://www.ebi.ac.uk/chembl/api/data/document.json?document_chembl_id__in=…&only=document_chembl_id,patent_id,doi,pubmed_id,year,doc_type` | 2 document records in the reduced field set the adapter requests: one real patent document (`patent_id: US-20130089624-A1`) and the publication behind the TSLP activity (`CHEMBL4043230`). |
 | `bindingdb_P05231.json` | `https://bindingdb.org/rest/getLigandsByUniprot?uniprot=P05231&response=application/json` | 2 of 9 affinities, including the `\|r\|` CXSMILES marker. |
 | `bindingdb_P29965_empty.json` | `...uniprot=P29965...` | Real zero-hit response. |
 | `pubchem_identity.json` | `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/.../property/.../JSON` | One property row. |

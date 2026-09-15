@@ -47,6 +47,9 @@ from spago_core.chemistry import (
     murcko_scaffold,
     normalize,
 )
+from spago_core.chemistry.activities import ActivityClass
+from spago_core.chemistry.activities import classify_activity as classify_potency
+from spago_core.chemistry.activities import DEFAULT_THRESHOLD_NM
 from spago_core.domain import (
     CandidateRecord,
     EvidenceClass,
@@ -54,9 +57,16 @@ from spago_core.domain import (
     RetrievalStatus,
     SourceRetrieval,
 )
+from spago_core.services.compound_store import (
+    COMPOUND_NAMESPACE,
+    CandidateStructure as _NormalizedCandidate,
+)
+from spago_core.services.compound_store import (
+    compound_id_for_inchikey,  # noqa: F401  (re-exported: callers use discovery's name)
+    persist_compounds,  # noqa: F401  (re-exported for callers of this module)
+)
 from spago_core.services.targets import TARGET_NAMESPACE, target_id_for_key
 
-COMPOUND_NAMESPACE = TARGET_NAMESPACE
 RETRIEVAL_NAMESPACE = uuid.UUID("c1a5f7b3-4d28-4e91-8f37-6b9c2a5d8e41")
 CANDIDATE_NAMESPACE = uuid.UUID("e4b9d2c7-1f58-4a36-b0d9-7c3e8f5a2b16")
 
@@ -72,12 +82,6 @@ QUALITY_REJECTIONS = {
     "missing_affinity",
     "unsupported_modality",
 }
-
-
-def compound_id_for_inchikey(inchikey: str) -> uuid.UUID:
-    """Same namespace as the patent ingestion path, so identity is global: a
-    compound discovered from ChEMBL and seen in a patent is one compound."""
-    return uuid.uuid5(COMPOUND_NAMESPACE, "compound:" + inchikey)
 
 
 @dataclass
@@ -121,32 +125,6 @@ class DiscoveryReport:
             "rejections": self.rejections,
             "warnings": self.warnings,
         }
-
-
-@dataclass
-class _NormalizedCandidate:
-    """A candidate's chemistry as RDKit normalized it.
-
-    The whole `NormalizedStructure` travels with the candidate: writing only a
-    subset (as an earlier revision did) stored `has_stereo = false` for structures
-    that have specified stereocentres, which the ONLINE-05 evaluation caught by
-    re-deriving the flag from the stored SMILES.
-    """
-
-    raw_smiles: str
-    structure: NormalizedStructure
-    modality: Modality
-    modality_rule: str
-    modality_source: str
-    scaffold: Optional[str]
-
-    @property
-    def canonical_smiles(self) -> str:
-        return self.structure.canonical_smiles
-
-    @property
-    def inchikey(self) -> str:
-        return self.structure.inchikey
 
 
 class TargetDiscoveryService:
@@ -585,106 +563,8 @@ class TargetDiscoveryService:
     def _persist_compounds(
         self, conn, normalized: dict[str, _NormalizedCandidate]
     ) -> tuple[int, int]:
-        stored = 0
-        reused = 0
-        for candidate in normalized.values():
-            compound_id = compound_id_for_inchikey(candidate.inchikey)
-            existing = conn.execute(
-                text("SELECT 1 FROM compounds WHERE inchikey = :k"), {"k": candidate.inchikey}
-            ).first()
-            if existing:
-                reused += 1
-                # Modality is deterministic from the canonical structure, so an
-                # external classification may refine a patent-derived "unclassified"
-                # label but never downgrade a definite one.
-                conn.execute(
-                    text(
-                        """
-                        UPDATE compounds
-                        SET modality = CASE
-                                WHEN modality IS NULL OR modality IN ('unclassified','unparseable')
-                                THEN :modality ELSE modality END,
-                            modality_rule = CASE
-                                WHEN modality IS NULL OR modality IN ('unclassified','unparseable')
-                                THEN :rule ELSE modality_rule END,
-                            modality_source = CASE
-                                WHEN modality IS NULL OR modality IN ('unclassified','unparseable')
-                                THEN :source ELSE modality_source END
-                        WHERE inchikey = :k
-                        """
-                    ),
-                    {
-                        "modality": candidate.modality.value,
-                        "rule": candidate.modality_rule,
-                        "source": candidate.modality_source,
-                        "k": candidate.inchikey,
-                    },
-                )
-                continue
-            norm = candidate.structure
-            conn.execute(
-                text(
-                    """
-                    INSERT INTO compounds (id, canonical_smiles, inchikey, inchi,
-                                           molecular_formula, molecular_weight, hbd, hba,
-                                           tpsa, logp, has_stereo, is_multi_component,
-                                           scaffold, modality, modality_rule,
-                                           modality_source, dataset_version, m)
-                    VALUES (:id, :canonical_smiles, :inchikey, :inchi,
-                            :formula, :mw, :hbd, :hba,
-                            :tpsa, :logp, :has_stereo, :multi_component,
-                            :scaffold, :modality, :rule, :source, :dataset_version,
-                            mol_from_smiles(:canonical_smiles))
-                    ON CONFLICT (inchikey) DO NOTHING
-                    """
-                ),
-                {
-                    "id": compound_id,
-                    "canonical_smiles": norm.canonical_smiles,
-                    "inchikey": norm.inchikey,
-                    "inchi": norm.inchi,
-                    "formula": norm.molecular_formula,
-                    "mw": norm.molecular_weight,
-                    "hbd": norm.hbd,
-                    "hba": norm.hba,
-                    "tpsa": norm.tpsa,
-                    "logp": norm.logp,
-                    "has_stereo": norm.has_stereo,
-                    "multi_component": norm.is_multi_component,
-                    "scaffold": candidate.scaffold,
-                    "modality": candidate.modality.value,
-                    "rule": candidate.modality_rule,
-                    "source": candidate.modality_source,
-                    "dataset_version": "external:open-databases",
-                },
-            )
-            stored += 1
-        # Descriptors and InChI are filled in SQL by the RDKit cartridge, so
-        # external compounds carry exactly the same chemistry columns as
-        # patent-derived ones. Function names verified against cartridge
-        # 4.2.0: mol_inchi / mol_formula / mol_amw / mol_hbd / mol_hba /
-        # mol_tpsa / mol_logp.
-        if normalized:
-            conn.execute(
-                text(
-                    """
-                    UPDATE compounds c SET
-                        inchi = mol_inchi(m),
-                        molecular_formula = NULLIF(mol_formula(m)::text, ''),
-                        molecular_weight = round(mol_amw(m)::numeric, 2)::float8,
-                        hbd = mol_hbd(m),
-                        hba = mol_hba(m),
-                        tpsa = round(mol_tpsa(m)::numeric, 1)::float8,
-                        logp = round(mol_logp(m)::numeric, 2)::float8
-                    WHERE c.m IS NOT NULL
-                      AND c.inchikey = ANY(:keys)
-                      AND (c.inchi IS NULL OR c.molecular_formula IS NULL
-                           OR c.molecular_weight IS NULL)
-                    """
-                ),
-                {"keys": [c.inchikey for c in normalized.values()]},
-            )
-        return stored, reused
+        """Compound identity is shared with every other ingest path."""
+        return persist_compounds(conn, normalized)
 
     def _persist_measurements(
         self,
@@ -748,8 +628,12 @@ class TargetDiscoveryService:
                         "target_id": target_row_id,
                         "assay_type": record.assay_type,
                         "description": record.assay_description,
-                        "source_name": target.source_name or "external",
-                        "dataset_version": target.dataset_version or "external:open-databases",
+                        "source_name": record.source_name or target.source_name or "external",
+                        "dataset_version": (
+                            record.source_dataset_version
+                            or target.dataset_version
+                            or "external:open-databases"
+                        ),
                         "retrieved_at": datetime.now(timezone.utc),
                     },
                 )
@@ -792,7 +676,9 @@ class TargetDiscoveryService:
                                               variant_mutation, pchembl_value,
                                               potential_duplicate, validity_comment,
                                               document_ref, source_url,
-                                              source_molecule_id, modality_declared)
+                                              source_molecule_id, modality_declared,
+                                              document_patent_number, document_doi,
+                                              document_pmid)
                     VALUES (:id, :compound_id, :assay_id, :standard_type,
                             :value, :unit, :relation, :source_record_id,
                             :source_name, :extraction_method,
@@ -804,13 +690,20 @@ class TargetDiscoveryService:
                             :variant_mutation, :pchembl_value,
                             :potential_duplicate, :validity_comment,
                             :document_ref, :source_url,
-                            :source_molecule_id, :modality_declared)
+                            :source_molecule_id, :modality_declared,
+                            :document_patent_number, :document_doi,
+                            :document_pmid)
                     ON CONFLICT (compound_id, assay_id, standard_type, source_record_id)
                       DO UPDATE SET
                         value = EXCLUDED.value,
                         unit = EXCLUDED.unit,
                         relation = EXCLUDED.relation,
                         evidence_class = EXCLUDED.evidence_class,
+                        -- The reporting source is refreshed too: a row stored before
+                        -- the source attribution was fixed (ONLINE-06) must not keep
+                        -- naming the resolver as the source of the measurement.
+                        source_name = EXCLUDED.source_name,
+                        dataset_version = EXCLUDED.dataset_version,
                         raw_value = EXCLUDED.raw_value,
                         assay_description = EXCLUDED.assay_description,
                         assay_format = EXCLUDED.assay_format,
@@ -824,6 +717,9 @@ class TargetDiscoveryService:
                         document_ref = EXCLUDED.document_ref,
                         source_url = EXCLUDED.source_url,
                         source_molecule_id = EXCLUDED.source_molecule_id,
+                        document_patent_number = EXCLUDED.document_patent_number,
+                        document_doi = EXCLUDED.document_doi,
+                        document_pmid = EXCLUDED.document_pmid,
                         retrieved_at = EXCLUDED.retrieved_at
                     """
                 ),
@@ -836,10 +732,17 @@ class TargetDiscoveryService:
                     "unit": record.unit,
                     "relation": record.relation,
                     "source_record_id": record.source_record_id,
-                    "source_name": target.source_name or "external",
+                    # ONLINE-06: the source that reported this measurement, not the
+                    # source that resolved the target (they differ for every ChEMBL
+                    # or BindingDB record reached through a UniProt resolution).
+                    "source_name": record.source_name or target.source_name or "external",
                     "extraction_method": _extraction_method(record),
                     "confidence": record.source_confidence,
-                    "dataset_version": target.dataset_version or "external:open-databases",
+                    "dataset_version": (
+                        record.source_dataset_version
+                        or target.dataset_version
+                        or "external:open-databases"
+                    ),
                     "retrieved_at": datetime.now(timezone.utc),
                     "evidence_class": record.evidence_class.value,
                     "raw_value": record.raw_value,
@@ -856,6 +759,9 @@ class TargetDiscoveryService:
                     "source_url": record.source_url,
                     "source_molecule_id": record.source_molecule_id,
                     "modality_declared": record.modality_declared,
+                    "document_patent_number": record.document_patent_number,
+                    "document_doi": record.document_doi,
+                    "document_pmid": record.document_pmid,
                 },
             )
             stored += 1
@@ -1230,12 +1136,17 @@ def list_candidates(
     include_all_modalities: bool = False,
     offset: int = 0,
     limit: int = 100,
+    policy=None,
 ) -> tuple[int, list[CandidateRecord]]:
     """Candidate compounds for a target, with patent-linkage status.
 
     The default view is small molecules plus unclassified entities; peptides,
     oligonucleotides and biologics are excluded *by the returned filter* and
     their count is reported separately by the caller, never silently dropped.
+
+    When `policy` is given, each row also carries the compound's own potency
+    class and as-reported label under that policy, plus the sources and the
+    source-declared publication numbers behind it (ONLINE-06).
     """
     clauses = ["tc.target_id = :tid"]
     params: dict = {"tid": target_id, "limit": limit, "offset": offset}
@@ -1310,27 +1221,44 @@ def list_candidates(
         label = " · ".join(filter(None, [row["publication_number"], row["patent_label"]]))
         label_map.setdefault(str(row["compound_id"]), []).append(label)
 
-    items = [
-        CandidateRecord(
-            compound_id=row["compound_id"],
-            canonical_smiles=row["canonical_smiles"],
-            inchikey=row["inchikey"],
-            molecular_formula=row["molecular_formula"],
-            molecular_weight=row["molecular_weight"],
-            modality=Modality(row["modality"]) if row["modality"] else Modality.UNCLASSIFIED,
-            modality_rule=row["modality_rule"],
-            modality_source=row["modality_source"],
-            source_name=row["source_name"],
-            source_record_id=row["source_record_id"],
-            evidence_class=EvidenceClass(row["evidence_class"])
-            if row["evidence_class"]
-            else EvidenceClass.UNSPECIFIED,
-            patent_occurrences=int(row["patent_occurrences"] or 0),
-            patent_labels=label_map.get(str(row["compound_id"]), [])[:5],
-            measurements=int(row["measurements"] or 0),
+    activity: dict[uuid.UUID, object] = {}
+    if policy is not None and rows:
+        from spago_core.services.reference import compound_activity_summary
+
+        activity = compound_activity_summary(
+            engine, target_id, [row["compound_id"] for row in rows], policy
         )
-        for row in rows
-    ]
+
+    items = []
+    for row in rows:
+        summary = activity.get(row["compound_id"])
+        items.append(
+            CandidateRecord(
+                compound_id=row["compound_id"],
+                canonical_smiles=row["canonical_smiles"],
+                inchikey=row["inchikey"],
+                molecular_formula=row["molecular_formula"],
+                molecular_weight=row["molecular_weight"],
+                modality=Modality(row["modality"]) if row["modality"] else Modality.UNCLASSIFIED,
+                modality_rule=row["modality_rule"],
+                modality_source=row["modality_source"],
+                source_name=row["source_name"],
+                source_record_id=row["source_record_id"],
+                evidence_class=EvidenceClass(row["evidence_class"])
+                if row["evidence_class"]
+                else EvidenceClass.UNSPECIFIED,
+                patent_occurrences=int(row["patent_occurrences"] or 0),
+                patent_labels=label_map.get(str(row["compound_id"]), [])[:5],
+                measurements=int(row["measurements"] or 0),
+                activity_class=(
+                    summary.activity_class if summary else ActivityClass.NOT_APPLICABLE
+                ),
+                activity_rule=summary.rule if summary else None,
+                potency_label=summary.label if summary else None,
+                sources=list(summary.sources) if summary else [],
+                source_declared_patents=list(summary.patents) if summary else [],
+            )
+        )
     return int(total), items
 
 
@@ -1361,6 +1289,7 @@ def list_target_measurements(
     evidence_class: Optional[str] = None,
     include_duplicates: bool = True,
     limit: int = 200,
+    threshold_nm: float = DEFAULT_THRESHOLD_NM,
 ) -> list[dict]:
     """Measurements for a target with their full assay context.
 
@@ -1368,6 +1297,10 @@ def list_target_measurements(
     presented as one ranked list (ONLINE-00 C). `include_duplicates=False`
     hides records flagged as sharing an original document reference, which is
     an explicit user choice rather than a silent deduplication.
+
+    Each row also carries `activity_class` / `activity_class_rule`: what that one
+    report implies under `threshold_nm` (ONLINE-06). It is computed here, never
+    stored, so the class always matches the threshold the caller displayed.
     """
     clauses = [
         # Scope by candidate membership so measurements against a related
@@ -1395,10 +1328,15 @@ def list_target_measurements(
                        a.assay_key, a.assay_type, a.description AS assay_description,
                        m.assay_format, m.standard_type, m.value, m.unit, m.relation,
                        m.raw_value, coalesce(m.evidence_class, 'unspecified') AS evidence_class,
+                       -- A user-added row's note is its provenance, so it travels to the
+                       -- reader as its own field instead of being presented as a source's
+                       -- assay text (ONLINE-07, AGENTS.md §10).
+                       m.assay_description AS note,
                        m.species, m.construct, m.variant_accession, m.variant_mutation,
                        m.pchembl_value, m.potential_duplicate, m.validity_comment,
                        m.document_ref, m.source_url, m.source_record_id, m.source_name,
                        m.extraction_method, m.provenance_state, m.dataset_version,
+                       m.document_patent_number, m.document_doi, m.document_pmid,
                        m.retrieved_at
                 FROM measurements m
                 JOIN assays a ON a.id = m.assay_id
@@ -1412,7 +1350,7 @@ def list_target_measurements(
             ),
             params,
         ).mappings().all()
-    return [
+    measured = [
         {
             "id": r["id"],
             "compound_id": r["compound_id"],
@@ -1423,6 +1361,7 @@ def list_target_measurements(
             "assay_key": r["assay_key"],
             "assay_type": r["assay_type"],
             "assay_description": r["assay_description"],
+            "note": r["note"],
             "assay_format": r["assay_format"],
             "standard_type": r["standard_type"],
             "value": float(r["value"]),
@@ -1438,6 +1377,9 @@ def list_target_measurements(
             "potential_duplicate": bool(r["potential_duplicate"]),
             "validity_comment": r["validity_comment"],
             "document_ref": r["document_ref"],
+            "document_patent_number": r["document_patent_number"],
+            "document_doi": r["document_doi"],
+            "document_pmid": r["document_pmid"],
             "source_url": r["source_url"],
             "source_record_id": r["source_record_id"],
             "source_name": r["source_name"],
@@ -1448,6 +1390,17 @@ def list_target_measurements(
         }
         for r in rows
     ]
+    for row in measured:
+        activity_class, rule = classify_potency(
+            row["value"],
+            row["unit"],
+            row["relation"],
+            row["standard_type"],
+            threshold_nm,
+        )
+        row["activity_class"] = activity_class.value
+        row["activity_class_rule"] = rule
+    return measured
 
 
 def coverage_matrix(engine: Engine) -> list[dict]:

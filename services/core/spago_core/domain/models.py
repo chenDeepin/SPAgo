@@ -8,10 +8,11 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
+from spago_core.chemistry.activities import ActivityClass
 from spago_core.chemistry.modality import Modality
 
 
@@ -320,6 +321,92 @@ class CandidateRecord(BaseModel):
     patent_occurrences: int = 0
     patent_labels: list[str] = Field(default_factory=list)
     measurements: int = 0
+    #: ONLINE-06: the strongest class this compound's own potency measurements
+    #: support under the deployment policy, plus the as-reported label of the
+    #: value that decided it. Recomputed per request, never stored, so a policy
+    #: change cannot leave a stale class behind.
+    activity_class: ActivityClass = ActivityClass.NOT_APPLICABLE
+    activity_rule: Optional[str] = None
+    potency_label: Optional[str] = None
+    #: Distinct sources that contributed a measurement for this compound.
+    sources: list[str] = Field(default_factory=list)
+    #: Publication numbers the *source* declares for this compound's records.
+    #: Source-declared: not proof that SPAgo's corpus contains the compound.
+    source_declared_patents: list[str] = Field(default_factory=list)
+
+
+class ActiveCompound(BaseModel):
+    """One compound whose reported potency is at or below the threshold."""
+
+    compound_id: uuid.UUID
+    inchikey: str
+    potency_label: str
+    standard_type: str
+    value: float
+    unit: str
+    relation: str
+    value_nm: float
+    evidence_class: EvidenceClass = EvidenceClass.UNSPECIFIED
+    source_name: str
+    measurement_id: Optional[uuid.UUID] = None
+    potential_duplicate: bool = False
+
+
+class ReferencePolicy(BaseModel):
+    """The stated rule a verdict was computed under (AGENTS.md §10)."""
+
+    version: str
+    threshold_nm: float
+    threshold_label: str
+    min_compounds: int
+    #: True when the policy counts every modality the source returned. Reported
+    #: explicitly so a reader never has to infer the scope from a label.
+    all_modalities: bool = False
+    modality_scope: str = "small molecules and unclassified entities"
+    scope_note: str = ""
+
+
+class ReferenceVerdict(BaseModel):
+    """Whether a target's retrieved set can serve as a potency reference.
+
+    A deterministic count under a stated policy, not a biological conclusion
+    and not a claim about the literature: it says what the stored records
+    support, and it separates "nothing retrieved" from "nothing potent".
+    """
+
+    target_id: uuid.UUID
+    target_key: str
+    target_name: Optional[str] = None
+    qualifies: bool = False
+    reason: str = ""
+    policy: ReferencePolicy
+    #: Distinct compounds in scope, and how their best measurement classifies.
+    compounds: int = 0
+    compounds_active: int = 0
+    compounds_weak: int = 0
+    compounds_unknown: int = 0
+    compounds_not_applicable: int = 0
+    #: Potency actives that the modality scope excludes (reported, not hidden).
+    active_compounds_outside_scope: int = 0
+    measurements: int = 0
+    class_counts: dict[str, int] = Field(default_factory=dict)
+    endpoint_counts: dict[str, int] = Field(default_factory=dict)
+    evidence_class_counts: dict[str, int] = Field(default_factory=dict)
+    modality_counts: dict[str, int] = Field(default_factory=dict)
+    #: The best few actives, most potent first, with as-reported labels.
+    actives: list[ActiveCompound] = Field(default_factory=list)
+    best_active: Optional[ActiveCompound] = None
+    potential_duplicates: int = 0
+    #: Source records that carried a value but no public structure (from the
+    #: retrieval records), so a thin set is not read as a negative result.
+    records_without_structure: int = 0
+    #: User-added literature rows that carry a value but no public structure
+    #: (ONLINE-07). Counted separately from `records_without_structure`: one is a
+    #: source that could not supply a structure, the other is a person who added a
+    #: claim without one.
+    supplement_remarks: int = 0
+    source_declared_patents: list[str] = Field(default_factory=list)
+    truncated: bool = False
 
 
 class SourceRetrieval(BaseModel):
@@ -382,3 +469,105 @@ class TargetLookupResult(BaseModel):
     source_version: Optional[str] = None
     retrieved_at: datetime
     warnings: list[str] = Field(default_factory=list)
+
+
+# --- ONLINE-07: manually added literature rows ------------------------------------
+
+#: The `source_name` every user-added row carries. It is part of the contract: the
+#: measurement's provenance state is `user_curated`, and nothing may rewrite either
+#: to look like a database fact (AGENTS.md §10).
+USER_SUPPLEMENT_SOURCE = "user_supplement"
+
+#: Rows one import may carry. The bound is a contract, not a hint: it is refused,
+#: never silently truncated.
+MAX_SUPPLEMENT_ROWS = 200
+
+
+class SupplementRow(BaseModel):
+    """One literature/patent row a user adds by hand (ONLINE-07).
+
+    Every field is the user's own statement, including the potency as reported. The
+    note is what makes the row auditable, so it is *required*: a default note would
+    assert a provenance check the user may not have made (AGENTS.md §10). A row with
+    no SMILES is kept as a structure-less remark rather than dropped.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    #: What the row is called in the source (paper compound number, patent label).
+    name: str = Field(min_length=1, max_length=300)
+    #: Mandatory provenance: where the reader can check this row.
+    note: str = Field(min_length=1, max_length=2000)
+    smiles: Optional[str] = Field(default=None, max_length=4000)
+    activity_type: Optional[str] = Field(default=None, max_length=40)
+    value: Optional[float] = None
+    unit: Optional[str] = Field(default=None, max_length=20)
+    relation: str = Field(default="=", max_length=3)
+    doi: Optional[str] = Field(default=None, max_length=200)
+    pmid: Optional[str] = Field(default=None, max_length=20)
+    patent_number: Optional[str] = Field(default=None, max_length=40)
+
+    @model_validator(mode="after")
+    def _a_value_states_its_endpoint(self) -> "SupplementRow":
+        if self.value is not None and not (self.activity_type and self.unit):
+            raise ValueError(
+                "a row that carries a value must state its activity_type and unit "
+                "(a number without an endpoint cannot be classified or compared)"
+            )
+        if self.value is None and (self.activity_type or self.unit):
+            raise ValueError(
+                "activity_type/unit were given without a value; state the value or "
+                "drop the endpoint"
+            )
+        return self
+
+
+class SupplementRowOutcome(BaseModel):
+    """What happened to one submitted row, stated per row and per reason."""
+
+    index: int
+    #: `measurement` (stored with a structure), `remark` (stored without a
+    #: structure) or `rejected` (not stored, with the reason).
+    status: Literal["measurement", "remark", "rejected"]
+    name: str = ""
+    compound_id: Optional[uuid.UUID] = None
+    inchikey: Optional[str] = None
+    activity_class: Optional[ActivityClass] = None
+    #: True when the structure was already in the corpus under this identity.
+    reused_compound: bool = False
+    #: Rejection reasons, or notes about how the row was stored.
+    reasons: list[str] = Field(default_factory=list)
+
+
+class SupplementImport(BaseModel):
+    """Result of one import: what was accepted, what was not, and why."""
+
+    target_id: uuid.UUID
+    received: int = 0
+    measurements: int = 0
+    remarks: int = 0
+    compounds_created: int = 0
+    compounds_reused: int = 0
+    #: True when a re-posted identical row updated an existing row instead of
+    #: creating a second copy of the same literature claim.
+    updated: int = 0
+    rows: list[SupplementRowOutcome] = Field(default_factory=list)
+
+
+class SupplementRemark(BaseModel):
+    """A stored structure-less literature row (its own table, not a compound)."""
+
+    id: uuid.UUID
+    target_id: uuid.UUID
+    source_record_id: str
+    name: str
+    note: str
+    activity_type: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    relation: Optional[str] = None
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    patent_number: Optional[str] = None
+    provenance_state: ProvenanceState = ProvenanceState.USER_CURATED
+    created_at: datetime

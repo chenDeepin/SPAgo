@@ -193,11 +193,17 @@ class BindingDBRestAdapter:
         rejection_counts: dict[str, int],
         warnings: list[str],
     ) -> ActivityResult:
+        # A stored measurement must name the source it came from; the target's
+        # resolver is UniProt, not BindingDB (ONLINE-06).
+        dataset_version = f"bindingdb:{retrieved_at.date().isoformat()}"
+        for record in records:
+            record.source_name = SOURCE_NAME
+            record.source_dataset_version = dataset_version
         return ActivityResult(
             envelope=SourceEnvelope(
                 source_name=SOURCE_NAME,
                 source_version=SOURCE_VERSION,
-                dataset_version=f"bindingdb:{retrieved_at.date().isoformat()}",
+                dataset_version=dataset_version,
                 retrieved_at=retrieved_at,
                 synthetic=False,
                 warnings=list(warnings),

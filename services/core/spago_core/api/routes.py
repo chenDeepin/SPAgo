@@ -20,7 +20,7 @@ from spago_core.services import bioactivity as services_bioactivity
 from spago_core.adapters import SureChemblFixtureAdapter
 from spago_core.chemistry import StructureParseError, depict_svg
 from spago_core.config import Settings, get_settings
-from spago_core.domain import PatentDocument, PatentFamily
+from spago_core.domain import MAX_SUPPLEMENT_ROWS, PatentDocument, PatentFamily
 from spago_core.queries import compound_counts_by_document
 from spago_core.services import NotFoundError
 
@@ -1326,6 +1326,112 @@ class RetrievalResponse(BaseModel):
     retrieved_at: str
 
 
+class ActiveCompoundResponse(BaseModel):
+    compound_id: uuid.UUID
+    inchikey: str
+    potency_label: str
+    standard_type: str
+    value: float
+    unit: str
+    relation: str
+    value_nm: float
+    evidence_class: str
+    source_name: str
+    measurement_id: Optional[uuid.UUID] = None
+    potential_duplicate: bool = False
+
+
+class ReferencePolicyResponse(BaseModel):
+    version: str
+    threshold_nm: float
+    threshold_label: str
+    min_compounds: int
+    #: True when the verdict counted every modality the source returned.
+    all_modalities: bool = False
+    modality_scope: str
+    scope_note: str
+
+
+class ReferenceVerdictResponse(BaseModel):
+    """A deterministic count with its numbers, not a biological conclusion."""
+
+    target_id: uuid.UUID
+    target_key: str
+    target_name: Optional[str] = None
+    qualifies: bool = False
+    reason: str = ""
+    policy: ReferencePolicyResponse
+    compounds: int = 0
+    compounds_active: int = 0
+    compounds_weak: int = 0
+    compounds_unknown: int = 0
+    compounds_not_applicable: int = 0
+    active_compounds_outside_scope: int = 0
+    measurements: int = 0
+    class_counts: dict = {}
+    endpoint_counts: dict = {}
+    evidence_class_counts: dict = {}
+    modality_counts: dict = {}
+    actives: list[ActiveCompoundResponse] = []
+    best_active: Optional[ActiveCompoundResponse] = None
+    potential_duplicates: int = 0
+    records_without_structure: int = 0
+    #: ONLINE-07: hand-added rows that carry a value but no public structure.
+    supplement_remarks: int = 0
+    source_declared_patents: list[str] = []
+    truncated: bool = False
+
+
+def _verdict_payload(verdict) -> ReferenceVerdictResponse:
+    return ReferenceVerdictResponse(
+        target_id=verdict.target_id,
+        target_key=verdict.target_key,
+        target_name=verdict.target_name,
+        qualifies=verdict.qualifies,
+        reason=verdict.reason,
+        policy=ReferencePolicyResponse(**verdict.policy.model_dump()),
+        compounds=verdict.compounds,
+        compounds_active=verdict.compounds_active,
+        compounds_weak=verdict.compounds_weak,
+        compounds_unknown=verdict.compounds_unknown,
+        compounds_not_applicable=verdict.compounds_not_applicable,
+        active_compounds_outside_scope=verdict.active_compounds_outside_scope,
+        measurements=verdict.measurements,
+        class_counts=verdict.class_counts,
+        endpoint_counts=verdict.endpoint_counts,
+        evidence_class_counts=verdict.evidence_class_counts,
+        modality_counts=verdict.modality_counts,
+        actives=[ActiveCompoundResponse(**a.model_dump()) for a in verdict.actives],
+        best_active=(
+            ActiveCompoundResponse(**verdict.best_active.model_dump())
+            if verdict.best_active
+            else None
+        ),
+        potential_duplicates=verdict.potential_duplicates,
+        records_without_structure=verdict.records_without_structure,
+        supplement_remarks=verdict.supplement_remarks,
+        source_declared_patents=verdict.source_declared_patents,
+        truncated=verdict.truncated,
+    )
+
+
+def _potency_override(
+    settings: Settings,
+    activity_threshold_nm: Optional[float],
+    min_compounds: Optional[int],
+    include_all_modalities: bool,
+):
+    """The stated policy for one request: deployment defaults plus overrides."""
+    from spago_core.services.reference import policy_from_settings
+
+    return policy_from_settings(
+        settings,
+        threshold_nm=activity_threshold_nm,
+        min_compounds=min_compounds,
+        include_all_modalities=include_all_modalities,
+    )
+
+
 class DiscoverResponse(BaseModel):
     target_id: uuid.UUID
     target_key: str
@@ -1338,6 +1444,9 @@ class DiscoverResponse(BaseModel):
     modality_counts: dict = {}
     rejections: dict = {}
     warnings: list[str] = []
+    #: ONLINE-06: the potency verdict under the deployment policy, computed from
+    #: the rows just persisted. The UI needs no second call and no second rule.
+    reference: Optional[ReferenceVerdictResponse] = None
     #: Required by the plan: an empty result must never read as "no inhibitors".
     coverage_note: str = (
         "A source that returned nothing, failed, or was not queried is reported as such. "
@@ -1350,10 +1459,12 @@ def discover_target(
     body: DiscoverRequest,
     request: Request,
     engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
 ):
     """Run bounded retrieval from the open sources for a resolved target."""
     from spago_core.services import NotFoundError
     from spago_core.services.discovery import EXTERNAL_SOURCES
+    from spago_core.services.reference import reference_verdict
 
     unknown = [s for s in body.sources if s not in EXTERNAL_SOURCES]
     if unknown:
@@ -1370,6 +1481,10 @@ def discover_target(
 
     service = _get_discovery_service(request)
     report = service.investigate(engine, target, body.sources)
+    # The verdict is computed from the rows that were just persisted, under the
+    # deployment policy, so it reports the retrieval that happened rather than
+    # whatever the caller hoped for.
+    verdict = reference_verdict(engine, target, _potency_override(settings, None, None, False))
     return DiscoverResponse(
         target_id=report.target_id,
         target_key=report.target_key,
@@ -1400,7 +1515,39 @@ def discover_target(
         modality_counts=report.modality_counts,
         rejections=report.rejections,
         warnings=report.warnings,
+        reference=_verdict_payload(verdict),
     )
+
+
+@router.get("/targets/{target_id}/reference", response_model=ReferenceVerdictResponse)
+def target_reference(
+    target_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+    activity_threshold_nm: Optional[float] = Query(None, gt=0, le=1e9),
+    min_compounds: Optional[int] = Query(None, ge=1, le=10_000),
+    include_all_modalities: bool = False,
+):
+    """Whether this target's retrieved set can serve as a potency reference.
+
+    A deterministic count under an explicit policy: how many in-scope compounds
+    were reported at or below the threshold, how many were weak or undecided,
+    and what the source records did *not* provide (values without structures).
+    The response states the policy it used; nothing here is a biological
+    conclusion, and a thin set is never reported as a negative result.
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.reference import reference_verdict
+
+    try:
+        target = _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    policy = _potency_override(
+        settings, activity_threshold_nm, min_compounds, include_all_modalities
+    )
+    return _verdict_payload(reference_verdict(engine, target, policy))
 
 
 class CandidateResponse(BaseModel):
@@ -1420,6 +1567,14 @@ class CandidateResponse(BaseModel):
     patent_occurrences: int = 0
     patent_labels: list[str] = []
     measurements: int = 0
+    #: ONLINE-06: this compound's own potency class under the requested policy,
+    #: with the as-reported label that decided it, the sources behind it, and any
+    #: publication numbers the *source* declares (source-declared, not corpus).
+    activity_class: str = "not_applicable"
+    activity_rule: Optional[str] = None
+    potency_label: Optional[str] = None
+    sources: list[str] = []
+    source_declared_patents: list[str] = []
 
 
 class CandidatePageResponse(BaseModel):
@@ -1429,6 +1584,7 @@ class CandidatePageResponse(BaseModel):
     items: list[CandidateResponse]
     modality_breakdown: dict = {}
     default_filter: str = "small molecules and unclassified entities"
+    policy: Optional[ReferencePolicyResponse] = None
 
 
 @router.get("/targets/{target_id}/candidates", response_model=CandidatePageResponse)
@@ -1442,12 +1598,16 @@ def list_target_candidates(
     include_all_modalities: bool = False,
     offset: int = Query(0, ge=0),
     limit: int = Query(_DEFAULT_PAGE, ge=1),
+    activity_threshold_nm: Optional[float] = Query(None, gt=0, le=1e9),
 ):
     """Candidate compounds for a target.
 
     The default view is small molecules and unclassified entities. Peptides,
     oligonucleotides and biologics are excluded by an explicit, labelled filter
     whose counts are returned in `modality_breakdown` — never dropped silently.
+
+    Each row carries the potency class of that compound under the requested
+    policy, so the table and the verdict above it are computed by one rule.
     """
     from spago_core.services import NotFoundError
     from spago_core.services import discovery as discovery_svc
@@ -1460,6 +1620,7 @@ def list_target_candidates(
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    policy = _potency_override(settings, activity_threshold_nm, None, False)
     total, items = discovery_svc.list_candidates(
         engine,
         target_id,
@@ -1468,6 +1629,7 @@ def list_target_candidates(
         include_all_modalities=include_all_modalities,
         offset=offset,
         limit=limit,
+        policy=policy,
     )
     return CandidatePageResponse(
         total=total,
@@ -1480,6 +1642,7 @@ def list_target_candidates(
             if include_all_modalities
             else "small molecules and unclassified entities"
         ),
+        policy=ReferencePolicyResponse(**policy.model_dump()),
     )
 
 
@@ -1526,6 +1689,10 @@ class MeasurementResponse(BaseModel):
     assay_key: str
     assay_type: Optional[str] = None
     assay_description: Optional[str] = None
+    #: ONLINE-07: the note a person wrote when adding the row by hand. Separate from
+    #: `assay_description` on purpose — one is a source's assay, the other is a
+    #: statement by a person, and a reader must be able to tell them apart.
+    note: Optional[str] = None
     assay_format: Optional[str] = None
     standard_type: str
     value: float
@@ -1541,6 +1708,13 @@ class MeasurementResponse(BaseModel):
     potential_duplicate: bool = False
     validity_comment: Optional[str] = None
     document_ref: Optional[str] = None
+    #: ONLINE-06: the reference decomposed, and the class this one report
+    #: supports under the requested threshold (never stored, always recomputed).
+    document_patent_number: Optional[str] = None
+    document_doi: Optional[str] = None
+    document_pmid: Optional[str] = None
+    activity_class: str = "not_applicable"
+    activity_class_rule: Optional[str] = None
     source_url: Optional[str] = None
     source_record_id: Optional[str] = None
     source_name: str
@@ -1555,16 +1729,19 @@ def target_measurements(
     target_id: uuid.UUID,
     request: Request,
     engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
     compound_id: Optional[uuid.UUID] = None,
     evidence_class: Optional[str] = None,
     include_duplicates: bool = True,
     limit: int = Query(200, ge=1, le=500),
+    activity_threshold_nm: Optional[float] = Query(None, gt=0, le=1e9),
 ):
     """Every measurement for a target, with its assay context.
 
     Values are never ranked or averaged across assays: Kd, Ki, IC50 and EC50
     stay distinct, contradictions are preserved, and records that share an
-    original document reference are flagged (ONLINE-00 C).
+    original document reference are flagged (ONLINE-00 C). Each row states what
+    its own report implies under the displayed threshold (ONLINE-06).
     """
     from spago_core.services import NotFoundError
     from spago_core.services import discovery as discovery_svc
@@ -1573,6 +1750,7 @@ def target_measurements(
         _get_target_service(request).get_target(engine, target_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    policy = _potency_override(settings, activity_threshold_nm, None, False)
     return discovery_svc.list_target_measurements(
         engine,
         target_id,
@@ -1580,7 +1758,160 @@ def target_measurements(
         evidence_class=evidence_class,
         include_duplicates=include_duplicates,
         limit=limit,
+        threshold_nm=policy.threshold_nm,
     )
+
+
+class SupplementRowOutcomeResponse(BaseModel):
+    index: int
+    status: str
+    name: str = ""
+    compound_id: Optional[uuid.UUID] = None
+    inchikey: Optional[str] = None
+    activity_class: Optional[str] = None
+    reused_compound: bool = False
+    reasons: list[str] = []
+
+
+class SupplementImportResponse(BaseModel):
+    """What one import applied, per row and per reason (ONLINE-07).
+
+    A partial import is reported as such: no row is dropped silently, and a rejected
+    row carries the reason it was refused.
+    """
+
+    target_id: uuid.UUID
+    received: int = 0
+    measurements: int = 0
+    remarks: int = 0
+    compounds_created: int = 0
+    compounds_reused: int = 0
+    updated: int = 0
+    rows: list[SupplementRowOutcomeResponse] = []
+
+
+class SupplementRemarkResponse(BaseModel):
+    id: uuid.UUID
+    target_id: uuid.UUID
+    name: str
+    note: str
+    activity_type: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    relation: Optional[str] = None
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    patent_number: Optional[str] = None
+    provenance_state: str
+    created_at: str
+
+
+class SupplementRequest(BaseModel):
+    """A bounded batch of hand-added literature rows.
+
+    The shape is fixed (`extra: forbid` inside each row) and the batch is capped,
+    because this is the one write path where a caller supplies scientific content
+    directly (AGENTS.md §12). The note requirement lives on the row model so a body
+    cannot omit it.
+    """
+
+    model_config = {"extra": "forbid"}
+    rows: list[dict] = Field(default_factory=list, max_length=MAX_SUPPLEMENT_ROWS)
+
+
+@router.post("/targets/{target_id}/supplements", response_model=SupplementImportResponse)
+def add_target_supplements(
+    target_id: uuid.UUID,
+    body: SupplementRequest,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+):
+    """Add literature/patent rows by hand to a target.
+
+    Each row is validated on its own and answered for: stored as a user-curated
+    measurement (`source_name='user_supplement'`, `provenance_state='user_curated'`),
+    kept as a structure-less remark when no public structure was supplied, or refused
+    with its reasons. A row never becomes a source fact, and re-posting the same row
+    updates it instead of duplicating the claim.
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.reference import policy_from_settings
+    from spago_core.services.supplements import import_supplements
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    policy = policy_from_settings(settings)
+    result = import_supplements(
+        engine, target_id, body.rows, threshold_nm=policy.threshold_nm
+    )
+    return SupplementImportResponse(
+        target_id=result.target_id,
+        received=result.received,
+        measurements=result.measurements,
+        remarks=result.remarks,
+        compounds_created=result.compounds_created,
+        compounds_reused=result.compounds_reused,
+        updated=result.updated,
+        rows=[
+            SupplementRowOutcomeResponse(
+                index=outcome.index,
+                status=outcome.status,
+                name=outcome.name,
+                compound_id=outcome.compound_id,
+                inchikey=outcome.inchikey,
+                activity_class=(
+                    outcome.activity_class.value if outcome.activity_class else None
+                ),
+                reused_compound=outcome.reused_compound,
+                reasons=outcome.reasons,
+            )
+            for outcome in result.rows
+        ],
+    )
+
+
+@router.get(
+    "/targets/{target_id}/supplements/remarks",
+    response_model=list[SupplementRemarkResponse],
+)
+def target_supplement_remarks(
+    target_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+):
+    """Stored structure-less literature rows for a target.
+
+    They are kept because a thin set must not be read as a negative result, and they
+    are not compounds: no structure was published, so SPAgo will not invent one.
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.supplements import list_supplement_remarks
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [
+        SupplementRemarkResponse(
+            id=remark.id,
+            target_id=remark.target_id,
+            name=remark.name,
+            note=remark.note,
+            activity_type=remark.activity_type,
+            value=remark.value,
+            unit=remark.unit,
+            relation=remark.relation,
+            doi=remark.doi,
+            pmid=remark.pmid,
+            patent_number=remark.patent_number,
+            provenance_state=remark.provenance_state.value,
+            created_at=remark.created_at.isoformat(),
+        )
+        for remark in list_supplement_remarks(engine, target_id)
+    ]
 
 
 class CoverageMatrixRow(BaseModel):
@@ -1605,19 +1936,49 @@ class CoverageMatrixRow(BaseModel):
     latency_ms: Optional[int] = None
     retrieved_at: str
     warnings: list[str] = []
+    #: ONLINE-06: the same target's potency verdict, repeated on each of its rows
+    #: so a coverage report can separate "retrieved nothing" from "retrieved a
+    #: set with no compound at or below the threshold".
+    reference_qualifies: Optional[bool] = None
+    reference_reason: Optional[str] = None
+    reference_threshold_nm: Optional[float] = None
+    reference_n_active: Optional[int] = None
+    reference_policy_version: Optional[str] = None
 
 
 @router.get("/targets/coverage/matrix", response_model=list[CoverageMatrixRow])
-def coverage_matrix(engine=Depends(get_engine)):
+def coverage_matrix(
+    engine=Depends(get_engine), settings: Settings = Depends(get_settings)
+):
     """Dated source-by-target coverage: exact queries, counts, outcomes, versions.
 
     This is the artifact that makes an honest coverage claim possible. A row
     with `status: empty` and a row with `status: failed` are different facts and
-    stay different here.
+    stay different here, and each target's potency verdict is reported next to
+    the retrieval outcome that produced its compounds.
     """
     from spago_core.services import discovery as discovery_svc
+    from spago_core.services.reference import policy_from_settings, reference_verdicts
+    from spago_core.services.targets import TargetResolutionService
 
-    return [CoverageMatrixRow(**row) for row in discovery_svc.coverage_matrix(engine)]
+    rows = discovery_svc.coverage_matrix(engine)
+    targets = {t.id: t for t in TargetResolutionService().list_targets(engine)}
+    policy = policy_from_settings(settings)
+    verdicts = reference_verdicts(engine, list(targets.values()), policy)
+    out: list[CoverageMatrixRow] = []
+    for row in rows:
+        verdict = verdicts.get(row["target_id"])
+        out.append(
+            CoverageMatrixRow(
+                **row,
+                reference_qualifies=verdict.qualifies if verdict else None,
+                reference_reason=verdict.reason if verdict else None,
+                reference_threshold_nm=verdict.policy.threshold_nm if verdict else None,
+                reference_n_active=verdict.compounds_active if verdict else None,
+                reference_policy_version=verdict.policy.version if verdict else None,
+            )
+        )
+    return out
 
 
 # --- ONLINE-00: saving a candidate that has no patent mapping ----------------------
@@ -1842,13 +2203,25 @@ class ExportRequest(BaseModel):
     # Candidate exports default to the same small-molecule focus as the table;
     # the labelled expansion is an explicit request.
     include_all_modalities: bool = False
+    # ONLINE-06: an export must state the rule behind its `activity_class` and
+    # `reference_*` columns. A workspace that changed the threshold exports under
+    # that same threshold, so the file matches the table it came from.
+    activity_threshold_nm: Optional[float] = Field(default=None, gt=0, le=1e9)
     format: str = Field(pattern="^(csv|sdf)$")
 
 
 @router.post("/export")
-def export_scope(body: ExportRequest, engine=Depends(get_engine)):
+def export_scope(
+    body: ExportRequest,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+):
     """Export by server-side scope: an explicit selection, a structure query,
     a family/document scope — never silently only the loaded page.
+
+    A candidate export also carries the potency class and the target's verdict
+    under the deployment policy, so the file states the rule that produced its
+    columns (ONLINE-06).
 
     Scope errors (unknown or out-of-scope ids, unusable structure query) and
     oversized scopes are rejected with 422 from the counting phase."""
@@ -1881,6 +2254,9 @@ def export_scope(body: ExportRequest, engine=Depends(get_engine)):
                 body.target_id,
                 compound_ids=body.compound_ids,
                 include_all_modalities=body.include_all_modalities,
+                policy=_potency_override(
+                    settings, body.activity_threshold_nm, None, body.include_all_modalities
+                ),
             )
         else:
             rows = export_svc.collect_export_rows(

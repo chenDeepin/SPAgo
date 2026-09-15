@@ -334,7 +334,132 @@ export interface DiscoverResponse {
   rejections: Record<string, number>;
   warnings: string[];
   coverage_note: string;
+  /** ONLINE-06: the potency verdict under the deployment policy, computed from
+   * the rows just persisted. One rule produces the verdict, the table's class
+   * column and the export columns. */
+  reference?: ReferenceVerdict | null;
 }
+
+/** Whether a target's retrieved set can serve as a potency reference: a
+ * deterministic count under an explicit policy, never a biological conclusion. */
+export interface ActiveCompound {
+  compound_id: string;
+  inchikey: string;
+  /** As reported by the source, e.g. `IC50 4 nM` (never silently converted). */
+  potency_label: string;
+  standard_type: string;
+  value: number;
+  unit: string;
+  relation: string;
+  value_nm: number;
+  evidence_class: string;
+  source_name: string;
+  measurement_id?: string | null;
+  potential_duplicate: boolean;
+}
+
+export interface ReferencePolicy {
+  version: string;
+  threshold_nm: number;
+  threshold_label: string;
+  min_compounds: number;
+  all_modalities: boolean;
+  modality_scope: string;
+  scope_note: string;
+}
+
+export interface ReferenceVerdict {
+  target_id: string;
+  target_key: string;
+  target_name?: string | null;
+  qualifies: boolean;
+  reason: string;
+  policy: ReferencePolicy;
+  compounds: number;
+  compounds_active: number;
+  compounds_weak: number;
+  compounds_unknown: number;
+  compounds_not_applicable: number;
+  active_compounds_outside_scope: number;
+  measurements: number;
+  class_counts: Record<string, number>;
+  endpoint_counts: Record<string, number>;
+  evidence_class_counts: Record<string, number>;
+  modality_counts: Record<string, number>;
+  actives: ActiveCompound[];
+  best_active?: ActiveCompound | null;
+  potential_duplicates: number;
+  /** Source records that reported a value but no drawable structure: counted
+   * rejections, so a thin set is not read as a negative result. */
+  records_without_structure: number;
+  /** ONLINE-07: hand-added rows that carry a value but no public structure.
+   * Counted separately from `records_without_structure`: one is a source that
+   * could not supply a structure, the other is a person who added a claim. */
+  supplement_remarks: number;
+  source_declared_patents: string[];
+  truncated: boolean;
+}
+
+/** One literature/patent row a person added by hand. The note is what makes the
+ * row auditable, so the server requires it; a row with no SMILES is kept as a
+ * structure-less remark rather than dropped. */
+export interface SupplementRowInput {
+  name: string;
+  note: string;
+  smiles?: string | null;
+  activity_type?: string | null;
+  value?: number | null;
+  unit?: string | null;
+  relation?: string;
+  doi?: string | null;
+  pmid?: string | null;
+  patent_number?: string | null;
+}
+
+/** What happened to one submitted row, stated per row and per reason. */
+export interface SupplementRowOutcome {
+  index: number;
+  status: "measurement" | "remark" | "rejected";
+  name: string;
+  compound_id?: string | null;
+  inchikey?: string | null;
+  activity_class?: ActivityClass | null;
+  reused_compound: boolean;
+  reasons: string[];
+}
+
+export interface SupplementImport {
+  target_id: string;
+  received: number;
+  measurements: number;
+  remarks: number;
+  compounds_created: number;
+  compounds_reused: number;
+  /** Rows that updated an existing identical row instead of duplicating it. */
+  updated: number;
+  rows: SupplementRowOutcome[];
+}
+
+/** A stored structure-less row: a claim SPAgo cannot draw, kept so a thin set is
+ * not read as a negative result. Never counted as a measurement or a compound. */
+export interface SupplementRemark {
+  id: string;
+  target_id: string;
+  name: string;
+  note: string;
+  activity_type?: string | null;
+  value?: number | null;
+  unit?: string | null;
+  relation?: string | null;
+  doi?: string | null;
+  pmid?: string | null;
+  patent_number?: string | null;
+  provenance_state: string;
+  created_at: string;
+}
+
+/** What one compound's own reports support under the stated threshold. */
+export type ActivityClass = "active" | "weak" | "unknown" | "not_applicable";
 
 export interface Candidate {
   compound_id: string;
@@ -357,6 +482,14 @@ export interface Candidate {
   patent_occurrences: number;
   patent_labels: string[];
   measurements: number;
+  /** ONLINE-06: this compound's own potency class under the requested policy,
+   * with the as-reported label that decided it, the sources behind it, and any
+   * publication numbers the *source* declares (source-declared, not corpus). */
+  activity_class: ActivityClass;
+  activity_rule?: string | null;
+  potency_label?: string | null;
+  sources: string[];
+  source_declared_patents: string[];
 }
 
 export interface CandidatePage {
@@ -366,6 +499,8 @@ export interface CandidatePage {
   items: Candidate[];
   modality_breakdown: Record<string, number>;
   default_filter: string;
+  /** The policy the row classes were computed under, so the table can state it. */
+  policy?: ReferencePolicy | null;
 }
 
 export interface TargetMeasurement {
@@ -400,6 +535,16 @@ export interface TargetMeasurement {
   provenance_state: string;
   dataset_version: string;
   retrieved_at: string;
+  /** ONLINE-06: the reference decomposed (source-declared, not corpus-verified)
+   * and the class this single report supports under the requested threshold. */
+  document_patent_number?: string | null;
+  document_doi?: string | null;
+  document_pmid?: string | null;
+  /** ONLINE-07: the note a person wrote when adding the row by hand. Shown as the
+   * row's provenance, never as a source's assay description. */
+  note?: string | null;
+  activity_class?: ActivityClass | null;
+  activity_class_rule?: string | null;
 }
 
 /* --- ONLINE-02: interpreted search plans --- */

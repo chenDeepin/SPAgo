@@ -1367,3 +1367,188 @@ button {
   border-bottom: var(--border-w) solid var(--warn-border);
   padding: 4px 12px;
 }
+
+/* --- ONLINE-06: potency reference verdict ------------------------------------ */
+
+.reference-strip {
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 8px 10px;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reference-strip-error {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.reference-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reference-verdict {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: var(--border-w) solid var(--border);
+  padding: 2px 9px;
+}
+
+.reference-yes {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+}
+
+/* "No reference set" is a statement about the retrieved set, not an error
+   state, so it is quiet rather than red. */
+.reference-no {
+  border-style: dashed;
+  color: var(--text-2);
+}
+
+.reference-reason {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.reference-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.reference-warn {
+  color: var(--warn-text);
+}
+
+.reference-actives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  font-size: 12px;
+}
+
+.reference-policy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-2);
+  border-top: var(--border-w) solid var(--border);
+  padding-top: 6px;
+}
+
+.reference-threshold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reference-threshold-input {
+  width: 90px;
+  height: 28px;
+}
+
+.reference-footnote {
+  margin: 0;
+}
+
+/* Activity classes are a property of one measurement under one stated policy,
+   so they are labelled, never colour-ranked: a weak value stays neutral. */
+.badge-activity-active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+}
+
+.badge-activity-weak,
+.badge-activity-unknown,
+.badge-activity-not_applicable {
+  color: var(--text-2);
+}
+
+.badge-activity-unknown {
+  border-style: dashed;
+}
+
+.badge-activity-not_applicable {
+  border-style: dotted;
+}
+
+/* ONLINE-07: the add-rows dialog. A row is a statement by a person, so the
+   form states that in place (the note is required) and the outcome of each row
+   is reported next to it rather than in a toast that disappears. */
+.supplement-row {
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.supplement-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.supplement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.supplement-grid label,
+.supplement-row > label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.supplement-grid .input-label,
+.supplement-row > label .input-label {
+  margin-top: 0;
+}
+
+.supplement-outcome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  border-top: var(--border-w) solid var(--border);
+  padding-top: 6px;
+}
+
+.supplement-outcome-rejected {
+  color: var(--danger);
+}
+
+.supplement-remarks {
+  margin-top: 16px;
+  border-top: var(--border-w) solid var(--border);
+  padding-top: 8px;
+}
+
+/* A note a person wrote is not a source's assay text, so it is marked as one. */
+.user-note {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+  border-left: 2px solid var(--accent);
+  padding-left: 6px;
+}

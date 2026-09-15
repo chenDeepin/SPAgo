@@ -18,9 +18,11 @@ import { SignInGate } from "./components/SignInGate";
 import { ProjectsDialog } from "./components/ProjectsDialog";
 import { ResolutionState } from "./components/ResolutionState";
 import { SaveCandidatesDialog } from "./components/SaveCandidatesDialog";
+import { SupplementDialog } from "./components/SupplementDialog";
 import { SaveToProjectDialog } from "./components/SaveToProjectDialog";
 import { StructureDrawer } from "./components/StructureDrawer";
 import { TargetEvidencePanel } from "./components/TargetEvidencePanel";
+import { ReferenceStrip } from "./components/ReferenceStrip";
 import { TargetHeader, coverageChipId } from "./components/TargetHeader";
 import type { StructureSearchSummary } from "./components/StructureSearchDialog";
 const StructureSearchDialog = lazy(() => import("./components/StructureSearchDialog").then((m) => ({ default: m.StructureSearchDialog })));
@@ -110,6 +112,12 @@ export function App() {
   const [allModalities, setAllModalities] = useState(false);
   const [evidenceClassFilter, setEvidenceClassFilter] = useState<string | null>(null);
   const [saveCandidatesOpen, setSaveCandidatesOpen] = useState(false);
+  // ONLINE-07: the add-rows dialog. Offered from the reference strip, so the one
+  // write path for a person's own reading sits where a thin set is visible.
+  const [supplementOpen, setSupplementOpen] = useState(false);
+  // ONLINE-06: the potency threshold is a *policy*, so a session-level override
+  // is explicit state rather than a hidden default. `null` = deployment policy.
+  const [thresholdOverride, setThresholdOverride] = useState<number | null>(null);
   // Per-source citation focus: the header chip is flashed briefly, because the
   // coverage strip is a status list, not a selectable view.
   const [focusedSource, setFocusedSource] = useState<string | null>(null);
@@ -167,8 +175,33 @@ export function App() {
     enabled: resolvedTargetId !== null,
   });
 
+  // ONLINE-06: the potency-reference verdict for this target under the current
+  // policy. It is recomputed server-side on every threshold change, so no class
+  // shown anywhere in the view can be stale against a different rule.
+  const referenceThresholdNanomolar =
+    thresholdOverride != null ? thresholdOverride * 1000 : null;
+  const referenceQuery = useQuery({
+    queryKey: ["target-reference", resolvedTargetId, referenceThresholdNanomolar, allModalities],
+    queryFn: ({ signal }) =>
+      api.targetReference(
+        resolvedTargetId as string,
+        {
+          thresholdNanomolar: referenceThresholdNanomolar,
+          includeAllModalities: allModalities,
+        },
+        signal,
+      ),
+    enabled: resolvedTargetId !== null,
+  });
+
   const candidatesQuery = useInfiniteQuery({
-    queryKey: ["candidates", resolvedTargetId, allModalities, evidenceClassFilter],
+    queryKey: [
+      "candidates",
+      resolvedTargetId,
+      allModalities,
+      evidenceClassFilter,
+      referenceThresholdNanomolar,
+    ],
     queryFn: ({ pageParam, signal }) =>
       api.targetCandidates(
         resolvedTargetId as string,
@@ -177,6 +210,7 @@ export function App() {
           offset: pageParam as number,
           include_all_modalities: allModalities,
           evidence_class: evidenceClassFilter,
+          activity_threshold_nm: referenceThresholdNanomolar,
         },
         signal,
       ),
@@ -204,11 +238,20 @@ export function App() {
   );
 
   const measurementsQuery = useQuery({
-    queryKey: ["candidate-measurements", resolvedTargetId, urlState.c],
+    queryKey: [
+      "candidate-measurements",
+      resolvedTargetId,
+      urlState.c,
+      referenceThresholdNanomolar,
+    ],
     queryFn: ({ signal }) =>
       api.targetMeasurements(
         resolvedTargetId as string,
-        { compound_id: urlState.c, limit: 200 },
+        {
+          compound_id: urlState.c,
+          limit: 200,
+          activity_threshold_nm: referenceThresholdNanomolar,
+        },
         signal,
       ),
     enabled: resolvedTargetId !== null && urlState.c !== null,
@@ -288,6 +331,9 @@ export function App() {
       queryClient.invalidateQueries({ queryKey: ["target-coverage", resolvedTargetId] });
       queryClient.invalidateQueries({ queryKey: ["candidates", resolvedTargetId] });
       queryClient.invalidateQueries({ queryKey: ["target", resolvedTargetId] });
+      // New measurements change the verdict; the strip must not keep showing
+      // the counts of the previous retrieval.
+      queryClient.invalidateQueries({ queryKey: ["target-reference", resolvedTargetId] });
     },
   });
   // Compounds for the family, optionally scoped to one document. Pages are
@@ -868,6 +914,23 @@ export function App() {
                   focusedSource={focusedSource}
                 />
 
+                <ReferenceStrip
+                  verdict={referenceQuery.data ?? null}
+                  loading={referenceQuery.isLoading || referenceQuery.isFetching}
+                  error={
+                    referenceQuery.error ? (referenceQuery.error as Error).message : null
+                  }
+                  thresholdOverrideMicromolar={thresholdOverride}
+                  onApplyThreshold={(micromolar) => {
+                    // A policy change is a new read of the stored rows, never a
+                    // re-interpretation of what is already on screen.
+                    setThresholdOverride(micromolar);
+                    setSelectedIds(new Set());
+                  }}
+                  onSelectCompound={handleSelectCompound}
+                  onAddRows={() => setSupplementOpen(true)}
+                />
+
                 <div className="candidate-filters">
                   <label className="checkbox-row" style={{ margin: 0 }}>
                     <input
@@ -950,6 +1013,11 @@ export function App() {
                       default_filter: allModalities
                         ? "all modalities"
                         : "small molecules and unclassified entities",
+                      // The policy the classes on screen were computed under, as
+                      // stated by the service that computed them. Passing it
+                      // through (instead of re-deriving it here) keeps the table
+                      // footer and the reference strip from disagreeing.
+                      policy: candidatePages?.[0]?.policy ?? null,
                     }}
                     selectedCompoundId={urlState.c}
                     selectedIds={selectedIds}
@@ -1289,6 +1357,15 @@ export function App() {
           targetKey={targetDetailQuery.data.target_key}
           selectedIds={Array.from(selectedIds)}
           onClose={() => setSaveCandidatesOpen(false)}
+        />
+      )}
+
+      {supplementOpen && resolvedTargetId && targetDetailQuery.data && (
+        <SupplementDialog
+          targetId={resolvedTargetId}
+          targetKey={targetDetailQuery.data.target_key}
+          onClose={() => setSupplementOpen(false)}
+          onSelectCompound={handleSelectCompound}
         />
       )}
 

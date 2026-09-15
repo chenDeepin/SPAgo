@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-15",
+  "target": {
+    "id": "0cd78fd9-082b-5afb-b554-80835ecc3b35",
+    "key": "TSLP",
+    "uniprot": "Q969D9"
+  },
+  "stored_state": {
+    "in_scope_compounds_before": 1,
+    "in_scope_compounds_after": 2,
+    "user_measurements": 1,
+    "user_remarks": 1,
+    "note": "one user-added compound merged into an existing fixture compound (HEFNNWSXXWATRW-UHFFFAOYSA-N); one row kept as a structure-less remark"
+  },
+  "method": "inline Python (stdlib urllib), 3 warm-up requests then 20 measured requests per endpoint; p50/p95 over those 20; payload size is the last measured body; no concurrent load, no tuning",
+  "results": [
+    {
+      "path": "POST /targets/{id}/supplements",
+      "case": "re-post of one stored row (update path)",
+      "payload_bytes": 510,
+      "p50_ms": 7.21,
+      "p95_ms": 19.09
+    },
+    {
+      "path": "POST /targets/{id}/supplements",
+      "case": "one compound row + one structure-less remark",
+      "payload_bytes": 840,
+      "p50_ms": 7.73,
+      "p95_ms": 8.96
+    },
+    {
+      "path": "GET /targets/{id}/supplements/remarks",
+      "case": "one stored remark",
+      "payload_bytes": 457,
+      "p50_ms": 1.83,
+      "p95_ms": 2.42
+    },
+    {
+      "path": "GET /targets/{id}/reference",
+      "case": "after the import (1 remark, 1 user compound)",
+      "payload_bytes": 2299,
+      "p50_ms": 4.97,
+      "p95_ms": 5.43
+    },
+    {
+      "path": "GET /targets/{id}/candidates",
+      "case": "default scope, 2 rows",
+      "payload_bytes": 1876,
+      "p50_ms": 5.22,
+      "p95_ms": 6.58
+    }
+  ],
+  "not_covered": [
+    "no memory, concurrency or sustained-load measurement",
+    "no import of the 200-row bound (the largest accepted batch) was timed",
+    "no live-source retrieval is involved in this path: an import performs no upstream call",
+    "export latency after a supplement was not re-measured (the export row was inspected by content, not timed)"
+  ]
+}

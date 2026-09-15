@@ -52,6 +52,14 @@ class ActivityRecord(BaseModel):
     source_confidence: float | None = None
     #: DOI / PMID / patent reference supplied by the source.
     document_ref: str | None = None
+    #: ONLINE-06: the same reference decomposed, when the source supplies it on
+    #: the document rather than on the activity row. `document_patent_number` is
+    #: *normalized* (country + digits, kind code and separators dropped) so it
+    #: can be matched against a corpus value that formats it differently; it
+    #: stays source-declared and never becomes corpus evidence on its own.
+    document_patent_number: str | None = None
+    document_doi: str | None = None
+    document_pmid: str | None = None
     source_url: str | None = None
     assay_type_name: str | None = None
     #: Modality as declared by the source for this ligand, if any.
@@ -64,6 +72,13 @@ class ActivityRecord(BaseModel):
     raw_smiles: str | None = None
     #: Stable external molecule identifier (ChEMBL id, CID, BindingDB monomer).
     source_molecule_id: str | None = None
+    #: ONLINE-06: the source that produced this record, and the dataset release
+    #: it came from. One investigation reads several sources, so recording the
+    #: *target's* resolver source on every measurement misattributes the datum
+    #: (AGENTS.md §8/§25). Optional so a legacy adapter stays valid; the service
+    #: falls back to the target's provenance and never invents a source.
+    source_name: str | None = None
+    source_dataset_version: str | None = None
 
 
 class ActivityResult(BaseModel):

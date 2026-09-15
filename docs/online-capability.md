@@ -15,15 +15,16 @@ Update this page whenever a capability or a source version changes. The
 | --- | --- |
 | Application | build from this checkout; `/healthz` reports `api_version` |
 | Database | PostgreSQL 15 + RDKit cartridge 4.2.0 |
-| Schema | migrations 0001–0012 (forward-only) |
+| Schema | migrations 0001–0014 (forward-only) |
 | UniProt | `rest.uniprot.org/uniprotkb/search` (REST, `uniprot-rest-uniprotkb`) |
-| ChEMBL | `www.ebi.ac.uk/chembl/api/data` (`chembl-web-services`) |
+| ChEMBL | `www.ebi.ac.uk/chembl/api/data` (`chembl-web-services`), including the bounded `document.json` lookup that supplies patent/DOI/PMID |
 | BindingDB | `bindingdb.org/rest/getLigandsByUniprot` (`bindingdb-rest`) |
 | PubChem | `pubchem.ncbi.nlm.nih.gov/rest/pug` (`pubchem-pug-rest`) |
 | SureChEMBL | via versioned extraction packages (`dataset_version` per package) |
 | Reviewed scope catalog | `services/core/spago_core/data/target_scopes.json`, reviewed 2026-09-15 |
 | Plan schema | `search-plan-v1` |
-| Prompt versions | `family-summary-v6`, `document-summary-v5`, `target-investigation-v6` (see `benchmarks/online01-llm-eval-2026-09-15.md`) |
+| Potency policy | `potency-gate-v1` (threshold and scope travel with every verdict and export) |
+| Prompt versions | `family-summary-v6`, `document-summary-v5`, `target-investigation-v8` (see `benchmarks/online01-llm-eval-2026-09-15.md`) |
 
 Source retrieval is timestamped per investigation; the exact query identifiers,
 counts and outcomes are stored in `source_retrievals` and exportable via
@@ -54,6 +55,30 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   rule that decided each one.
 - Measurements kept as reported, with assay context, an explicit evidence class,
   and duplicate flags for shared original references.
+- **Potency classes and a screening-reference verdict** per target: every report is
+  classified `active` / `weak` / `undecided` / `not a potency` against one explicit
+  threshold (default 10 µM, configurable), with the censor direction honored
+  (`<`, `>`) and micromolar/picomolar units converted before any comparison.
+  The verdict is a deterministic count — how many in-scope compounds are at or
+  below the threshold, how many are weak, undecided, or not potencies at all, and
+  how many source records carried a value without a public structure — plus the
+  policy that produced it (`potency-gate-v1`, threshold, modality scope).
+- **Source-declared patent references.** ChEMBL's document record supplies the
+  patent number (normalized), DOI and PMID for a discovered compound. Those are
+  labelled *declared by the source* and kept in a separate column from a
+  *corpus occurrence*, which is what SPAgo's patent linkage means.
+- **Hand-added literature rows per target.** A thin or empty retrieved set can be
+  supplemented by hand from a paper or a patent. Each row carries a required note
+  (its provenance), goes through the same RDKit normalization, modality
+  classification and InChIKey identity as a retrieved structure, and is stored as
+  `source_name='user_supplement'` / `provenance_state='user_curated'` with
+  `evidence_class` unspecified — never merged into a source fact and never
+  presented as a measured mechanism. A row with no public structure is kept as a
+  **remark** with its as-reported potency (`target_supplement_remarks`), counted in
+  the verdict as `supplement_remarks`, listed in the dialog, and never drawn,
+  exported or counted as a compound; a row without a note is refused instead of
+  receiving a generated one. Re-posting the same row updates it, and supplying a
+  structure later supersedes the remark it replaces.
 - Save and reopen a candidate with no patent mapping; it keeps its target scope,
   source versions and identity snapshot.
 
@@ -73,8 +98,27 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 - **No inhibitor guarantee for any target.** The measured coverage is what it is:
   see `benchmarks/online00-coverage-2026-09-15.md`. For human TSLP, 110 of 111
   qualifying ChEMBL activities are peptides; IL-6R and CD40LG are thin.
+- **A hand-added row is a person's statement, not evidence of record.** It is
+  attributed to `user_curated` everywhere it appears (columns, exports, summaries)
+  and never proves that the compound occurs in a document in SPAgo's corpus. The
+  note is mandatory because the row's provenance cannot be reconstructed later, and
+  a row that is not a potency (kinetic constant, percent readout, non-concentration
+  unit) is classified `not a potency` rather than counted as active.
+- **A hand-added row can be corrected, not deleted.** Re-posting the same row
+  (same target, name, endpoint, value, unit, relation and document references)
+  updates the stored row, and supplying a structure supersedes a structure-less
+  remark for the same claim; withdrawing a row outright is not implemented, so a
+  record once added stays visible until that path is designed (it needs its own
+  decision about whether a removal keeps a trail).
+- **The reference verdict is a count, not a biological conclusion.** "2 of 3
+  in-scope compounds at or below 10 µM" states what the retrieved records support
+  under the stated policy. It is not a claim about the literature, not an
+  inhibitor count, and not a measure of target druggability. A thin set is never
+  reported as a negative result: values without a public structure — from a source
+  or added by hand — are counted and shown next to the verdict.
 - **No potency ranking across assays.** Kd, Ki, IC50 and EC50 stay distinct; no
-  selectivity numbers are computed.
+  selectivity numbers are computed. The class of a compound is decided from its
+  own records, and per-endpoint counts are reported rather than a single number.
 - **No legal conclusions.** Nothing here is legal advice, freedom-to-operate
   analysis, or a statement about claim scope.
 - **No full Markush analysis.** R-group handling is not implemented.
@@ -93,6 +137,8 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 - [ ] `SPAGO_AUTH_MODE=required`, `SPAGO_SEED_MODE=none`, database listener private.
 - [ ] Model endpoint, model id and monthly token budget recorded; both quota
       limits set to non-zero values.
+- [ ] `SPAGO_ACTIVITY_THRESHOLD_NM` / `SPAGO_ACTIVITY_MIN_COMPOUNDS` reviewed and
+      the chosen threshold recorded next to the acceptance coverage matrix.
 - [ ] `/api/v1/readyz` reports `ready` with no notes.
 - [ ] Backup taken and a restore verified per runbook §H7 (ownership counts match).
 - [ ] Coverage matrix re-recorded for the acceptance targets on the deployed build.
@@ -144,3 +190,9 @@ The deployment is one app image plus one database. To roll back:
   implemented (it would require unbounded BioAssay harvesting).
 - BindingDB's REST path supplies no assay description, species or construct, so
   those context fields are empty for BindingDB records.
+- **Assay construct is declared but never mapped.** No adapter fills
+  `target_construct`, so `measurements.construct` is empty for every source and the
+  evidence panel reads "context not provided" even where the source described a
+  construct in prose. ChEMBL's variant accession and mutation are mapped separately
+  and are shown when the source supplies them. Recorded as a limitation rather than
+  printed as a source omission.

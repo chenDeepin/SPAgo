@@ -61,6 +61,11 @@ services:
       SPAGO_COOKIE_SECURE: ${SPAGO_COOKIE_SECURE:-false}
       SPAGO_SESSION_TTL_HOURS: ${SPAGO_SESSION_TTL_HOURS:-12}
       SPAGO_CORS_ORIGINS_EXTRA: ${SPAGO_CORS_ORIGINS_EXTRA:-}
+      # Potency reference policy (ONLINE-06). The threshold at or below which a
+      # reported value counts as a starting point; it travels with every verdict
+      # and export, so a changed value is visible in the artifact, not hidden.
+      SPAGO_ACTIVITY_THRESHOLD_NM: ${SPAGO_ACTIVITY_THRESHOLD_NM:-10000}
+      SPAGO_ACTIVITY_MIN_COMPOUNDS: ${SPAGO_ACTIVITY_MIN_COMPOUNDS:-10}
     ports:
       # loopback binding by default: enable paid model keys only behind your own
       # authentication layer before exposing this port on a LAN/hosted interface

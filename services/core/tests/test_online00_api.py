@@ -8,6 +8,8 @@ mapping.
 """
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from pathlib import Path
 
@@ -325,11 +327,25 @@ class TestCandidateExport:
         header, row = body.strip().splitlines()[0], body.strip().splitlines()[1]
         assert "target_key" in header and "evidence_class" in header and "modality" in header
         assert "TSLP" in row
-        assert row.rstrip(",").endswith(("functional_effect", "measured_direct_binding", "unspecified"))
+        # Parsed as CSV: a reason sentence contains commas, so splitting the raw
+        # line would misalign every column after it.
+        fields = next(csv.DictReader(io.StringIO(body)))
+        # Fields, not column position: the row is compared by column name so a new
+        # provenance column cannot silently change what this asserts.
+        assert fields["evidence_class"] in {
+            "functional_effect",
+            "measured_direct_binding",
+            "unspecified",
+        }
         # No patent mapping: the patent columns are empty rather than fabricated.
-        fields = dict(zip(header.split(","), row.split(",")))
         assert fields["patent_numbers"] == ""
         assert fields["patent_labels"] == ""
+        # ONLINE-06: the export states the rule its activity class was computed
+        # under, so the artifact can be read back without the UI.
+        assert fields["reference_policy_version"] == "potency-gate-v1"
+        assert fields["reference_threshold_nM"] == "10000"
+        assert fields["activity_class"] in {"active", "weak", "unknown", "not_applicable"}
+        assert fields["source_declared_patents"] == ""
 
     def test_sdf_candidate_export_carries_the_target_properties(self, client, investigated, resolved):
         response = client.post(

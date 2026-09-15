@@ -49,6 +49,18 @@ CSV_FIELDS = [
     "target_name",
     "modality",
     "evidence_class",
+    # ONLINE-06: what the reported values imply under a stated potency policy,
+    # plus the publication numbers the source declared for the compound. Those
+    # stay a separate column from `patent_numbers`, which means "occurrence in
+    # the loaded corpus": merging them would blur source-declared with
+    # corpus-verified (AGENTS.md §10).
+    "activity_class",
+    "potency_label",
+    "source_declared_patents",
+    "reference_qualifies",
+    "reference_reason",
+    "reference_threshold_nM",
+    "reference_policy_version",
 ]
 
 
@@ -96,6 +108,16 @@ class ExportRow:
     target_name: str | None = None
     modality: str | None = None
     evidence_class: str | None = None
+    #: ONLINE-06. The class is a statement about the exported compound under the
+    #: policy recorded in `reference_*`; the policy version and threshold travel
+    #: with the file so the columns can be read back years later.
+    activity_class: str | None = None
+    potency_label: str | None = None
+    source_declared_patents: list[str] = field(default_factory=list)
+    reference_qualifies: bool | None = None
+    reference_reason: str | None = None
+    reference_threshold_nm: float | None = None
+    reference_policy_version: str | None = None
 
 
 def _base_query(scope_clause: str, doc_clause_tpl: str, doc_params: dict) -> str:
@@ -345,13 +367,19 @@ def collect_candidate_export_rows(
     *,
     compound_ids: list[uuid.UUID] | None = None,
     include_all_modalities: bool = True,
+    policy=None,
 ) -> list[ExportRow]:
     """Export target candidates, including compounds with no patent mapping.
 
     Scope is the target's candidate set; an explicit selection must be a subset
     of it. Patent numbers/labels are populated only for candidates that also
     occur in the loaded patent corpus, so a patent-free candidate exports as
-    patent-free rather than as an empty string that could be misread.
+    patent-free rather than as an empty string that could be misread. Publication
+    numbers the *source* declared are a separate column (ONLINE-06).
+
+    `policy` adds the potency class per compound and the target's verdict, both
+    computed by :mod:`spago_core.services.reference` with the same rule the API
+    reports, so a file and the screen never disagree.
     """
     if compound_ids == []:
         return []
@@ -407,6 +435,7 @@ def collect_candidate_export_rows(
                        c.molecular_weight, c.hbd, c.hba, c.tpsa, c.logp,
                        c.modality,
                        COALESCE(cand.classes, ARRAY[]::text[]) AS classes,
+                       COALESCE(prov.states, ARRAY[]::text[]) AS provenance_states,
                        COALESCE(docs.docs, ARRAY[]::text[]) AS docs,
                        COALESCE(ment.labels, ARRAY[]::text[]) AS labels,
                        COALESCE(ver.versions, '[]'::jsonb) AS dataset_versions
@@ -417,6 +446,16 @@ def collect_candidate_export_rows(
                     FROM target_candidates tc2
                     WHERE tc2.target_id = tc.target_id AND tc2.compound_id = c.id
                 ) cand ON true
+                -- Provenance is read from the compound's stored measurements, never
+                -- assumed. The basis matches the class columns: both describe this
+                -- compound's stored evidence, so a compound a user added carries
+                -- `user_curated` and a file must not present it as a curated database
+                -- fact (AGENTS.md §10).
+                LEFT JOIN LATERAL (
+                    SELECT array_agg(DISTINCT m.provenance_state) AS states
+                    FROM measurements m
+                    WHERE m.compound_id = c.id
+                ) prov ON true
                 LEFT JOIN LATERAL (
                     SELECT array_agg(DISTINCT d.publication_number) AS docs
                     FROM compound_mentions m JOIN patent_documents d ON d.id = m.document_id
@@ -437,7 +476,8 @@ def collect_candidate_export_rows(
                     ) v
                 ) ver ON true
                 WHERE {scope_clause}
-                GROUP BY c.id, c.modality, cand.classes, docs.docs, ment.labels, ver.versions
+                GROUP BY c.id, c.modality, cand.classes, prov.states, docs.docs,
+                         ment.labels, ver.versions
                 ORDER BY c.inchikey
                 """
             ),
@@ -445,6 +485,24 @@ def collect_candidate_export_rows(
         ).mappings().all()
 
     result: list[ExportRow] = []
+    activity: dict = {}
+    verdict = None
+    if policy is not None and rows:
+        from types import SimpleNamespace
+
+        from spago_core.services.reference import (
+            compound_activity_summary,
+            reference_verdict,
+        )
+
+        activity = compound_activity_summary(
+            engine, target_id, [r["id"] for r in rows], policy
+        )
+        verdict = reference_verdict(
+            engine,
+            SimpleNamespace(id=target_id, target_key=target["target_key"], name=target["name"]),
+            policy,
+        )
     for r in rows:
         classes = set(r["classes"] or [])
         evidence_class = next(
@@ -452,6 +510,7 @@ def collect_candidate_export_rows(
         )
         versions = list(r["dataset_versions"] or [])
         labels = {v["dataset_version"] for v in versions}
+        summary = activity.get(r["id"])
         result.append(
             ExportRow(
                 compound_id=r["id"],
@@ -466,7 +525,9 @@ def collect_candidate_export_rows(
                 patent_numbers=sorted(r["docs"] or []),
                 patent_labels=sorted(r["labels"] or []),
                 evidence_ids=[],
-                provenance_states=["database_curated"],
+                provenance_states=(
+                    sorted(r["provenance_states"]) if r["provenance_states"] else ["database_curated"]
+                ),
                 evidence_source_urls=[],
                 dataset_version=(
                     next(iter(labels)) if len(labels) == 1 else ("mixed" if labels else "external:open-databases")
@@ -476,6 +537,17 @@ def collect_candidate_export_rows(
                 target_name=target["name"],
                 modality=r["modality"],
                 evidence_class=evidence_class,
+                activity_class=(
+                    summary.activity_class.value
+                    if summary
+                    else ("not_applicable" if policy is None else None)
+                ),
+                potency_label=summary.label if summary else None,
+                source_declared_patents=list(summary.patents) if summary else [],
+                reference_qualifies=verdict.qualifies if verdict else None,
+                reference_reason=verdict.reason if verdict else None,
+                reference_threshold_nm=verdict.policy.threshold_nm if verdict else None,
+                reference_policy_version=verdict.policy.version if verdict else None,
             )
         )
     return result
@@ -509,6 +581,21 @@ def render_csv(rows: list[ExportRow]) -> str:
                 "target_name": row.target_name or "",
                 "modality": row.modality or "",
                 "evidence_class": row.evidence_class or "",
+                "activity_class": row.activity_class or "",
+                "potency_label": row.potency_label or "",
+                "source_declared_patents": "|".join(row.source_declared_patents),
+                "reference_qualifies": (
+                    "" if row.reference_qualifies is None else str(row.reference_qualifies).lower()
+                ),
+                "reference_reason": row.reference_reason or "",
+                # Same rendering as the SDF property, so one policy reads back the
+                # same way in both artifacts.
+                "reference_threshold_nM": (
+                    f"{row.reference_threshold_nm:g}"
+                    if row.reference_threshold_nm is not None
+                    else ""
+                ),
+                "reference_policy_version": row.reference_policy_version or "",
             }
         )
     return buf.getvalue()
@@ -549,6 +636,22 @@ def render_sdf(rows: list[ExportRow]) -> str:
                 mol.SetProp("modality", row.modality)
             if row.evidence_class:
                 mol.SetProp("evidence_class", row.evidence_class)
+            if row.activity_class:
+                mol.SetProp("activity_class", row.activity_class)
+            if row.potency_label:
+                mol.SetProp("potency_label", row.potency_label)
+            if row.source_declared_patents:
+                mol.SetProp("source_declared_patents", "|".join(row.source_declared_patents))
+            if row.reference_qualifies is not None:
+                mol.SetProp(
+                    "reference_qualifies", str(row.reference_qualifies).lower()
+                )
+            if row.reference_reason:
+                mol.SetProp("reference_reason", row.reference_reason)
+            if row.reference_threshold_nm is not None:
+                mol.SetProp("reference_threshold_nM", f"{row.reference_threshold_nm:g}")
+            if row.reference_policy_version:
+                mol.SetProp("reference_policy_version", row.reference_policy_version)
             writer.write(mol)
     finally:
         writer.close()

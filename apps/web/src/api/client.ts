@@ -242,6 +242,28 @@ export const api = {
       `/api/v1/targets/${targetId}/coverage`,
       signal,
     ),
+  /** ONLINE-06: the potency-reference verdict for a target.
+   *
+   * `thresholdNanomolar` is an explicit, user-stated override (validated
+   * server-side); omitting it asks for the deployment policy. The verdict is
+   * always recomputed from stored rows, so a changed threshold can never leave
+   * a stale class behind. */
+  targetReference: (
+    targetId: string,
+    params: { thresholdNanomolar?: number | null; includeAllModalities?: boolean } = {},
+    signal?: AbortSignal,
+  ) => {
+    const search = new URLSearchParams();
+    if (params.thresholdNanomolar != null) {
+      search.set("activity_threshold_nm", String(params.thresholdNanomolar));
+    }
+    if (params.includeAllModalities) search.set("include_all_modalities", "true");
+    const suffix = search.toString();
+    return getJson<import("./types").ReferenceVerdict>(
+      `/api/v1/targets/${targetId}/reference${suffix ? `?${suffix}` : ""}`,
+      signal,
+    );
+  },
   targetCandidates: (
     targetId: string,
     params: {
@@ -250,6 +272,7 @@ export const api = {
       modality?: string | null;
       evidence_class?: string | null;
       include_all_modalities?: boolean;
+      activity_threshold_nm?: number | null;
     },
     signal?: AbortSignal,
   ) => {
@@ -259,6 +282,9 @@ export const api = {
     if (params.modality) search.set("modality", params.modality);
     if (params.evidence_class) search.set("evidence_class", params.evidence_class);
     if (params.include_all_modalities) search.set("include_all_modalities", "true");
+    if (params.activity_threshold_nm != null) {
+      search.set("activity_threshold_nm", String(params.activity_threshold_nm));
+    }
     return getJson<import("./types").CandidatePage>(
       `/api/v1/targets/${targetId}/candidates?${search.toString()}`,
       signal,
@@ -266,13 +292,21 @@ export const api = {
   },
   targetMeasurements: (
     targetId: string,
-    params: { compound_id?: string | null; evidence_class?: string | null; limit?: number },
+    params: {
+      compound_id?: string | null;
+      evidence_class?: string | null;
+      limit?: number;
+      activity_threshold_nm?: number | null;
+    },
     signal?: AbortSignal,
   ) => {
     const search = new URLSearchParams();
     search.set("limit", String(params.limit ?? 200));
     if (params.compound_id) search.set("compound_id", params.compound_id);
     if (params.evidence_class) search.set("evidence_class", params.evidence_class);
+    if (params.activity_threshold_nm != null) {
+      search.set("activity_threshold_nm", String(params.activity_threshold_nm));
+    }
     return getJson<import("./types").TargetMeasurement[]>(
       `/api/v1/targets/${targetId}/measurements?${search.toString()}`,
       signal,
@@ -286,6 +320,21 @@ export const api = {
     postJson<{ created_rows: number; already_present_rows: number; target_key: string }>(
       `/api/v1/projects/${projectId}/candidates`,
       body,
+      signal,
+    ),
+  targetSupplements: (
+    targetId: string,
+    rows: import("./types").SupplementRowInput[],
+    signal?: AbortSignal,
+  ) =>
+    postJson<import("./types").SupplementImport>(
+      `/api/v1/targets/${targetId}/supplements`,
+      { rows },
+      signal,
+    ),
+  targetSupplementRemarks: (targetId: string, signal?: AbortSignal) =>
+    getJson<import("./types").SupplementRemark[]>(
+      `/api/v1/targets/${targetId}/supplements/remarks`,
       signal,
     ),
 };

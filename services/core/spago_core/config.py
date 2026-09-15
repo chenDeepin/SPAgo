@@ -71,6 +71,16 @@ class Settings(BaseSettings):
     llm_price_per_million_tokens: float | None = None
     llm_price_currency: str = "USD"
 
+    # Potency reference policy (ONLINE-06). Both are part of the reported policy,
+    # so a verdict and an export can be read back against the rule that produced
+    # them. The threshold is the potency at or below which a compound counts as a
+    # starting point; 10 µM matches the review convention this workflow uses.
+    activity_threshold_nm: float = 10_000.0
+    #: Below this many compounds a set with no active is described as sparse
+    #: rather than merely negative. Shaping the reason only: one potent compound
+    #: still qualifies.
+    activity_min_compounds: int = 10
+
     @property
     def auth_required(self) -> bool:
         return (self.auth_mode or "disabled").strip().lower() == "required"

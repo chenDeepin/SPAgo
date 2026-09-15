@@ -363,6 +363,39 @@ Preserve stereochemistry unless a workflow explicitly requests stereo-insensitiv
 
 Record normalization decisions.
 
+## Potency classes and the screening-reference gate
+
+A reported bioactivity value and the *class* of that value are different facts.
+The class is decided by deterministic code
+(`services/core/spago_core/chemistry/activities.py`), never by a model and never by
+a reader's eye:
+
+- One explicit threshold, stated as part of a versioned policy
+  (`potency-gate-v1`). The threshold travels with every verdict, table row and
+  export (`reference_threshold_nM`, `reference_policy_version`), so a changed
+  value is visible in the artifact rather than hidden in a session.
+- Censor direction is honored: `<10 µM` supports activity at a 10 µM threshold,
+  `>10 µM` excludes it, and a bound that cannot decide the question is reported as
+  undecided — never rounded into `active` or `weak`.
+- Units are converted to a common scale before any comparison. A unit that is not
+  a concentration, or an endpoint that is not a potency (kinetic constants,
+  percent inhibition, ratios), is reported as `not applicable` instead of being
+  compared with a potency threshold.
+- Classes are **computed from stored rows on read, never persisted**. Storing a
+  class would let a threshold change leave a stale `active` behind.
+- A "screening reference" verdict is a count under that policy: how many in-scope
+  compounds the retrieved set holds, how many are at or below the threshold, and
+  what the sources did *not* supply (records with a value but no structure). It is
+  not a biological conclusion, not a claim about the literature, and not a
+  druggability score. A thin set must never be rendered as a negative result.
+- Modality scope is explicit and labelled. Actives outside the scope (for example
+  a peptide when the view counts small molecules) are counted and reported, never
+  dropped; the expansion is one explicit control.
+- A publication number *declared by a source* is a different fact from an
+  occurrence in the loaded corpus. They stay in separate fields, columns and
+  labels (`source declares WO…` versus `N occurrences`), and neither is promoted
+  to the other.
+
 ---
 
 # 12. LLM Boundary

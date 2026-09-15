@@ -50,7 +50,15 @@ from spago_core.domain import ProvenanceState
 #: root. Only that scope's instructions and input changed.
 PROMPT_VERSION = "family-summary-v6"
 DOCUMENT_PROMPT_VERSION = "document-summary-v5"
-TARGET_PROMPT_VERSION = "target-investigation-v6"
+#: v7 (ONLINE-06): the target snapshot now carries a `reference` fact — the
+#: deterministic potency verdict and the policy it was computed under — plus the
+#: per-measurement class and the source-declared patent/DOI/PMID references. The
+#: version is part of the analysis cache key, so no cached summary is served as
+#: if it came from the new input.
+#: v8 (ONLINE-07): the verdict fact also carries `supplement_remarks` — rows a
+#: person added by hand without a public structure — so a summary of a thin set
+#: cannot read as "nothing was recorded for this target".
+TARGET_PROMPT_VERSION = "target-investigation-v8"
 #: Map a provider failure onto the usage outcome vocabulary, so the accounting
 #: records why budget was consumed rather than a generic failure.
 def _usage_outcome(exc: AIError) -> str:
@@ -596,12 +604,24 @@ def _collect_target_facts(
     was retrieved, what failed and what was not queried. That distinction is the
     difference between "no small molecule was found" and "no inhibitor exists",
     and the summary must never make the second claim.
+
+    ONLINE-06 adds the potency verdict as its own citable fact: it is a
+    deterministic count under a policy that travels in the snapshot, so a
+    summary can report "none of N in-scope compounds is at or below 10 µM"
+    without inventing a comparison and without presenting a count as a finding
+    about the literature.
     """
+    from spago_core.config import get_settings
     from spago_core.services import discovery as discovery_svc
+    from spago_core.services import reference as reference_svc
     from spago_core.services.targets import TargetResolutionService
 
     service = TargetResolutionService()
     target = service.get_target(engine, target_id)
+    policy = reference_svc.policy_from_settings(
+        get_settings(), include_all_modalities=include_all_modalities
+    )
+    verdict = reference_svc.reference_verdict(engine, target, policy)
 
     with engine.connect() as conn:
         retrievals = conn.execute(
@@ -718,6 +738,51 @@ def _collect_target_facts(
             for r in retrievals
         ],
         "modality_breakdown": breakdown,
+        # The verdict is a citable fact in its own right: every number a summary
+        # may repeat about potency comes from here, and the policy it was
+        # computed under is part of the fact.
+        "reference": {
+            "ref": f"reference:{target_id}",
+            "qualifies": verdict.qualifies,
+            "reason": verdict.reason,
+            "policy_version": verdict.policy.version,
+            "threshold_nM": verdict.policy.threshold_nm,
+            "threshold_label": verdict.policy.threshold_label,
+            "min_compounds": verdict.policy.min_compounds,
+            "modality_scope": verdict.policy.modality_scope,
+            "compounds": verdict.compounds,
+            "compounds_active": verdict.compounds_active,
+            "compounds_weak": verdict.compounds_weak,
+            "compounds_unknown": verdict.compounds_unknown,
+            "compounds_not_applicable": verdict.compounds_not_applicable,
+            "active_compounds_outside_scope": verdict.active_compounds_outside_scope,
+            "measurements": verdict.measurements,
+            "class_counts": verdict.class_counts,
+            "endpoint_counts": verdict.endpoint_counts,
+            "evidence_class_counts": verdict.evidence_class_counts,
+            "potential_duplicates": verdict.potential_duplicates,
+            "records_without_structure": verdict.records_without_structure,
+            # ONLINE-07: rows a person added by hand without a public structure. Part
+            # of the verdict, so a summary of a thin set cannot omit them and read as
+            # "nothing was recorded for this target".
+            "supplement_remarks": verdict.supplement_remarks,
+            "source_declared_patents": verdict.source_declared_patents,
+            "best_active": (
+                {
+                    "inchikey": verdict.best_active.inchikey,
+                    "potency_label": verdict.best_active.potency_label,
+                    "evidence_class": verdict.best_active.evidence_class.value,
+                    "source_name": verdict.best_active.source_name,
+                }
+                if verdict.best_active
+                else None
+            ),
+            "note": (
+                "Deterministic count, not a biological conclusion: it says which stored "
+                "records are at or below the stated threshold, and it never implies that "
+                "no other inhibitor exists."
+            ),
+        },
         "candidate_total": int(candidate_total),
         "candidates": [
             {
@@ -732,6 +797,9 @@ def _collect_target_facts(
                 "source_name": c.source_name,
                 "measurements": c.measurements,
                 "patent_occurrences": c.patent_occurrences,
+                "activity_class": c.activity_class.value,
+                "potency_label": c.potency_label,
+                "source_declared_patents": c.source_declared_patents,
             }
             for c in candidates
         ],
@@ -755,6 +823,10 @@ def _collect_target_facts(
                 "potential_duplicate": m["potential_duplicate"],
                 "source_name": m["source_name"],
                 "source_url": m["source_url"],
+                "activity_class": m["activity_class"],
+                "document_patent_number": m["document_patent_number"],
+                "document_doi": m["document_doi"],
+                "document_pmid": m["document_pmid"],
             }
             for m in measurement_rows
         ],
@@ -1188,6 +1260,35 @@ class OfflineTargetProvider(SummaryProvider):
                 + ", ".join(f"{n} {name}" for name, n in sorted(breakdown.items()))
                 + ". Peptides and biologics are not interchangeable with small molecules."
             )
+        reference = snapshot.get("reference") or {}
+        if reference:
+            lines.append(
+                f"Potency reference under policy {reference.get('policy_version')} "
+                f"(threshold {reference.get('threshold_label')}, scope "
+                f"{reference.get('modality_scope')}): {reference.get('reason')}"
+                + (
+                    " This is a count of stored records under that stated threshold; it is not a "
+                    "statement about what exists in the literature."
+                )
+            )
+            if reference.get("best_active"):
+                best = reference["best_active"]
+                lines.append(
+                    f"Best reported value in scope: {best.get('potency_label')} "
+                    f"({best.get('evidence_class')}, {best.get('source_name')})."
+                )
+            if reference.get("records_without_structure"):
+                lines.append(
+                    f"{reference['records_without_structure']} source record(s) reported a value "
+                    "without a public structure and are counted as rejections, not as "
+                    "measurements."
+                )
+            if reference.get("supplement_remarks"):
+                lines.append(
+                    f"{reference['supplement_remarks']} row(s) were added by hand with a value "
+                    "but no public structure and are stored as remarks, not as compounds or "
+                    "measurements: a person's reading, not a source's record."
+                )
         if snapshot.get("measurements"):
             counts = snapshot.get("evidence_class_counts") or {}
             listed = snapshot.get("measurements_listed", len(snapshot["measurements"]))

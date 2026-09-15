@@ -1,0 +1,72 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "cases": {
+    "candidates_all_modalities": {
+      "max_ms": 10.52,
+      "min_ms": 7.39,
+      "p50_ms": 8.4,
+      "p95_ms": 9.95,
+      "path": "/api/v1/targets/0cd78fd9-082b-5afb-b554-80835ecc3b35/candidates?limit=100&offset=0&include_all_modalities=true",
+      "payload_bytes": 57221
+    },
+    "candidates_default_scope": {
+      "max_ms": 5.55,
+      "min_ms": 4.11,
+      "p50_ms": 4.76,
+      "p95_ms": 5.54,
+      "path": "/api/v1/targets/0cd78fd9-082b-5afb-b554-80835ecc3b35/candidates?limit=100&offset=0",
+      "payload_bytes": 1173
+    },
+    "candidates_threshold_1uM": {
+      "max_ms": 7.48,
+      "min_ms": 4.38,
+      "p50_ms": 5.03,
+      "p95_ms": 5.81,
+      "path": "/api/v1/targets/0cd78fd9-082b-5afb-b554-80835ecc3b35/candidates?limit=100&offset=0&activity_threshold_nm=1000",
+      "payload_bytes": 1171
+    },
+    "coverage_matrix": {
+      "max_ms": 5.92,
+      "min_ms": 4.58,
+      "p50_ms": 5.21,
+      "p95_ms": 5.91,
+      "path": "/api/v1/targets/coverage/matrix",
+      "payload_bytes": 3165
+    },
+    "measurements_with_threshold": {
+      "max_ms": 3.17,
+      "min_ms": 2.44,
+      "p50_ms": 2.86,
+      "p95_ms": 3.09,
+      "path": "/api/v1/targets/0cd78fd9-082b-5afb-b554-80835ecc3b35/measurements?limit=200&compound_id=144a713f-2a9a-54c8-af7e-dd2372d18e5c&activity_threshold_nm=1000",
+      "payload_bytes": 1338
+    },
+    "reference_all_modalities": {
+      "max_ms": 6.12,
+      "min_ms": 4.14,
+      "p50_ms": 4.54,
+      "p95_ms": 5.48,
+      "path": "/api/v1/targets/0cd78fd9-082b-5afb-b554-80835ecc3b35/reference?include_all_modalities=true",
+      "payload_bytes": 3091
+    },
+    "reference_default": {
+      "max_ms": 5.85,
+      "min_ms": 3.98,
+      "p50_ms": 4.51,
+      "p95_ms": 5.27,
+      "path": "/api/v1/targets/0cd78fd9-082b-5afb-b554-80835ecc3b35/reference",
+      "payload_bytes": 1064
+    },
+    "reference_threshold_1uM": {
+      "max_ms": 6.52,
+      "min_ms": 4.03,
+      "p50_ms": 4.42,
+      "p95_ms": 5.1,
+      "path": "/api/v1/targets/0cd78fd9-082b-5afb-b554-80835ecc3b35/reference?activity_threshold_nm=1000",
+      "payload_bytes": 1061
+    }
+  },
+  "iterations": 20,
+  "measured_at": "2026-09-16T00:23:47+0800",
+  "target_id": "0cd78fd9-082b-5afb-b554-80835ecc3b35"
+}
