@@ -1,0 +1,1420 @@
+{
+ "recorded_at": "2026-09-15T04:49:07.010136+00:00",
+ "plan": "docs/plans/2026-09-15-online-llm.md \u00a72 ONLINE-00, acceptance: dated source-by-target coverage matrix",
+ "invocation": "TargetResolutionService.resolve(query, species, include_related=True) then TargetDiscoveryService.investigate(target, sources=('chembl','bindingdb','pubchem'))",
+ "targets": [
+  {
+   "query": "TSLP",
+   "species": "human",
+   "resolution": "resolved",
+   "target_key": "TSLP",
+   "name": "Thymic stromal lymphopoietin",
+   "uniprot_accession": "Q969D9",
+   "organism": "Homo sapiens",
+   "target_type": "single_protein",
+   "scope_kind": "ligand",
+   "components": [
+    "CRLF2",
+    "IL7R"
+   ],
+   "notes": [
+    "Related receptor: CRLF2 \u2014 receptor in the TSLP / TSLPR system; TSLPR; the high-affinity receptor component. No ChEMBL target record.",
+    "Related receptor: IL7R \u2014 receptor in the TSLP / TSLPR system; Second receptor component; shared with IL-7 signalling."
+   ],
+   "sources": [
+    {
+     "source_name": "chembl",
+     "status": "complete",
+     "query": {
+      "accession": "Q969D9",
+      "target_chembl_ids": [
+       "CHEMBL3712931"
+      ],
+      "target_chembl_candidates": [
+       "CHEMBL3712931"
+      ]
+     },
+     "records_seen": 114,
+     "records_kept": 111,
+     "records_excluded": 3,
+     "rejection_counts": {
+      "missing_standard_value": 3
+     },
+     "dataset_version": "chembl:2026-09-15",
+     "source_version": "chembl-web-services",
+     "latency_ms": 2315,
+     "warnings": []
+    },
+    {
+     "source_name": "bindingdb",
+     "status": "complete",
+     "query": {
+      "uniprot": "Q969D9"
+     },
+     "records_seen": 3,
+     "records_kept": 3,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": "bindingdb:2026-09-15",
+     "source_version": "bindingdb-rest",
+     "latency_ms": 754,
+     "warnings": [
+      "BindingDB returns 3 hit(s) for Q969D9; the service does not report assay-level context, so species and construct are unavailable from this path."
+     ]
+    },
+    {
+     "source_name": "pubchem",
+     "status": "complete",
+     "query": {
+      "gene_symbol": "TSLP",
+      "assay_ids": [
+       1904,
+       624099,
+       651810,
+       651811,
+       743121,
+       743454,
+       1053208,
+       1117281,
+       1117357,
+       1159506,
+       1159578,
+       1159584,
+       1224826,
+       1224828,
+       1224830,
+       1464427,
+       1464428,
+       1464429,
+       1508588,
+       1979359
+      ],
+      "truncated": false
+     },
+     "records_seen": 20,
+     "records_kept": 0,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": null,
+     "source_version": "pubchem-pug-rest",
+     "latency_ms": 1190,
+     "warnings": [
+      "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+      "20 assays are registered.",
+      "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+     ]
+    }
+   ],
+   "modality_breakdown": {
+    "peptide": 68,
+    "small_molecule": 1
+   },
+   "small_molecule_candidates": 1,
+   "all_candidates": 69,
+   "measurements": 114,
+   "elapsed_s": 5.4
+  },
+  {
+   "query": "CD40LG",
+   "species": "human",
+   "resolution": "resolved",
+   "target_key": "CD40LG",
+   "name": "CD40 ligand",
+   "uniprot_accession": "P29965",
+   "organism": "Homo sapiens",
+   "target_type": "single_protein",
+   "scope_kind": "ligand",
+   "components": [
+    null,
+    null,
+    "CD40"
+   ],
+   "notes": [
+    "Related receptor: CD40 \u2014 receptor in the CD40L / CD40 system; Reviewed Swiss-Prot entry."
+   ],
+   "sources": [
+    {
+     "source_name": "chembl",
+     "status": "complete",
+     "query": {
+      "accession": "P29965",
+      "target_chembl_ids": [
+       "CHEMBL3580491",
+       "CHEMBL4106121",
+       "CHEMBL4106122"
+      ],
+      "target_chembl_candidates": [
+       "CHEMBL3580491",
+       "CHEMBL4106121",
+       "CHEMBL4106122"
+      ]
+     },
+     "records_seen": 46,
+     "records_kept": 21,
+     "records_excluded": 25,
+     "rejection_counts": {
+      "missing_standard_value": 25
+     },
+     "dataset_version": "chembl:2026-09-15",
+     "source_version": "chembl-web-services",
+     "latency_ms": 1064,
+     "warnings": [
+      "CHEMBL4106121 (MAC1-CD40L) describes an interaction/complex involving P29965; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+      "CHEMBL4106122 (CD40-CD40L) describes an interaction/complex involving P29965; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+      "Retrieved from CHEMBL3580491 (single_protein), CHEMBL4106121 (protein_protein_interaction), CHEMBL4106122 (protein_protein_interaction): single-protein and interaction measurements are kept distinct."
+     ]
+    },
+    {
+     "source_name": "bindingdb",
+     "status": "empty",
+     "query": {
+      "uniprot": "P29965"
+     },
+     "records_seen": 0,
+     "records_kept": 0,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": "bindingdb:2026-09-15",
+     "source_version": "bindingdb-rest",
+     "latency_ms": 188,
+     "warnings": [
+      "BindingDB returns 0 hit(s) for P29965; the service does not report assay-level context, so species and construct are unavailable from this path."
+     ]
+    },
+    {
+     "source_name": "pubchem",
+     "status": "complete",
+     "query": {
+      "gene_symbol": "CD40LG",
+      "assay_ids": [
+       1904,
+       624099,
+       651810,
+       651811,
+       743121,
+       743454,
+       1053208,
+       1117281,
+       1117357,
+       1159506,
+       1159578,
+       1159584,
+       1224826,
+       1224828,
+       1224830,
+       1465875,
+       1465879,
+       1465883,
+       1465884,
+       1465889,
+       1508588,
+       1693308
+      ],
+      "truncated": false
+     },
+     "records_seen": 22,
+     "records_kept": 0,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": null,
+     "source_version": "pubchem-pug-rest",
+     "latency_ms": 573,
+     "warnings": [
+      "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+      "22 assays are registered.",
+      "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+     ]
+    }
+   ],
+   "modality_breakdown": {
+    "small_molecule": 10,
+    "peptide": 1
+   },
+   "small_molecule_candidates": 10,
+   "all_candidates": 11,
+   "measurements": 21,
+   "elapsed_s": 2.2
+  },
+  {
+   "query": "IL6",
+   "species": "human",
+   "resolution": "resolved",
+   "target_key": "IL6",
+   "name": "Interleukin-6",
+   "uniprot_accession": "P05231",
+   "organism": "Homo sapiens",
+   "target_type": "single_protein",
+   "scope_kind": "ligand",
+   "components": [
+    "CPX-623",
+    "CPX-8936",
+    "CPX-8967",
+    "CPX-8968",
+    "CPX-8969",
+    "IL6R",
+    "IL6ST"
+   ],
+   "notes": [
+    "Related receptor: IL6R \u2014 receptor in the IL-6 / IL-6R / gp130 system; Reviewed Swiss-Prot entry; the IL-6-specific receptor chain.",
+    "Related signalling_component: IL6ST \u2014 signalling_component in the IL-6 / IL-6R / gp130 system; gp130; shared by several cytokine receptors, so activity against it is not IL-6-specific."
+   ],
+   "sources": [
+    {
+     "source_name": "chembl",
+     "status": "complete",
+     "query": {
+      "accession": "P05231",
+      "target_chembl_ids": [
+       "CHEMBL1795129"
+      ],
+      "target_chembl_candidates": [
+       "CHEMBL1795129"
+      ]
+     },
+     "records_seen": 412,
+     "records_kept": 166,
+     "records_excluded": 246,
+     "rejection_counts": {
+      "missing_standard_value": 246
+     },
+     "dataset_version": "chembl:2026-09-15",
+     "source_version": "chembl-web-services",
+     "latency_ms": 2302,
+     "warnings": []
+    },
+    {
+     "source_name": "bindingdb",
+     "status": "complete",
+     "query": {
+      "uniprot": "P05231"
+     },
+     "records_seen": 9,
+     "records_kept": 9,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": "bindingdb:2026-09-15",
+     "source_version": "bindingdb-rest",
+     "latency_ms": 211,
+     "warnings": [
+      "bindingdb:140015:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "BindingDB returns 9 hit(s) for P05231; the service does not report assay-level context, so species and construct are unavailable from this path."
+     ]
+    },
+    {
+     "source_name": "pubchem",
+     "status": "partial",
+     "query": {
+      "gene_symbol": "IL6",
+      "assay_ids": [
+       1904,
+       607979,
+       624099,
+       651810,
+       651811,
+       743121,
+       743454,
+       1053208,
+       1117281,
+       1117357,
+       1159506,
+       1159578,
+       1159584,
+       1159590,
+       1159591,
+       1159592,
+       1159593,
+       1159594,
+       1159595,
+       1159596,
+       1159597,
+       1159598,
+       1159599,
+       1159600,
+       1159601
+      ],
+      "truncated": true
+     },
+     "records_seen": 48,
+     "records_kept": 0,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": null,
+     "source_version": "pubchem-pug-rest",
+     "latency_ms": 973,
+     "warnings": [
+      "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+      "48 assays are registered; the first 25 are listed under the configured request budget.",
+      "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+     ]
+    }
+   ],
+   "modality_breakdown": {
+    "small_molecule": 144
+   },
+   "small_molecule_candidates": 144,
+   "all_candidates": 144,
+   "measurements": 175,
+   "elapsed_s": 4.2
+  },
+  {
+   "query": "IL6R",
+   "species": "human",
+   "resolution": "resolved",
+   "target_key": "IL6R",
+   "name": "Interleukin-6 receptor subunit alpha",
+   "uniprot_accession": "P08887",
+   "organism": "Homo sapiens",
+   "target_type": "single_protein",
+   "scope_kind": "receptor",
+   "components": [
+    null,
+    "CPX-623",
+    "CPX-8967",
+    "CPX-8968",
+    "CPX-8969",
+    "IL6",
+    "IL6ST"
+   ],
+   "notes": [
+    "Related ligand: IL6 \u2014 ligand in the IL-6 / IL-6R / gp130 system; Reviewed Swiss-Prot entry.",
+    "Related signalling_component: IL6ST \u2014 signalling_component in the IL-6 / IL-6R / gp130 system; gp130; shared by several cytokine receptors, so activity against it is not IL-6-specific."
+   ],
+   "sources": [
+    {
+     "source_name": "chembl",
+     "status": "complete",
+     "query": {
+      "accession": "P08887",
+      "target_chembl_ids": [
+       "CHEMBL2364155",
+       "CHEMBL3137266"
+      ],
+      "target_chembl_candidates": [
+       "CHEMBL2364155",
+       "CHEMBL3137266"
+      ]
+     },
+     "records_seen": 5,
+     "records_kept": 1,
+     "records_excluded": 4,
+     "rejection_counts": {
+      "missing_standard_value": 4
+     },
+     "dataset_version": "chembl:2026-09-15",
+     "source_version": "chembl-web-services",
+     "latency_ms": 831,
+     "warnings": [
+      "CHEMBL3137266 (IL6Ralpha/GP130) describes an interaction/complex involving P08887; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+      "Retrieved from CHEMBL2364155 (single_protein), CHEMBL3137266 (protein_protein_interaction): single-protein and interaction measurements are kept distinct."
+     ]
+    },
+    {
+     "source_name": "bindingdb",
+     "status": "failed",
+     "query": {
+      "uniprot": "P08887"
+     },
+     "records_seen": 0,
+     "records_kept": 0,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": "bindingdb:2026-09-15",
+     "source_version": "bindingdb-rest",
+     "latency_ms": 181,
+     "warnings": [
+      "bindingdb: empty response body (HTTP 200)",
+      "BindingDB did not answer for this accession. This is a source failure, not a statement that no measurements exist."
+     ]
+    },
+    {
+     "source_name": "pubchem",
+     "status": "complete",
+     "query": {
+      "gene_symbol": "IL6R",
+      "assay_ids": [
+       1904,
+       624099,
+       651810,
+       651811,
+       743121,
+       743454,
+       1075150,
+       1117281,
+       1117357,
+       1159506,
+       1159578,
+       1159584,
+       1224830,
+       1345485,
+       1508588,
+       2041640,
+       2283510
+      ],
+      "truncated": false
+     },
+     "records_seen": 17,
+     "records_kept": 0,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": null,
+     "source_version": "pubchem-pug-rest",
+     "latency_ms": 1039,
+     "warnings": [
+      "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+      "17 assays are registered.",
+      "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+     ]
+    }
+   ],
+   "modality_breakdown": {
+    "small_molecule": 1
+   },
+   "small_molecule_candidates": 1,
+   "all_candidates": 1,
+   "measurements": 1,
+   "elapsed_s": 2.4
+  },
+  {
+   "query": "EGFR",
+   "species": "human",
+   "resolution": "resolved",
+   "target_key": "EGFR",
+   "name": "Epidermal growth factor receptor",
+   "uniprot_accession": "P00533",
+   "organism": "Homo sapiens",
+   "target_type": "single_protein",
+   "scope_kind": "receptor",
+   "components": [],
+   "notes": [],
+   "sources": [
+    {
+     "source_name": "chembl",
+     "status": "partial",
+     "query": {
+      "accession": "P00533",
+      "target_chembl_ids": [
+       "CHEMBL203",
+       "CHEMBL2111431",
+       "CHEMBL2363049"
+      ],
+      "target_chembl_candidates": [
+       "CHEMBL203",
+       "CHEMBL2111431",
+       "CHEMBL2363049",
+       "CHEMBL3137284",
+       "CHEMBL4523680",
+       "CHEMBL4523747",
+       "CHEMBL4523998",
+       "CHEMBL4802031",
+       "CHEMBL5465557",
+       "CHEMBL6066839",
+       "CHEMBL6066845",
+       "CHEMBL6193792",
+       "CHEMBL6193830",
+       "CHEMBL6193837",
+       "CHEMBL6193841",
+       "CHEMBL6195769"
+      ]
+     },
+     "records_seen": 2598,
+     "records_kept": 2397,
+     "records_excluded": 200,
+     "rejection_counts": {
+      "missing_standard_value": 200
+     },
+     "dataset_version": "chembl:2026-09-15",
+     "source_version": "chembl-web-services",
+     "latency_ms": 18619,
+     "warnings": [
+      "Activity retrieval stopped at the configured bound of 2000 records for CHEMBL203; the target has more.",
+      "CHEMBL2111431 (Epidermal growth factor receptor and ErbB2 (HER1 and HER2)) describes an interaction/complex involving P00533; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+      "CHEMBL2363049 (Epidermal growth factor receptor) describes an interaction/complex involving P00533; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+      "Retrieved from CHEMBL203 (single_protein), CHEMBL2111431 (protein_complex), CHEMBL2363049 (protein_complex): single-protein and interaction measurements are kept distinct."
+     ]
+    },
+    {
+     "source_name": "bindingdb",
+     "status": "complete",
+     "query": {
+      "uniprot": "P00533"
+     },
+     "records_seen": 974,
+     "records_kept": 974,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": "bindingdb:2026-09-15",
+     "source_version": "bindingdb-rest",
+     "latency_ms": 13985,
+     "warnings": [
+      "bindingdb:199967:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200477:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200528:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200780:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200805:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:373706:Kd: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200537:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200547:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200630:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200757:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536913:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:676912:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50123190:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50160870:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:228114:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:4369:IC50: source CXSMILES annotation removed before parsing: '|w:4.3|'",
+      "bindingdb:13903:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:28501:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:101229:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:139540:Kd: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:139988:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:170540:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:191616:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:192316:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200517:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:200810:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:264166:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:270594:EC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:270594:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:270604:EC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:291282:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:309837:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351289:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351315:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351331:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351356:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351366:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351382:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351407:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351417:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:351474:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:368430:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:373709:Kd: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:397283:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:397385:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:397391:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:505723:IC50: source CXSMILES annotation removed before parsing: '|t:17|'",
+      "bindingdb:505758:IC50: source CXSMILES annotation removed before parsing: '|t:17|'",
+      "bindingdb:515335:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536908:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536950:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536959:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536975:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:605440:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:612271:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:613974:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50030380:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50079103:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50133374:IC50: source CXSMILES annotation removed before parsing: '|w:4.3|'",
+      "bindingdb:50141099:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50141125:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50193167:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50251632:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50255829:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50255861:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50255947:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50258979:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50274958:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50292732:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50308607:IC50: source CXSMILES annotation removed before parsing: '|w:6.6|'",
+      "bindingdb:50333381:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50339608:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50386696:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50427227:IC50: source CXSMILES annotation removed before parsing: '|t:9|'",
+      "bindingdb:50427243:IC50: source CXSMILES annotation removed before parsing: '|c:4|'",
+      "bindingdb:50432694:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50443990:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50443999:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50494221:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50521274:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50530616:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50593222:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50598673:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50600226:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50608111:IC50: source CXSMILES annotation removed before parsing: '|c:17|'",
+      "bindingdb:50613848:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50613858:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50614185:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:50620941:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:373725:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:495012:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:494966:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:494972:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:547940:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:547949:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:547975:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:371593:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536902:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536937:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536963:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "bindingdb:536913:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+      "BindingDB returns 974 hit(s) for P00533; the service does not report assay-level context, so species and construct are unavailable from this path."
+     ]
+    },
+    {
+     "source_name": "pubchem",
+     "status": "partial",
+     "query": {
+      "gene_symbol": "EGFR",
+      "assay_ids": [
+       1433,
+       1622,
+       1726,
+       1727,
+       1729,
+       1731,
+       1742,
+       1904,
+       1982,
+       3364,
+       3365,
+       7884,
+       7888,
+       7890,
+       7899,
+       7901,
+       7903,
+       7907,
+       8066,
+       8069,
+       8070,
+       8076,
+       8077,
+       8621,
+       32370
+      ],
+      "truncated": true
+     },
+     "records_seen": 4609,
+     "records_kept": 0,
+     "records_excluded": 0,
+     "rejection_counts": {},
+     "dataset_version": null,
+     "source_version": "pubchem-pug-rest",
+     "latency_ms": 1107,
+     "warnings": [
+      "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+      "4609 assays are registered; the first 25 are listed under the configured request budget.",
+      "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+     ]
+    }
+   ],
+   "modality_breakdown": {
+    "small_molecule": 2531,
+    "peptide": 18
+   },
+   "small_molecule_candidates": 2531,
+   "all_candidates": 2549,
+   "measurements": 3346,
+   "elapsed_s": 40.2
+  }
+ ],
+ "matrix": [
+  {
+   "target_id": "e2c4609b-a301-5e2e-81aa-159606f59e10",
+   "target_key": "CD40LG",
+   "target_name": "CD40 ligand",
+   "gene_symbol": "CD40LG",
+   "uniprot_accession": "P29965",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "bindingdb",
+   "status": "empty",
+   "query": {
+    "uniprot": "P29965"
+   },
+   "records_seen": 0,
+   "records_kept": 0,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 0,
+   "small_molecule_candidates": 0,
+   "dataset_version": "bindingdb:2026-09-15",
+   "source_version": "bindingdb-rest",
+   "latency_ms": 188,
+   "retrieved_at": "2026-09-15T04:48:19.466763+00:00",
+   "warnings": [
+    "BindingDB returns 0 hit(s) for P29965; the service does not report assay-level context, so species and construct are unavailable from this path."
+   ]
+  },
+  {
+   "target_id": "e2c4609b-a301-5e2e-81aa-159606f59e10",
+   "target_key": "CD40LG",
+   "target_name": "CD40 ligand",
+   "gene_symbol": "CD40LG",
+   "uniprot_accession": "P29965",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "chembl",
+   "status": "complete",
+   "query": {
+    "accession": "P29965",
+    "target_chembl_ids": [
+     "CHEMBL3580491",
+     "CHEMBL4106121",
+     "CHEMBL4106122"
+    ],
+    "target_chembl_candidates": [
+     "CHEMBL3580491",
+     "CHEMBL4106121",
+     "CHEMBL4106122"
+    ]
+   },
+   "records_seen": 46,
+   "records_kept": 21,
+   "records_excluded": 25,
+   "rejection_counts": {
+    "missing_standard_value": 25
+   },
+   "candidates": 11,
+   "small_molecule_candidates": 10,
+   "dataset_version": "chembl:2026-09-15",
+   "source_version": "chembl-web-services",
+   "latency_ms": 1064,
+   "retrieved_at": "2026-09-15T04:48:19.277872+00:00",
+   "warnings": [
+    "CHEMBL4106121 (MAC1-CD40L) describes an interaction/complex involving P29965; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+    "CHEMBL4106122 (CD40-CD40L) describes an interaction/complex involving P29965; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+    "Retrieved from CHEMBL3580491 (single_protein), CHEMBL4106121 (protein_protein_interaction), CHEMBL4106122 (protein_protein_interaction): single-protein and interaction measurements are kept distinct."
+   ]
+  },
+  {
+   "target_id": "e2c4609b-a301-5e2e-81aa-159606f59e10",
+   "target_key": "CD40LG",
+   "target_name": "CD40 ligand",
+   "gene_symbol": "CD40LG",
+   "uniprot_accession": "P29965",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "pubchem",
+   "status": "complete",
+   "query": {
+    "assay_ids": [
+     1904,
+     624099,
+     651810,
+     651811,
+     743121,
+     743454,
+     1053208,
+     1117281,
+     1117357,
+     1159506,
+     1159578,
+     1159584,
+     1224826,
+     1224828,
+     1224830,
+     1465875,
+     1465879,
+     1465883,
+     1465884,
+     1465889,
+     1508588,
+     1693308
+    ],
+    "truncated": false,
+    "gene_symbol": "CD40LG"
+   },
+   "records_seen": 22,
+   "records_kept": 0,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 0,
+   "small_molecule_candidates": 0,
+   "dataset_version": null,
+   "source_version": "pubchem-pug-rest",
+   "latency_ms": 573,
+   "retrieved_at": "2026-09-15T04:48:20.039161+00:00",
+   "warnings": [
+    "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+    "22 assays are registered.",
+    "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+   ]
+  },
+  {
+   "target_id": "3a143076-9bb5-5906-9403-2e06ce1c285d",
+   "target_key": "EGFR",
+   "target_name": "Epidermal growth factor receptor",
+   "gene_symbol": "EGFR",
+   "uniprot_accession": "P00533",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "bindingdb",
+   "status": "complete",
+   "query": {
+    "uniprot": "P00533"
+   },
+   "records_seen": 974,
+   "records_kept": 974,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 946,
+   "small_molecule_candidates": 932,
+   "dataset_version": "bindingdb:2026-09-15",
+   "source_version": "bindingdb-rest",
+   "latency_ms": 13985,
+   "retrieved_at": "2026-09-15T04:48:59.708942+00:00",
+   "warnings": [
+    "bindingdb:199967:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200477:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200528:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200780:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200805:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:373706:Kd: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200537:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200547:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200630:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200757:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536913:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:676912:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50123190:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50160870:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:228114:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:4369:IC50: source CXSMILES annotation removed before parsing: '|w:4.3|'",
+    "bindingdb:13903:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:28501:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:101229:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:139540:Kd: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:139988:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:170540:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:191616:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:192316:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200517:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:200810:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:264166:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:270594:EC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:270594:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:270604:EC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:291282:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:309837:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351289:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351315:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351331:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351356:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351366:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351382:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351407:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351417:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:351474:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:368430:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:373709:Kd: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:397283:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:397385:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:397391:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:505723:IC50: source CXSMILES annotation removed before parsing: '|t:17|'",
+    "bindingdb:505758:IC50: source CXSMILES annotation removed before parsing: '|t:17|'",
+    "bindingdb:515335:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536908:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536950:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536959:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536975:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:605440:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:612271:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:613974:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50030380:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50079103:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50133374:IC50: source CXSMILES annotation removed before parsing: '|w:4.3|'",
+    "bindingdb:50141099:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50141125:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50193167:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50251632:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50255829:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50255861:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50255947:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50258979:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50274958:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50292732:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50308607:IC50: source CXSMILES annotation removed before parsing: '|w:6.6|'",
+    "bindingdb:50333381:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50339608:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50386696:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50427227:IC50: source CXSMILES annotation removed before parsing: '|t:9|'",
+    "bindingdb:50427243:IC50: source CXSMILES annotation removed before parsing: '|c:4|'",
+    "bindingdb:50432694:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50443990:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50443999:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50494221:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50521274:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50530616:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50593222:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50598673:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50600226:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50608111:IC50: source CXSMILES annotation removed before parsing: '|c:17|'",
+    "bindingdb:50613848:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50613858:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50614185:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:50620941:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:373725:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:495012:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:494966:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:494972:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:547940:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:547949:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:547975:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:371593:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536902:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536937:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536963:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "bindingdb:536913:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "BindingDB returns 974 hit(s) for P00533; the service does not report assay-level context, so species and construct are unavailable from this path."
+   ]
+  },
+  {
+   "target_id": "3a143076-9bb5-5906-9403-2e06ce1c285d",
+   "target_key": "EGFR",
+   "target_name": "Epidermal growth factor receptor",
+   "gene_symbol": "EGFR",
+   "uniprot_accession": "P00533",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "chembl",
+   "status": "partial",
+   "query": {
+    "accession": "P00533",
+    "target_chembl_ids": [
+     "CHEMBL203",
+     "CHEMBL2111431",
+     "CHEMBL2363049"
+    ],
+    "target_chembl_candidates": [
+     "CHEMBL203",
+     "CHEMBL2111431",
+     "CHEMBL2363049",
+     "CHEMBL3137284",
+     "CHEMBL4523680",
+     "CHEMBL4523747",
+     "CHEMBL4523998",
+     "CHEMBL4802031",
+     "CHEMBL5465557",
+     "CHEMBL6066839",
+     "CHEMBL6066845",
+     "CHEMBL6193792",
+     "CHEMBL6193830",
+     "CHEMBL6193837",
+     "CHEMBL6193841",
+     "CHEMBL6195769"
+    ]
+   },
+   "records_seen": 2598,
+   "records_kept": 2397,
+   "records_excluded": 200,
+   "rejection_counts": {
+    "missing_standard_value": 200
+   },
+   "candidates": 1639,
+   "small_molecule_candidates": 1635,
+   "dataset_version": "chembl:2026-09-15",
+   "source_version": "chembl-web-services",
+   "latency_ms": 18619,
+   "retrieved_at": "2026-09-15T04:48:45.723872+00:00",
+   "warnings": [
+    "Activity retrieval stopped at the configured bound of 2000 records for CHEMBL203; the target has more.",
+    "CHEMBL2111431 (Epidermal growth factor receptor and ErbB2 (HER1 and HER2)) describes an interaction/complex involving P00533; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+    "CHEMBL2363049 (Epidermal growth factor receptor) describes an interaction/complex involving P00533; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+    "Retrieved from CHEMBL203 (single_protein), CHEMBL2111431 (protein_complex), CHEMBL2363049 (protein_complex): single-protein and interaction measurements are kept distinct."
+   ]
+  },
+  {
+   "target_id": "3a143076-9bb5-5906-9403-2e06ce1c285d",
+   "target_key": "EGFR",
+   "target_name": "Epidermal growth factor receptor",
+   "gene_symbol": "EGFR",
+   "uniprot_accession": "P00533",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "pubchem",
+   "status": "partial",
+   "query": {
+    "assay_ids": [
+     1433,
+     1622,
+     1726,
+     1727,
+     1729,
+     1731,
+     1742,
+     1904,
+     1982,
+     3364,
+     3365,
+     7884,
+     7888,
+     7890,
+     7899,
+     7901,
+     7903,
+     7907,
+     8066,
+     8069,
+     8070,
+     8076,
+     8077,
+     8621,
+     32370
+    ],
+    "truncated": true,
+    "gene_symbol": "EGFR"
+   },
+   "records_seen": 4609,
+   "records_kept": 0,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 0,
+   "small_molecule_candidates": 0,
+   "dataset_version": null,
+   "source_version": "pubchem-pug-rest",
+   "latency_ms": 1107,
+   "retrieved_at": "2026-09-15T04:49:00.816847+00:00",
+   "warnings": [
+    "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+    "4609 assays are registered; the first 25 are listed under the configured request budget.",
+    "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+   ]
+  },
+  {
+   "target_id": "5ed5e9f2-c733-543f-96dd-f58ae5a1f618",
+   "target_key": "IL6",
+   "target_name": "Interleukin-6",
+   "gene_symbol": "IL6",
+   "uniprot_accession": "P05231",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "bindingdb",
+   "status": "complete",
+   "query": {
+    "uniprot": "P05231"
+   },
+   "records_seen": 9,
+   "records_kept": 9,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 9,
+   "small_molecule_candidates": 9,
+   "dataset_version": "bindingdb:2026-09-15",
+   "source_version": "bindingdb-rest",
+   "latency_ms": 211,
+   "retrieved_at": "2026-09-15T04:48:22.928706+00:00",
+   "warnings": [
+    "bindingdb:140015:IC50: source CXSMILES annotation removed before parsing: '|r|'",
+    "BindingDB returns 9 hit(s) for P05231; the service does not report assay-level context, so species and construct are unavailable from this path."
+   ]
+  },
+  {
+   "target_id": "5ed5e9f2-c733-543f-96dd-f58ae5a1f618",
+   "target_key": "IL6",
+   "target_name": "Interleukin-6",
+   "gene_symbol": "IL6",
+   "uniprot_accession": "P05231",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "chembl",
+   "status": "complete",
+   "query": {
+    "accession": "P05231",
+    "target_chembl_ids": [
+     "CHEMBL1795129"
+    ],
+    "target_chembl_candidates": [
+     "CHEMBL1795129"
+    ]
+   },
+   "records_seen": 412,
+   "records_kept": 166,
+   "records_excluded": 246,
+   "rejection_counts": {
+    "missing_standard_value": 246
+   },
+   "candidates": 144,
+   "small_molecule_candidates": 144,
+   "dataset_version": "chembl:2026-09-15",
+   "source_version": "chembl-web-services",
+   "latency_ms": 2302,
+   "retrieved_at": "2026-09-15T04:48:22.716915+00:00",
+   "warnings": []
+  },
+  {
+   "target_id": "5ed5e9f2-c733-543f-96dd-f58ae5a1f618",
+   "target_key": "IL6",
+   "target_name": "Interleukin-6",
+   "gene_symbol": "IL6",
+   "uniprot_accession": "P05231",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "pubchem",
+   "status": "partial",
+   "query": {
+    "assay_ids": [
+     1904,
+     607979,
+     624099,
+     651810,
+     651811,
+     743121,
+     743454,
+     1053208,
+     1117281,
+     1117357,
+     1159506,
+     1159578,
+     1159584,
+     1159590,
+     1159591,
+     1159592,
+     1159593,
+     1159594,
+     1159595,
+     1159596,
+     1159597,
+     1159598,
+     1159599,
+     1159600,
+     1159601
+    ],
+    "truncated": true,
+    "gene_symbol": "IL6"
+   },
+   "records_seen": 48,
+   "records_kept": 0,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 0,
+   "small_molecule_candidates": 0,
+   "dataset_version": null,
+   "source_version": "pubchem-pug-rest",
+   "latency_ms": 973,
+   "retrieved_at": "2026-09-15T04:48:23.901751+00:00",
+   "warnings": [
+    "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+    "48 assays are registered; the first 25 are listed under the configured request budget.",
+    "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+   ]
+  },
+  {
+   "target_id": "53a2f029-9a04-5261-9f5a-f288062875d2",
+   "target_key": "IL6R",
+   "target_name": "Interleukin-6 receptor subunit alpha",
+   "gene_symbol": "IL6R",
+   "uniprot_accession": "P08887",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "bindingdb",
+   "status": "failed",
+   "query": {
+    "uniprot": "P08887"
+   },
+   "records_seen": 0,
+   "records_kept": 0,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 0,
+   "small_molecule_candidates": 0,
+   "dataset_version": "bindingdb:2026-09-15",
+   "source_version": "bindingdb-rest",
+   "latency_ms": 181,
+   "retrieved_at": "2026-09-15T04:48:25.612941+00:00",
+   "warnings": [
+    "bindingdb: empty response body (HTTP 200)",
+    "BindingDB did not answer for this accession. This is a source failure, not a statement that no measurements exist."
+   ]
+  },
+  {
+   "target_id": "53a2f029-9a04-5261-9f5a-f288062875d2",
+   "target_key": "IL6R",
+   "target_name": "Interleukin-6 receptor subunit alpha",
+   "gene_symbol": "IL6R",
+   "uniprot_accession": "P08887",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "chembl",
+   "status": "complete",
+   "query": {
+    "accession": "P08887",
+    "target_chembl_ids": [
+     "CHEMBL2364155",
+     "CHEMBL3137266"
+    ],
+    "target_chembl_candidates": [
+     "CHEMBL2364155",
+     "CHEMBL3137266"
+    ]
+   },
+   "records_seen": 5,
+   "records_kept": 1,
+   "records_excluded": 4,
+   "rejection_counts": {
+    "missing_standard_value": 4
+   },
+   "candidates": 1,
+   "small_molecule_candidates": 1,
+   "dataset_version": "chembl:2026-09-15",
+   "source_version": "chembl-web-services",
+   "latency_ms": 831,
+   "retrieved_at": "2026-09-15T04:48:25.432645+00:00",
+   "warnings": [
+    "CHEMBL3137266 (IL6Ralpha/GP130) describes an interaction/complex involving P08887; its measurements are labelled as interaction evidence, not as a binding site on this protein.",
+    "Retrieved from CHEMBL2364155 (single_protein), CHEMBL3137266 (protein_protein_interaction): single-protein and interaction measurements are kept distinct."
+   ]
+  },
+  {
+   "target_id": "53a2f029-9a04-5261-9f5a-f288062875d2",
+   "target_key": "IL6R",
+   "target_name": "Interleukin-6 receptor subunit alpha",
+   "gene_symbol": "IL6R",
+   "uniprot_accession": "P08887",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "pubchem",
+   "status": "complete",
+   "query": {
+    "assay_ids": [
+     1904,
+     624099,
+     651810,
+     651811,
+     743121,
+     743454,
+     1075150,
+     1117281,
+     1117357,
+     1159506,
+     1159578,
+     1159584,
+     1224830,
+     1345485,
+     1508588,
+     2041640,
+     2283510
+    ],
+    "truncated": false,
+    "gene_symbol": "IL6R"
+   },
+   "records_seen": 17,
+   "records_kept": 0,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 0,
+   "small_molecule_candidates": 0,
+   "dataset_version": null,
+   "source_version": "pubchem-pug-rest",
+   "latency_ms": 1039,
+   "retrieved_at": "2026-09-15T04:48:26.652339+00:00",
+   "warnings": [
+    "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+    "17 assays are registered.",
+    "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+   ]
+  },
+  {
+   "target_id": "0cd78fd9-082b-5afb-b554-80835ecc3b35",
+   "target_key": "TSLP",
+   "target_name": "Thymic stromal lymphopoietin",
+   "gene_symbol": "TSLP",
+   "uniprot_accession": "Q969D9",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "bindingdb",
+   "status": "complete",
+   "query": {
+    "uniprot": "Q969D9"
+   },
+   "records_seen": 3,
+   "records_kept": 3,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 3,
+   "small_molecule_candidates": 0,
+   "dataset_version": "bindingdb:2026-09-15",
+   "source_version": "bindingdb-rest",
+   "latency_ms": 754,
+   "retrieved_at": "2026-09-15T04:48:16.370846+00:00",
+   "warnings": [
+    "BindingDB returns 3 hit(s) for Q969D9; the service does not report assay-level context, so species and construct are unavailable from this path."
+   ]
+  },
+  {
+   "target_id": "0cd78fd9-082b-5afb-b554-80835ecc3b35",
+   "target_key": "TSLP",
+   "target_name": "Thymic stromal lymphopoietin",
+   "gene_symbol": "TSLP",
+   "uniprot_accession": "Q969D9",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "chembl",
+   "status": "complete",
+   "query": {
+    "accession": "Q969D9",
+    "target_chembl_ids": [
+     "CHEMBL3712931"
+    ],
+    "target_chembl_candidates": [
+     "CHEMBL3712931"
+    ]
+   },
+   "records_seen": 114,
+   "records_kept": 111,
+   "records_excluded": 3,
+   "rejection_counts": {
+    "missing_standard_value": 3
+   },
+   "candidates": 69,
+   "small_molecule_candidates": 1,
+   "dataset_version": "chembl:2026-09-15",
+   "source_version": "chembl-web-services",
+   "latency_ms": 2315,
+   "retrieved_at": "2026-09-15T04:48:15.616256+00:00",
+   "warnings": []
+  },
+  {
+   "target_id": "0cd78fd9-082b-5afb-b554-80835ecc3b35",
+   "target_key": "TSLP",
+   "target_name": "Thymic stromal lymphopoietin",
+   "gene_symbol": "TSLP",
+   "uniprot_accession": "Q969D9",
+   "target_type": "single_protein",
+   "organism": "Homo sapiens",
+   "source_name": "pubchem",
+   "status": "complete",
+   "query": {
+    "assay_ids": [
+     1904,
+     624099,
+     651810,
+     651811,
+     743121,
+     743454,
+     1053208,
+     1117281,
+     1117357,
+     1159506,
+     1159578,
+     1159584,
+     1224826,
+     1224828,
+     1224830,
+     1464427,
+     1464428,
+     1464429,
+     1508588,
+     1979359
+    ],
+    "truncated": false,
+    "gene_symbol": "TSLP"
+   },
+   "records_seen": 20,
+   "records_kept": 0,
+   "records_excluded": 0,
+   "rejection_counts": {},
+   "candidates": 0,
+   "small_molecule_candidates": 0,
+   "dataset_version": null,
+   "source_version": "pubchem-pug-rest",
+   "latency_ms": 1190,
+   "retrieved_at": "2026-09-15T04:48:17.561427+00:00",
+   "warnings": [
+    "BioAssay records are screening data; they do not establish direct binding and are labelled accordingly.",
+    "20 assays are registered.",
+    "PubChem BioAssay identifiers are screening context only; no screening outcome is presented as a measurement for this target."
+   ]
+  }
+ ]
+}

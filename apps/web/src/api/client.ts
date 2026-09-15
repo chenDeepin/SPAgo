@@ -30,13 +30,24 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** Double-submit CSRF value for hosted mode. The cookie is readable by design;
+ * the session cookie is not. In local mode there is no cookie and no header. */
+function csrfHeaders(): Record<string, string> {
+  const match = document.cookie.match(/(?:^|;\s*)spago_csrf=([^;]+)/);
+  return match ? { "X-Spago-CSRF": decodeURIComponent(match[1]) } : {};
+}
+
 async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
       method: "POST",
       signal,
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...csrfHeaders(),
+      },
       body: JSON.stringify(body),
     });
   } catch (err) {
@@ -61,7 +72,7 @@ async function downloadFile(path: string, body: unknown, filename: string): Prom
   try {
     res = await fetch(path, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...csrfHeaders() },
       body: JSON.stringify(body),
     });
   } catch {
@@ -89,6 +100,13 @@ async function downloadFile(path: string, body: unknown, filename: string): Prom
 }
 
 export const api = {
+  // --- ONLINE-03: hosted access ---
+  authStatus: (signal?: AbortSignal) =>
+    getJson<import("./types").AuthStatus>("/api/v1/auth/status", signal),
+  redeemInvitation: (token: string, signal?: AbortSignal) =>
+    postJson<import("./types").SessionInfo>("/api/v1/auth/invitations/redeem", { token }, signal),
+  logout: (signal?: AbortSignal) => postJson<{ signed_out: boolean }>("/api/v1/auth/logout", {}, signal),
+  usage: (signal?: AbortSignal) => getJson<import("./types").UsageReport>("/api/v1/usage", signal),
   health: (signal?: AbortSignal) => getJson<import("./types").HealthResponse>("/healthz", signal),
   datasetInfo: (signal?: AbortSignal) =>
     getJson<import("./types").DatasetInfoResponse>("/api/v1/datasets/info", signal),
@@ -140,7 +158,9 @@ export const api = {
       signal,
     ),
   exportFile: async (body: {
-    family_id: string;
+    family_id?: string | null;
+    target_id?: string | null;
+    include_all_modalities?: boolean;
     document_id?: string | null;
     compound_ids?: string[] | null;
     structure_query?: {
@@ -164,6 +184,35 @@ export const api = {
       { mode },
       signal,
     ),
+  documentSummary: (documentId: string, mode: "offline" | "llm", signal?: AbortSignal) =>
+    postJson<import("./types").FamilySummaryResponse>(
+      `/api/v1/documents/${documentId}/summary`,
+      { mode },
+      signal,
+    ),
+  targetSummary: (
+    targetId: string,
+    mode: "offline" | "llm",
+    includeAllModalities = false,
+    signal?: AbortSignal,
+  ) =>
+    postJson<import("./types").FamilySummaryResponse>(
+      `/api/v1/targets/${targetId}/summary`,
+      { mode, include_all_modalities: includeAllModalities },
+      signal,
+    ),
+  plan: (
+    body: {
+      query: string;
+      family_id?: string | null;
+      document_id?: string | null;
+      selected_compound_id?: string | null;
+      use_llm?: boolean;
+    },
+    signal?: AbortSignal,
+  ) => postJson<import("./types").SearchPlanResponse>("/api/v1/ai/plan", body, signal),
+  executePlan: (plan: Record<string, unknown>, signal?: AbortSignal) =>
+    postJson<import("./types").PlanExecuteResponse>("/api/v1/ai/plan/execute", { plan }, signal),
   aiStatus: (signal?: AbortSignal) =>
     getJson<import("./types").AiStatusResponse>("/api/v1/ai/status", signal),
   // --- M2 ---
@@ -175,6 +224,68 @@ export const api = {
     postJson<import("./types").StructureSearchResponse>(
       `/api/v1/families/${familyId}/structure-search`,
       params,
+      signal,
+    ),
+  // --- ONLINE-00: target-led investigation ---
+  resolveTarget: (
+    body: { query: string; species?: string; include_related?: boolean },
+    signal?: AbortSignal,
+  ) => postJson<import("./types").TargetResolution>("/api/v1/targets/resolve", body, signal),
+  target: (targetId: string, signal?: AbortSignal) =>
+    getJson<import("./types").ResolvedTarget>(`/api/v1/targets/${targetId}`, signal),
+  discoverTarget: (
+    body: { target_id: string; sources?: string[] },
+    signal?: AbortSignal,
+  ) => postJson<import("./types").DiscoverResponse>("/api/v1/targets/discover", body, signal),
+  targetCoverage: (targetId: string, signal?: AbortSignal) =>
+    getJson<import("./types").SourceRetrieval[]>(
+      `/api/v1/targets/${targetId}/coverage`,
+      signal,
+    ),
+  targetCandidates: (
+    targetId: string,
+    params: {
+      offset?: number;
+      limit?: number;
+      modality?: string | null;
+      evidence_class?: string | null;
+      include_all_modalities?: boolean;
+    },
+    signal?: AbortSignal,
+  ) => {
+    const search = new URLSearchParams();
+    search.set("limit", String(params.limit ?? 100));
+    search.set("offset", String(params.offset ?? 0));
+    if (params.modality) search.set("modality", params.modality);
+    if (params.evidence_class) search.set("evidence_class", params.evidence_class);
+    if (params.include_all_modalities) search.set("include_all_modalities", "true");
+    return getJson<import("./types").CandidatePage>(
+      `/api/v1/targets/${targetId}/candidates?${search.toString()}`,
+      signal,
+    );
+  },
+  targetMeasurements: (
+    targetId: string,
+    params: { compound_id?: string | null; evidence_class?: string | null; limit?: number },
+    signal?: AbortSignal,
+  ) => {
+    const search = new URLSearchParams();
+    search.set("limit", String(params.limit ?? 200));
+    if (params.compound_id) search.set("compound_id", params.compound_id);
+    if (params.evidence_class) search.set("evidence_class", params.evidence_class);
+    return getJson<import("./types").TargetMeasurement[]>(
+      `/api/v1/targets/${targetId}/measurements?${search.toString()}`,
+      signal,
+    );
+  },
+  saveCandidates: (
+    projectId: string,
+    body: { target_id: string; compound_ids: string[] },
+    signal?: AbortSignal,
+  ) =>
+    postJson<{ created_rows: number; already_present_rows: number; target_key: string }>(
+      `/api/v1/projects/${projectId}/candidates`,
+      body,
       signal,
     ),
 };

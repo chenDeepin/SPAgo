@@ -13,7 +13,10 @@ Then configure:
 Fault injection for error-state checks (set the model name accordingly):
     mock-error → HTTP 500; mock-timeout → stalls past the deadline;
     mock-rate-limit → HTTP 429 with Retry-After: 7;
-    mock-rate-limit-bad-header → HTTP 429 with an unusable Retry-After.
+    mock-rate-limit-bad-header → HTTP 429 with an unusable Retry-After;
+    mock-reject-once → the first request answers with a rejected citation
+    (unknown fact_ref), later requests answer normally, so the service's one
+    bounded content re-sample can be observed end to end.
 This is test tooling, clearly not a real model: do not present its output as
 scientific evidence.
 """
@@ -64,6 +67,18 @@ def build_summary_content(user_prompt: str) -> str:
 
 
 class Handler(BaseHTTPRequestHandler):
+    #: Fault-injection budget for `mock-reject-once`: the first request is
+    #: refused by SPAgo's validation, the automatic re-sample then succeeds.
+    rejections_left = 1
+
+    def _send_json(self, status: int, payload: dict) -> None:
+        encoded = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
     def do_POST(self):  # noqa: N802
         if not self.path.endswith("/chat/completions"):
             self.send_response(404)
@@ -78,8 +93,34 @@ class Handler(BaseHTTPRequestHandler):
         # Optional fault injection for error-state verification:
         # model name "mock-error" → 500; "mock-timeout" → sleeps past deadlines;
         # "mock-rate-limit" → 429 with a Retry-After header (LLM-07);
-        # "mock-rate-limit-bad-header" → 429 with an unusable Retry-After.
+        # "mock-rate-limit-bad-header" → 429 with an unusable Retry-After;
+        # "mock-reject-once" → the first request is refused by SPAgo's citation
+        # validation, later requests answer normally (one re-sample is allowed).
         model = body.get("model", "mock-model")
+        if model == "mock-reject-once" and Handler.rejections_left > 0:
+            Handler.rejections_left -= 1
+            rejected = {
+                "paragraphs": [
+                    {"text": "Rejected on purpose.", "fact_refs": ["family:not-a-real-ref"]}
+                ],
+                "limitations": [],
+            }
+            self._send_json(
+                200,
+                {
+                    "id": "mock-rejection",
+                    "model": model,
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {"role": "assistant", "content": json.dumps(rejected)},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                },
+            )
+            return
         if model == "mock-error":
             self.send_response(500)
             self.end_headers()
@@ -117,13 +158,7 @@ class Handler(BaseHTTPRequestHandler):
                 "total_tokens": n_prompt + len(content) // 4,
             },
         }
-        encoded = json.dumps(response).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
-
+        self._send_json(200, response)
     def log_message(self, fmt, *args):  # keep test output readable
         print("[mock-llm]", fmt % args)
 

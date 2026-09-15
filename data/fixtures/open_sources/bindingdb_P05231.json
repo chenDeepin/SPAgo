@@ -1,0 +1,21 @@
+{
+ "getLindsByUniprotResponse": {
+  "bdb.affinities": [
+   {
+    "bdb.affinity": " 1.1",
+    "bdb.affinity_type": "IC50",
+    "bdb.monomerid": 140015,
+    "bdb.smile": "Cc1ncccc1NC(=O)c1ccc2c(c1)C(=O)C[C@@H]1C[C@](O)(CC[C@@]21Cc1ccccc1)C(F)(F)F |r|"
+   },
+   {
+    "bdb.affinity": " 83.0",
+    "bdb.affinity_type": "IC50",
+    "bdb.monomerid": 331842,
+    "bdb.smile": "COc1cc(OCC(O)CC(=O)OC(C)(C)C)ccc1-c1ccc2NC(C)(C)C(=O)N(C)c2c1COc1cc(F)ccc1C"
+   }
+  ],
+  "bdb.hit": "9",
+  "bdb.length": "NA",
+  "bdb.primary": "P05231"
+ }
+}

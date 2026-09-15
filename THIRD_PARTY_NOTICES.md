@@ -17,6 +17,12 @@ software licenses.
 
 ## 1. Direct Python runtime dependencies
 
+The ONLINE-00–05 work (target-led open-database investigation, scoped summaries,
+validated plans, hosted sessions, usage accounting) added **no new dependency**:
+it uses the libraries already listed below, PostgreSQL, and the standard library.
+`THIRD_PARTY_NOTICES.md` was still updated in the same change, because that work
+added new *data sources and API adapters* (§6).
+
 Declared in `services/core/pyproject.toml`.
 
 | Component | Typical license | Role in SPAgo |
@@ -135,17 +141,27 @@ SPAgo adapters may call or read the following. Their **terms, rate
 limits, attribution, and redistribution rules** are controlled by each
 provider. Using SPAgo software does not grant rights to those datasets.
 
-| Source | Relationship to SPAgo |
-| --- | --- |
-| SureChEMBL | **Bundled adapter** (`spago_core/adapters/surechembl_bulk.py`): reads user-extracted packages of the official bulk Parquet release (EMBL-EBI FTP, https://ftp.ebi.ac.uk/pub/databases/chembl/SureChEMBL/bulk_data/). Bulk data and its LICENCE are CC BY 4.0 — attribution must be preserved for redistributed extracts; extraction tool: `scripts/extract_surechembl.py`. |
-| EPO OPS | Bibliographic / family / text enrichment API |
-| ChEMBL | Bioactivity enrichment (adapter contract) |
-| BindingDB | User-provided TSV enrichment (adapter contract) |
-| PubChem | Possible structure/enrichment reference |
-| LLM providers | Optional Chat Completions endpoints via user config |
+| Source | Relationship to SPAgo | Adapter (if bundled) |
+| --- | --- | --- |
+| SureChEMBL | Reads user-extracted packages of the official bulk Parquet release (EMBL-EBI FTP, https://ftp.ebi.ac.uk/pub/databases/chembl/SureChEMBL/bulk_data/). Bulk data and its LICENCE are CC BY 4.0 — attribution must be preserved for redistributed extracts; extraction tool: `scripts/extract_surechembl.py`. | `adapters/surechembl_bulk.py`, `adapters/surechembl_fixture.py` |
+| UniProt | Target identity resolution (accessions, gene names, species, components) through the UniProt REST API, https://rest.uniprot.org/uniprotkb. UniProt is distributed under CC BY 4.0 (https://www.uniprot.org/help/license); no target metadata is used to support a potency or inhibitor claim. | `adapters/uniprot.py` |
+| ChEMBL | Primary open target→molecule→assay→activity source, through the official web services (https://www.ebi.ac.uk/chembl/api/data). Data © EMBL-EBI under CC BY-SA 3.0 (https://chembl.gitbook.io/chembl-interface-documentation/about); records are stored with source ids and retrieval timestamps, and derived exports keep attribution. | `adapters/chembl_activity.py` (M3 mapped path), `adapters/chembl_discovery.py` (ONLINE-00 discovery) |
+| BindingDB | Complementary protein–ligand affinities. The REST path (`https://bindingdb.org/rest/getLigandsByUniprot`) is used for bounded target retrieval; a locally supplied TSV import remains supported. BindingDB data is distributed under CC BY-SA 3.0 / CC BY 4.0 terms stated at https://www.bindingdb.org/rwd/bind/index.jsp — review before redistribution. | `adapters/bindingdb_rest.py`, `adapters/bindingdb_activity.py` |
+| PubChem | Compound identity confirmation and bounded BioAssay context through PUG REST (https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest). NCBI asks that usage stay within published request-rate guidance; BioAssay records are labelled as screening context, never as measurements. | `adapters/pubchem.py` |
+| EPO OPS | Bibliographic / family / text enrichment API (planned; requires operator credentials) | — |
+| LLM providers | Optional Chat Completions endpoints configured by the operator. Prompt input is bounded, stored facts only; responses are labelled `llm_inferred`. Operator keys are never returned or accepted from a client. | `adapters/llm.py` |
 
-Always review the current official Terms of Use before production use or
-redistribution of retrieved content.
+Rules for every source above:
+
+- Requests are bounded (timeout, page/record limits, rate limiting), and cached
+  in-process with a short TTL. There is no crawling and no access-control evasion.
+- A retrieval is recorded with its query, counts, outcome, source version and
+  timestamp in `source_retrievals`; `failed`, `empty` and `not_queried` stay
+  distinct, and a failure is never presented as an empty result.
+- **Software licenses do not grant dataset redistribution rights.** Review the
+  current official Terms of Use before production use, and before redistributing
+  any retrieved content. SPAgo does not mirror these datasets into its database
+  beyond the bounded records an investigation itself retrieves.
 
 ---
 
@@ -154,6 +170,9 @@ redistribution of retrieved content.
 | Component | Status |
 | --- | --- |
 | Ketcher (structure editor) | Deferred; re-check license before adding |
+| OIDC / SSO auth provider | Not adopted. Authentication is implemented in-house over PostgreSQL sessions (ADR-0002); adding an external identity provider is a decision for the operator, and no auth library is bundled today. |
+| Passkey/WebAuthn library | Not adopted for the same reason. |
+| Any new queue, vector store, search engine or cache | Not adopted; ADR/measurement required first (AGENTS.md §6). |
 
 ---
 

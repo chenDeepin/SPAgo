@@ -1,24 +1,55 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api/client";
-import type { CompoundRow, ProjectDetail } from "./api/types";
+import type {
+  Candidate,
+  CompoundRow,
+  PlanStep,
+  ProjectDetail,
+  SearchPlanResponse,
+} from "./api/types";
 import { CompoundTable } from "./components/CompoundTable";
+import { CandidateTable } from "./components/CandidateTable";
 import { EvidencePanel } from "./components/EvidencePanel";
 import { ExportMenu } from "./components/ExportMenu";
 import { FamilySidebar } from "./components/FamilySidebar";
+import { PlanCard } from "./components/PlanCard";
+import { SignInGate } from "./components/SignInGate";
 import { ProjectsDialog } from "./components/ProjectsDialog";
+import { ResolutionState } from "./components/ResolutionState";
+import { SaveCandidatesDialog } from "./components/SaveCandidatesDialog";
 import { SaveToProjectDialog } from "./components/SaveToProjectDialog";
 import { StructureDrawer } from "./components/StructureDrawer";
+import { TargetEvidencePanel } from "./components/TargetEvidencePanel";
+import { TargetHeader, coverageChipId } from "./components/TargetHeader";
 import type { StructureSearchSummary } from "./components/StructureSearchDialog";
 const StructureSearchDialog = lazy(() => import("./components/StructureSearchDialog").then((m) => ({ default: m.StructureSearchDialog })));
 import { SearchBar } from "./components/SearchBar";
 import { TopBar } from "./components/TopBar";
 import { EmptyState, NoStructuresNote, SkeletonRows, StateBanner } from "./components/states";
-import { readUrlState, subscribeUrlState, writeUrlState, type UrlState } from "./state/url";
+import {
+  looksLikePublicationNumber,
+  readUrlState,
+  subscribeUrlState,
+  writeUrlState,
+  type UrlState,
+} from "./state/url";
+
+/** The query text a target investigation should display after a plan runs. */
+function planQueryFor(query: string, data: Record<string, unknown>): string {
+  const key = data.target_key;
+  return typeof key === "string" && key ? key : query;
+}
 
 /** Server page size for the plain compound table. Pages are appended by real
  * offset pagination (the API caps a single response at 500 rows). */
 const PLAIN_PAGE_SIZE = 100;
+
+/** Identifier of the synthetic sample family served by the demo dataset. It is
+ * deliberately not publication-number shaped, so the search box classifies it as
+ * free text; the landing and 404 hints open it through an explicit control
+ * instead (ONLINE-01 browser finding). */
+const DEMO_SAMPLE_ID = "DEMO-PATENT-A";
 
 /** A paging failure belongs to the request it came from: a stale error must
  * never surface on a newer query/family/document. */
@@ -30,7 +61,11 @@ interface PagingError {
 export function App() {
   const queryClient = useQueryClient();
   const [urlState, setUrlState] = useState<UrlState>(() => readUrlState());
-  const [submittedQuery, setSubmittedQuery] = useState<string | null>(urlState.q);
+  // A restored URL is classified by the same deterministic rule used on submit,
+  // so reloading a target investigation does not replay it as a patent lookup.
+  const [submittedQuery, setSubmittedQuery] = useState<string | null>(
+    urlState.q && looksLikePublicationNumber(urlState.q) ? urlState.q : null,
+  );
   const [lastGoodQuery, setLastGoodQuery] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -59,6 +94,26 @@ export function App() {
   const [structurePagingError, setStructurePagingError] = useState<PagingError | null>(null);
   const structurePagingAbort = useRef<AbortController | null>(null);
 
+  // --- ONLINE-00: target investigation ---------------------------------------
+  // A submitted query is either a publication number or a target query; the
+  // server resolves the latter, and this state holds the *requested* string so
+  // the input survives a reload. The resolved target id lives in the URL.
+  const [targetQuery, setTargetQuery] = useState<string | null>(
+    urlState.q && !looksLikePublicationNumber(urlState.q) ? urlState.q : null,
+  );
+  // A non-identifier request is interpreted into a reviewable plan before
+  // anything runs; the plan card owns the explicit Run action (ONLINE-02).
+  const [pendingPlan, setPendingPlan] = useState<SearchPlanResponse | null>(null);
+  const [planEdits, setPlanEdits] = useState<Record<string, string>>({});
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [planWorking, setPlanWorking] = useState(false);
+  const [allModalities, setAllModalities] = useState(false);
+  const [evidenceClassFilter, setEvidenceClassFilter] = useState<string | null>(null);
+  const [saveCandidatesOpen, setSaveCandidatesOpen] = useState(false);
+  // Per-source citation focus: the header chip is flashed briefly, because the
+  // coverage strip is a status list, not a selectable view.
+  const [focusedSource, setFocusedSource] = useState<string | null>(null);
+
   const updateUrl = useCallback((next: UrlState, mode: "push" | "replace" = "replace") => {
     setUrlState(next);
     writeUrlState(next, mode);
@@ -80,6 +135,161 @@ export function App() {
 
   const familyId = patentQuery.data?.family.id ?? null;
 
+  // --- target investigation queries (ONLINE-00) -----------------------------
+  // A target query is resolved server-side; the target id then lives in the URL
+  // so the view is reproducible and Back/Forward work.
+  const targetResolveQuery = useQuery({
+    queryKey: ["target-resolve", targetQuery],
+    queryFn: ({ signal }) => api.resolveTarget({ query: targetQuery as string }, signal),
+    enabled: targetQuery !== null,
+    retry: false,
+  });
+
+  const resolvedTargetId = urlState.t;
+
+  useEffect(() => {
+    if (!targetQuery) return;
+    const id = targetResolveQuery.data?.target_id ?? null;
+    if (id && id !== urlState.t) {
+      updateUrl({ ...urlState, t: id, doc: null, c: null });
+    }
+  }, [targetQuery, targetResolveQuery.data, urlState, updateUrl]);
+
+  const targetDetailQuery = useQuery({
+    queryKey: ["target", resolvedTargetId],
+    queryFn: ({ signal }) => api.target(resolvedTargetId as string, signal),
+    enabled: resolvedTargetId !== null,
+  });
+
+  const coverageQuery = useQuery({
+    queryKey: ["target-coverage", resolvedTargetId],
+    queryFn: ({ signal }) => api.targetCoverage(resolvedTargetId as string, signal),
+    enabled: resolvedTargetId !== null,
+  });
+
+  const candidatesQuery = useInfiniteQuery({
+    queryKey: ["candidates", resolvedTargetId, allModalities, evidenceClassFilter],
+    queryFn: ({ pageParam, signal }) =>
+      api.targetCandidates(
+        resolvedTargetId as string,
+        {
+          limit: PLAIN_PAGE_SIZE,
+          offset: pageParam as number,
+          include_all_modalities: allModalities,
+          evidence_class: evidenceClassFilter,
+        },
+        signal,
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.offset + lastPage.items.length < lastPage.total
+        ? lastPage.offset + lastPage.items.length
+        : undefined,
+    enabled: resolvedTargetId !== null,
+  });
+
+  const candidateItems: Candidate[] = useMemo(
+    () => candidatesQuery.data?.pages.flatMap((p) => p.items) ?? [],
+    [candidatesQuery.data],
+  );
+  const candidatePages = candidatesQuery.data?.pages;
+  const candidateTotal = candidatePages?.length
+    ? (candidatePages[candidatePages.length - 1]?.total ?? 0)
+    : 0;
+  const modalityBreakdown = candidatePages?.[0]?.modality_breakdown ?? {};
+
+  const selectedCandidate = useMemo(
+    () => candidateItems.find((c) => c.compound_id === urlState.c) ?? null,
+    [candidateItems, urlState.c],
+  );
+
+  const measurementsQuery = useQuery({
+    queryKey: ["candidate-measurements", resolvedTargetId, urlState.c],
+    queryFn: ({ signal }) =>
+      api.targetMeasurements(
+        resolvedTargetId as string,
+        { compound_id: urlState.c, limit: 200 },
+        signal,
+      ),
+    enabled: resolvedTargetId !== null && urlState.c !== null,
+  });
+
+  const planMutation = useMutation({
+    mutationFn: (body: { query: string; use_llm?: boolean }) =>
+      api.plan({
+        query: body.query,
+        family_id: patentQuery.data?.family.id ?? null,
+        document_id: urlState.doc,
+        selected_compound_id: urlState.c,
+        use_llm: body.use_llm ?? false,
+      }),
+    onSuccess: (plan) => {
+      setPendingPlan(plan);
+      setPlanEdits({});
+      setPlanError(null);
+    },
+    onError: (err) => setPlanError((err as Error).message),
+  });
+
+  const runPlanMutation = useMutation({
+    mutationFn: async (plan: SearchPlanResponse) => {
+      const steps = plan.steps.map((step: PlanStep, index: number) => {
+        const parameters: Record<string, unknown> = { ...step.parameters };
+        for (const name of Object.keys(parameters)) {
+          const edited = planEdits[`${index}:${name}`];
+          if (edited === undefined) continue;
+          parameters[name] =
+            name === "threshold" || name === "limit" ? Number(edited) : edited.trim();
+        }
+        return { op: step.op, ...parameters };
+      });
+      return api.executePlan({
+        query: plan.query,
+        producer: plan.producer,
+        steps,
+      });
+    },
+    onSuccess: (result) => {
+      setPendingPlan(null);
+      setPlanWorking(false);
+      const first = result.steps[0];
+      if (!first) return;
+      if (first.op === "target_discovery" && first.status === "ok") {
+        const targetId = String(first.data.target_id ?? "");
+        if (targetId) {
+          setTargetQuery(planQueryFor(result.query, first.data));
+          setAllModalities(false);
+          setEvidenceClassFilter(null);
+          updateUrl({ q: result.query, doc: null, c: null, t: targetId }, "push");
+        }
+        return;
+      }
+      if (first.op === "open_patent" && first.status === "ok") {
+        setSubmittedQuery(String(first.data.publication_number ?? result.query));
+        setTargetQuery(null);
+        updateUrl(
+          { q: String(first.data.publication_number ?? result.query), doc: null, c: null, t: null },
+          "replace",
+        );
+        return;
+      }
+      setPlanError(first.detail || "The plan produced no viewable result.");
+    },
+    onError: (err) => {
+      setPlanWorking(false);
+      setPlanError((err as Error).message);
+    },
+  });
+
+  const discoverMutation = useMutation({
+    mutationFn: () =>
+      api.discoverTarget({ target_id: resolvedTargetId as string, sources: ["chembl", "bindingdb", "pubchem"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["target-coverage", resolvedTargetId] });
+      queryClient.invalidateQueries({ queryKey: ["candidates", resolvedTargetId] });
+      queryClient.invalidateQueries({ queryKey: ["target", resolvedTargetId] });
+    },
+  });
   // Compounds for the family, optionally scoped to one document. Pages are
   // fetched by offset and appended, so row 501+ is reachable without ever
   // re-downloading a growing first page (UI-07).
@@ -155,19 +365,58 @@ export function App() {
 
   useEffect(() => () => projectNavigationAbort.current?.abort(), []);
 
+  /** Opens a record by identifier: the single owner of the "show this patent"
+   * step, shared by the search box, the candidate picker and the synthetic
+   * sample controls. The server stays authoritative about what exists, so a
+   * missing record still renders the normal 404 state. */
+  const openPatent = useCallback(
+    (value: string) => {
+      setTargetQuery(null);
+      if (resolvedTargetId) updateUrl({ q: value, doc: null, c: null, t: null }, "push");
+      if (value === submittedQuery) {
+        queryClient.invalidateQueries({ queryKey: ["patent", value] });
+        return;
+      }
+      setSubmittedQuery(value);
+      // A new query is a navigation step: browser Back returns to the previous search.
+      updateUrl({ q: value, doc: null, c: null, t: null }, "push");
+    },
+    [queryClient, resolvedTargetId, submittedQuery, updateUrl],
+  );
+
+  /** Opens the synthetic sample record from the landing or 404 hint. The hint
+   * exists because that identifier cannot be routed by the search box. */
+  const openDemoSample = useCallback(() => {
+    closeProject();
+    openPatent(DEMO_SAMPLE_ID);
+  }, [closeProject, openPatent]);
+
   const handleSearch = (value: string) => {
     closeProject();
-    if (value === submittedQuery) {
-      queryClient.invalidateQueries({ queryKey: ["patent", value] });
+    // Deterministic identifier shape decides which *server* lookup runs; the
+    // server remains authoritative about what exists. Free text is never
+    // interpreted here (AGENTS.md §12).
+    if (looksLikePublicationNumber(value)) {
+      openPatent(value);
       return;
     }
-    setSubmittedQuery(value);
-    // A new query is a navigation step: browser Back returns to the previous search.
-    updateUrl({ q: value, doc: null, c: null }, "push");
+    // Anything else is interpreted into a plan the user reviews and runs.
+    // (A literal publication number never reaches the model.)
+    queryClient.cancelQueries({ queryKey: ["patent", submittedQuery] });
+    setSubmittedQuery(null);
+    setTargetQuery(null);
+    setSelectedIds(new Set());
+    setPlanEdits({});
+    setPlanError(null);
+    planMutation.mutate({ query: value });
+    updateUrl({ q: value, doc: null, c: null, t: null }, "push");
   };
 
   const handleCancelSearch = () => {
     queryClient.cancelQueries({ queryKey: ["patent", submittedQuery] });
+    setPendingPlan(null);
+    setPlanError(null);
+    queryClient.cancelQueries({ queryKey: ["target-resolve", targetQuery] });
     // Restore the last successfully loaded patent, if any.
     setSubmittedQuery(lastGoodQuery);
   };
@@ -182,8 +431,18 @@ export function App() {
       subscribeUrlState((restored) => {
         closeProject();
         setUrlState(restored);
-        setSubmittedQuery(restored.q);
-        setLastGoodQuery(restored.q);
+        // A restored entry carrying a target id is a target investigation; the
+        // requested query is re-resolved only when the id is absent.
+        if (restored.t) {
+          setTargetQuery(restored.q);
+          setSubmittedQuery(null);
+          setLastGoodQuery(null);
+        } else {
+          setTargetQuery(null);
+          setSubmittedQuery(restored.q);
+          setLastGoodQuery(restored.q);
+        }
+        setSelectedIds(new Set());
       }),
     [closeProject],
   );
@@ -205,6 +464,21 @@ export function App() {
     updateUrl({ ...urlState, c: null });
     setTimeout(() => rowToFocus?.focus(), 0);
   }, [cancelProjectNavigation, updateUrl, urlState]);
+
+  // Focus the coverage chip a `source:<name>` citation refers to. The strip is
+  // scrolled to the chip and the chip is flashed, so the click has a visible
+  // destination instead of silently switching tabs (AGENTS.md §18).
+  const focusSourceChip = useCallback((sourceName: string) => {
+    setFocusedSource(sourceName);
+    const chip = document.getElementById(coverageChipId(sourceName));
+    chip?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  useEffect(() => {
+    if (focusedSource === null) return;
+    const timer = window.setTimeout(() => setFocusedSource(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [focusedSource]);
 
   const toggleSelection = useCallback((compoundId: string, checked: boolean) => {
     cancelProjectNavigation();
@@ -292,8 +566,10 @@ export function App() {
         setSearchOpen(false);
         setStructureOpenId(null);
         setSubmittedQuery(doc.publication_number);
-        updateUrl({ q: doc.publication_number, doc: null, c: null },
-          doc.publication_number === submittedQuery ? "replace" : "push");
+        updateUrl(
+          { q: doc.publication_number, doc: null, c: null, t: null },
+          doc.publication_number === submittedQuery ? "replace" : "push",
+        );
         setPendingProjectSelection({ familyId: savedFamilyId, publicationNumber: doc.publication_number, ids });
       } catch (err) {
         if (!controller.signal.aborted) {
@@ -317,15 +593,38 @@ export function App() {
     setSelectedIds(new Set());
     setOpenedProjectFamilyId(null);
     const first = project.items.find((it) => !it.record_missing) ?? project.items[0];
-    if (first) void openProjectFamily(project, first.family_id);
-    else {
+    if (!first) {
       structurePagingAbort.current?.abort();
       setSearchSummary(null);
       setStructurePaging(false);
       setStructurePagingError(null);
       setSubmittedQuery(null);
-      updateUrl({ q: null, doc: null, c: null });
+      setTargetQuery(null);
+      updateUrl({ q: null, doc: null, c: null, t: null });
+      return;
     }
+    if (first.family_id) {
+      void openProjectFamily(project, first.family_id);
+      return;
+    }
+    // A candidate item has no family: reopen it in the target investigation it
+    // was saved from, so a non-patent candidate is as reopenable as a patent
+    // compound (ONLINE-00 C).
+    if (first.target_id) {
+      structurePagingAbort.current?.abort();
+      setSearchSummary(null);
+      setStructurePaging(false);
+      setStructurePagingError(null);
+      setSubmittedQuery(null);
+      setTargetQuery(first.target_key ?? first.target_name ?? "");
+      setAllModalities(true);
+      setEvidenceClassFilter(null);
+      updateUrl({ q: first.target_key ?? null, doc: null, c: null, t: first.target_id }, "push");
+      return;
+    }
+    setProjectError(
+      "This saved item has neither a patent family nor a target scope, so it cannot be opened.",
+    );
   }, [cancelProjectNavigation, openProjectFamily, updateUrl]);
 
   useEffect(() => {
@@ -338,7 +637,10 @@ export function App() {
 
   const openedProjectFamilies = useMemo(() => {
     const families = new Map<string, string>();
-    for (const item of openedProject?.items ?? []) families.set(item.family_id, item.family_key);
+    for (const item of openedProject?.items ?? []) {
+      // Candidate items have no family and are reopened through their target.
+      if (item.family_id) families.set(item.family_id, item.family_key ?? item.family_id);
+    }
     return Array.from(families, ([id, label]) => ({ id, label }));
   }, [openedProject]);
 
@@ -442,26 +744,262 @@ export function App() {
         ? `family ${patentQuery.data.family.family_key}`
         : "the current scope";
 
+  const inTargetMode = resolvedTargetId !== null || targetQuery !== null;
+  const activeQuery = inTargetMode ? targetQuery : submittedQuery;
+
   return (
+    <SignInGate>
     <div className="app">
       <TopBar onOpenProjects={() => { cancelProjectNavigation(); setProjectsOpen(true); }} />
       <SearchBar
-        initialQuery={submittedQuery ?? ""}
-        submitted={submittedQuery}
-        isSearching={searching}
+        initialQuery={activeQuery ?? ""}
+        submitted={activeQuery}
+        isSearching={inTargetMode ? targetResolveQuery.isFetching : searching}
         error={
-          patentError && patentError.status === 404
-            ? patentError.message +
-              (datasetInfo?.synthetic
-                ? " Check the number, or try the demo patent."
-                : " It is not covered by the currently loaded source data.")
+          inTargetMode
+            ? ((targetResolveQuery.error as Error | null)?.message ?? null)
+            : patentError && patentError.status === 404
+              ? patentError.message +
+                (datasetInfo?.synthetic
+                  ? ". Check the number, or open the demo record."
+                  : ". It is not covered by the currently loaded source data.")
+              : null
+        }
+        errorAction={
+          !inTargetMode && patentError?.status === 404 && datasetInfo?.synthetic
+            ? { label: `Open ${DEMO_SAMPLE_ID}`, onClick: openDemoSample }
             : null
         }
         onSearch={handleSearch}
         onCancel={handleCancelSearch}
       />
 
-      {(submittedQuery !== null || openedProject !== null) && (
+      {pendingPlan && (
+        <div className="workspace">
+          <main className="table-area">
+            <PlanCard
+              plan={pendingPlan}
+              working={runPlanMutation.isPending || planWorking}
+              error={planError}
+              edits={planEdits}
+              onEdit={(index, name, value) =>
+                setPlanEdits((prev) => ({ ...prev, [`${index}:${name}`]: value }))
+              }
+              onRun={() => {
+                setPlanError(null);
+                setPlanWorking(true);
+                runPlanMutation.mutate(pendingPlan);
+              }}
+              onDiscard={() => {
+                setPendingPlan(null);
+                setPlanError(null);
+                updateUrl({ ...urlState, q: null }, "replace");
+              }}
+            />
+          </main>
+        </div>
+      )}
+
+      {planMutation.isPending && (
+        <div className="workspace">
+          <main className="table-area">
+            <div className="state-banner" role="status">
+              <span>Interpreting the request…</span>
+            </div>
+          </main>
+        </div>
+      )}
+
+      {planError && !pendingPlan && !inTargetMode && (
+        <div className="workspace">
+          <main className="table-area">
+            <StateBanner
+              kind="error"
+              message={planError}
+              onRetry={() => handleSearch(urlState.q ?? "")}
+            />
+          </main>
+        </div>
+      )}
+
+      {inTargetMode && (
+        <div className="workspace target-workspace">
+          <main className="table-area" aria-busy={candidatesQuery.isFetching}>
+            {openedProject && (
+              <div className="project-banner" role="status">
+                <span>
+                  Project <strong>{openedProject.name}</strong> · {openedProject.item_count} saved
+                  item{openedProject.item_count === 1 ? "" : "s"} · reopened from saved target scope
+                </span>
+                <span className="spacer" />
+                <button className="show-all-occ" onClick={closeProject} aria-label="Close project view">
+                  Close project ×
+                </button>
+              </div>
+            )}
+            {projectError && <StateBanner kind="error" message={projectError} />}
+
+            {targetResolveQuery.isLoading && <SkeletonRows />}
+
+            {!targetResolveQuery.isLoading &&
+              targetResolveQuery.data &&
+              targetResolveQuery.data.status !== "resolved" && (
+                <ResolutionState
+                  status={targetResolveQuery.data.status}
+                  query={targetResolveQuery.data.query}
+                  notes={targetResolveQuery.data.notes}
+                  candidates={targetResolveQuery.data.candidates}
+                  onPick={(identifier) => handleSearch(identifier)}
+                />
+              )}
+
+            {targetDetailQuery.data && (
+              <>
+                <TargetHeader
+                  target={targetDetailQuery.data}
+                  coverage={coverageQuery.data ?? []}
+                  discovery={discoverMutation.data ?? null}
+                  discovering={discoverMutation.isPending}
+                  discoverError={
+                    discoverMutation.error ? (discoverMutation.error as Error).message : null
+                  }
+                  onDiscover={() => discoverMutation.mutate()}
+                  onOpenRelated={(query) => handleSearch(query)}
+                  focusedSource={focusedSource}
+                />
+
+                <div className="candidate-filters">
+                  <label className="checkbox-row" style={{ margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={allModalities}
+                      onChange={(e) => {
+                        setAllModalities(e.target.checked);
+                        setSelectedIds(new Set());
+                      }}
+                    />
+                    Include peptides, oligonucleotides and biologics
+                    {Object.entries(modalityBreakdown)
+                      .filter(([k]) => !["small_molecule", "unclassified"].includes(k))
+                      .map(([k, v]) => ` · ${v} ${k}`)
+                      .join("")}
+                  </label>
+                  <label>
+                    Evidence class{" "}
+                    <select
+                      className="select-input"
+                      value={evidenceClassFilter ?? ""}
+                      onChange={(e) => {
+                        setEvidenceClassFilter(e.target.value || null);
+                        setSelectedIds(new Set());
+                      }}
+                    >
+                      <option value="">any</option>
+                      <option value="measured_direct_binding">measured direct binding</option>
+                      <option value="interaction_disruption">interaction disruption</option>
+                      <option value="functional_effect">functional effect</option>
+                      <option value="screening_assay">screening assay</option>
+                      <option value="unspecified">class unspecified</option>
+                    </select>
+                  </label>
+                  <span className="spacer" />
+                  {candidateTotal > 0 && (
+                    <>
+                      <ExportMenu
+                        targetId={resolvedTargetId as string}
+                        includeAllModalities={allModalities}
+                        selectedIds={Array.from(selectedIds)}
+                        resultsTotal={candidateTotal}
+                        structureFilter={null}
+                      />
+                      <button
+                        className="btn btn-primary"
+                        disabled={selectedIds.size === 0}
+                        onClick={() => setSaveCandidatesOpen(true)}
+                      >
+                        Save to project
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {candidatesQuery.isLoading ? (
+                  <SkeletonRows />
+                ) : candidatesQuery.error ? (
+                  <StateBanner
+                    kind="error"
+                    message={(candidatesQuery.error as Error).message}
+                    onRetry={() => candidatesQuery.refetch()}
+                  />
+                ) : candidateItems.length === 0 ? (
+                  <div className="state-banner" role="status">
+                    <span>
+                      No candidates match this filter. That is not evidence that no inhibitors
+                      exist: check the per-source coverage above, which distinguishes “no records”
+                      from “source failed” and “not queried”.
+                    </span>
+                  </div>
+                ) : (
+                  <CandidateTable
+                    page={{
+                      total: candidateTotal,
+                      offset: 0,
+                      limit: PLAIN_PAGE_SIZE,
+                      items: candidateItems,
+                      modality_breakdown: modalityBreakdown,
+                      default_filter: allModalities
+                        ? "all modalities"
+                        : "small molecules and unclassified entities",
+                    }}
+                    selectedCompoundId={urlState.c}
+                    selectedIds={selectedIds}
+                    scopeLabel={targetDetailQuery.data.target_key}
+                    onToggleSelection={toggleSelection}
+                    onToggleSelectAll={toggleSelectAllLoaded}
+                    onClearSelection={() => setSelectedIds(new Set())}
+                    onSelectCandidate={handleSelectCompound}
+                  />
+                )}
+
+                {candidateItems.length > 0 && (
+                  <div className="table-footer">
+                    {candidatesQuery.hasNextPage && (
+                      <button
+                        className="show-all-occ"
+                        onClick={() => candidatesQuery.fetchNextPage()}
+                        disabled={candidatesQuery.isFetchingNextPage}
+                      >
+                        {candidatesQuery.isFetchingNextPage ? "Loading…" : "Load more candidates"}
+                      </button>
+                    )}
+                    {candidatesQuery.isFetchNextPageError && (
+                      <span className="paging-error" role="alert">
+                        {(candidatesQuery.error as Error | null)?.message ??
+                          "The next candidate page could not be loaded."}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+
+          {selectedCandidate && targetDetailQuery.data && (
+            <TargetEvidencePanel
+              candidate={selectedCandidate}
+              target={targetDetailQuery.data}
+              measurements={measurementsQuery.data}
+              loading={measurementsQuery.isFetching}
+              error={(measurementsQuery.error as Error | null)?.message ?? null}
+              includeAllModalities={allModalities}
+              onFocusSource={focusSourceChip}
+              onClose={handleCloseEvidence}
+            />
+          )}
+        </div>
+      )}
+
+      {!inTargetMode && (submittedQuery !== null || openedProject !== null) && (
         <div className="workspace">
           <FamilySidebar
             patent={patentQuery.data ?? null}
@@ -727,14 +1265,15 @@ export function App() {
         </div>
       )}
 
-      {submittedQuery === null && !openedProject && (
+      {!inTargetMode && !pendingPlan && submittedQuery === null && !openedProject && (
         <EmptyState
-          demoHint={datasetInfo?.synthetic ? "DEMO-PATENT-A" : null}
+          demoHint={datasetInfo?.synthetic ? DEMO_SAMPLE_ID : null}
+          onOpenDemo={openDemoSample}
           sourceNote={
             datasetInfo
               ? datasetInfo.synthetic
                 ? null
-                : `Loaded source: ${datasetInfo.source_name} · ${datasetInfo.dataset_version}. Enter a covered publication number to open its family.`
+                : `Loaded source: ${datasetInfo.source_name} · ${datasetInfo.dataset_version}. Enter a covered publication number to open its family, or a target (for example TSLP or Q969D9) to investigate open-database evidence.`
               : null
           }
         />
@@ -742,6 +1281,15 @@ export function App() {
 
       {projectsOpen && (
         <ProjectsDialog onClose={() => setProjectsOpen(false)} onOpen={openProject} />
+      )}
+
+      {saveCandidatesOpen && resolvedTargetId && targetDetailQuery.data && (
+        <SaveCandidatesDialog
+          targetId={resolvedTargetId}
+          targetKey={targetDetailQuery.data.target_key}
+          selectedIds={Array.from(selectedIds)}
+          onClose={() => setSaveCandidatesOpen(false)}
+        />
       )}
 
       {saveOpen && patentQuery.data && (
@@ -784,5 +1332,6 @@ export function App() {
             : ""}
       </span>
     </div>
+    </SignInGate>
   );
 }

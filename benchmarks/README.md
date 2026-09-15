@@ -55,3 +55,14 @@ python services/core/benchmarks/run_benchmarks.py \
 
 `benchmarks/results/` is gitignored; `m0-baseline.json` at this level is the
 committed record for the milestone.
+
+## Model evaluation (not an application latency benchmark)
+
+`online01-llm-eval-2026-09-15.md` — live-endpoint summary baseline for ONLINE-01,
+produced by `scripts/llm_summary_eval.py` through the shipped input builder and
+retry policy. Raw runs: `...-run1.json` (3 requests per scope),
+`...-run2.json` (3 per scope), `...-run3-after.json` (3 per scope, after the
+citation-contract fix that the baseline itself identified), `...-run4.json`
+(6 per scope, after the per-source ref fix: 18/18 answered). These numbers describe
+model output acceptance, token cost and refusal classes; they are not comparable
+with the application latencies above.

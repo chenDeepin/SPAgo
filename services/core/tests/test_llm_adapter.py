@@ -10,27 +10,34 @@ import json
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from spago_core.adapters.llm import (
     LLMConfigProblem,
     OpenAICompatibleSummaryProvider,
     parse_endpoint,
 )
+from spago_core.services import ai as ai_svc
 from spago_core.services.ai import LLMTimeoutError, LLMUpstreamError
 
 
-def _endpoint(base="https://provider.example/v1", model="demo-model", api_key=None):
-    return parse_endpoint(
-        type(
-            "S",
-            (),
-            {
-                "llm_base_url": base,
-                "llm_model": model,
-                "llm_api_key": api_key,
-            },
-        )()
-    )
+def _endpoint(
+    base="https://provider.example/v1",
+    model="demo-model",
+    api_key=None,
+    disable_thinking=None,
+    json_mode=None,
+):
+    settings = {
+        "llm_base_url": base,
+        "llm_model": model,
+        "llm_api_key": api_key,
+    }
+    if disable_thinking is not None:
+        settings["llm_disable_thinking"] = disable_thinking
+    if json_mode is not None:
+        settings["llm_json_mode"] = json_mode
+    return parse_endpoint(type("S", (), settings)())
 
 
 def _completion(content: str, finish_reason="stop", tool_calls=None, usage=None, model="demo-model"):
@@ -102,6 +109,18 @@ class TestEndpointConfig:
         b = _endpoint(api_key="sk-secret")
         assert a.endpoint_fingerprint == b.endpoint_fingerprint
 
+    def test_thinking_switch_defaults_off(self):
+        """The minimal request subset stays the default: a stricter endpoint
+        would reject an unknown parameter instead of ignoring it."""
+        assert _endpoint().disable_thinking is False
+
+    def test_thinking_switch_is_opt_in(self):
+        assert _endpoint(disable_thinking=True).disable_thinking is True
+
+    def test_json_mode_switch_defaults_off_and_is_opt_in(self):
+        assert _endpoint().json_mode is False
+        assert _endpoint(json_mode=True).json_mode is True
+
 
 def _provider_with_handler(handler, base="https://provider.example/v1"):
     client = httpx.Client(transport=httpx.MockTransport(handler), base_url="")
@@ -116,6 +135,30 @@ SNAPSHOT = {
     "coverage": [],
     "dataset_version": "demo",
 }
+
+
+class TestPromptContract:
+    def test_every_scope_states_the_schema_limits(self):
+        """Live finding 2026-09-15: DeepSeek returned 6–9 limitation strings
+        against the 5-item cap in 3/3 calls, because the instructions never
+        stated it. Prompt and model must share one source of truth."""
+        for scope in ("family", "document", "target"):
+            prompt = OpenAICompatibleSummaryProvider(_endpoint(), scope=scope)._system_prompt()
+            assert f"at most {ai_svc.MAX_PARAGRAPHS} paragraphs" in prompt
+            assert f"at most {ai_svc.MAX_LIMITATIONS} limitation strings" in prompt
+            assert f"at most {ai_svc.MAX_LIMITATIONS}." in prompt
+            # Headroom guidance: the target scope sat exactly on the paragraph
+            # cap in 6/6 measured calls and broke it in 1 (2026-09-15).
+            assert "merge closely related facts" in prompt
+
+        # The schema rejects exactly what the instructions cap.
+        with pytest.raises(ValidationError):
+            ai_svc.LlmSummaryOutput.model_validate(
+                {
+                    "paragraphs": [{"text": "t", "fact_refs": ["family:x"]}],
+                    "limitations": ["x"] * (ai_svc.MAX_LIMITATIONS + 1),
+                }
+            )
 
 
 class TestGenerate:
@@ -145,6 +188,45 @@ class TestGenerate:
         assert seen["auth"] is None  # no key configured → no Authorization header
         assert set(seen["body"].keys()) == {"model", "messages", "stream", "max_tokens"}
         assert seen["body"]["stream"] is False
+
+    def test_thinking_disabled_adds_only_the_documented_parameter(self):
+        """Opt-in finding 2026-09-15: a model that reasons by default spent the
+        whole output budget on hidden reasoning and returned empty content."""
+        seen = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["body"] = json.loads(request.content.decode())
+            return httpx.Response(200, json=_completion(VALID_OUTPUT))
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        provider = OpenAICompatibleSummaryProvider(
+            _endpoint(disable_thinking=True), client=client
+        )
+        provider.generate(SNAPSHOT)
+        assert seen["body"]["thinking"] == {"type": "disabled"}
+        assert set(seen["body"].keys()) == {
+            "model", "messages", "stream", "max_tokens", "thinking",
+        }
+        assert provider.disable_thinking is True
+
+    def test_json_mode_adds_the_response_format_parameter(self):
+        """Live finding 2026-09-15: the model dropped the closing bracket of the
+        final array in 2/6 family calls; JSON decoding mode removes that class of
+        malformed output."""
+        seen = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["body"] = json.loads(request.content.decode())
+            return httpx.Response(200, json=_completion(VALID_OUTPUT))
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        provider = OpenAICompatibleSummaryProvider(_endpoint(json_mode=True), client=client)
+        provider.generate(SNAPSHOT)
+        assert seen["body"]["response_format"] == {"type": "json_object"}
+        assert set(seen["body"].keys()) == {
+            "model", "messages", "stream", "max_tokens", "response_format",
+        }
+        assert provider.json_mode is True
 
     def test_api_key_sent_as_bearer(self):
         seen = {}
@@ -269,6 +351,31 @@ class TestOutputValidation:
         with pytest.raises(LLMUpstreamError, match="schema validation"):
             _validate_llm_output(self._result(bad), SNAPSHOT)
 
+    def test_rejection_detail_names_the_failing_rule(self):
+        """A rejected answer must say which rule broke.
+
+        The detail reaches the operator's 502 and the usage ledger; the generic
+        message cost a manual diff of the raw answer on 2026-09-15, when a
+        dropped closing delimiter looked the same as an over-long list.
+        """
+        from spago_core.services.ai import _validate_llm_output
+
+        # Malformed JSON: the model closed the object before the last array and
+        # appended the leftovers (the class observed live on the target scope).
+        malformed = '{"paragraphs":[{"text":"T.","fact_refs":["family:abc"]}],"limitations":["x."}]}'
+        with pytest.raises(LLMUpstreamError, match=r"schema validation \(json_invalid\)"):
+            _validate_llm_output(self._result(malformed), SNAPSHOT)
+
+        # A well-formed answer that breaks a declared bound says so too.
+        too_long = json.dumps(
+            {
+                "paragraphs": [{"text": "T.", "fact_refs": ["family:abc"]}],
+                "limitations": ["a.", "b.", "c.", "d.", "e.", "f."],
+            }
+        )
+        with pytest.raises(LLMUpstreamError, match=r"schema validation \(too_long\)"):
+            _validate_llm_output(self._result(too_long), SNAPSHOT)
+
     def test_valid_refs_pass(self):
         good = json.dumps(
             {
@@ -280,3 +387,67 @@ class TestOutputValidation:
 
         out = _validate_llm_output(self._result(good), SNAPSHOT)
         assert out.paragraphs[0].fact_refs == ["family:abc"]
+
+
+class TestRetryClassification:
+    """Only a completed, billed answer whose content is unusable may be
+    re-sampled (owner decision 2026-09-15; see
+    docs/plans/2026-09-15-llm-live-smoke.md §9). Everything else stays
+    single-attempt: an unknown charge must not be multiplied."""
+
+    def test_unusable_content_of_a_completed_response_is_re_samplable(self):
+        empty = _provider_with_handler(lambda r: httpx.Response(200, json=_completion("")))
+        with pytest.raises(ai_svc.LLMOutputRejectedError, match="empty content"):
+            empty.generate(SNAPSHOT)
+
+        truncated = _provider_with_handler(
+            lambda r: httpx.Response(200, json=_completion(VALID_OUTPUT, finish_reason="length"))
+        )
+        with pytest.raises(ai_svc.LLMOutputRejectedError, match="did not finish"):
+            truncated.generate(SNAPSHOT)
+
+    def test_service_validation_rejections_are_re_samplable(self):
+        bad = json.dumps(
+            {
+                "paragraphs": [{"text": "x", "fact_refs": ["family:not-here"]}],
+                "limitations": [],
+            }
+        )
+        with pytest.raises(ai_svc.LLMOutputRejectedError, match="outside the allowed"):
+            ai_svc._validate_llm_output(TestOutputValidation()._result(bad), SNAPSHOT)
+
+    def test_protocol_and_transport_failures_are_not_re_samplable(self):
+        big = VALID_OUTPUT + " " * (256 * 1024 + 10)
+
+        def unanswered(request: httpx.Request) -> httpx.Response:
+            raise httpx.ReadTimeout("too slow")
+
+        handlers = {
+            "body not JSON": lambda r: httpx.Response(200, text="<html>nope</html>"),
+            "no choices": lambda r: httpx.Response(200, json={"choices": []}),
+            "tool calls": lambda r: httpx.Response(
+                200,
+                json=_completion(VALID_OUTPUT, tool_calls=[{"id": "t"}], finish_reason="tool_calls"),
+            ),
+            "http 400": lambda r: httpx.Response(400, json={"error": "bad"}),
+            "http 500": lambda r: httpx.Response(500),
+            "response too large": lambda r: httpx.Response(200, json=_completion(big)),
+            "timeout": unanswered,
+        }
+        for label, handler in handlers.items():
+            provider = _provider_with_handler(handler)
+            with pytest.raises(ai_svc.AIError) as exc:
+                provider.generate(SNAPSHOT)
+            assert not isinstance(exc.value, ai_svc.LLMOutputRejectedError), label
+
+    def test_a_tool_calls_violation_is_not_re_sampled_even_in_the_service(self):
+        """Re-asking a model that tried to use tools invites the same violation
+        (AGENTS.md §12), so this rejection stays outside the retry class."""
+        from spago_core.adapters.llm import ProviderOutput
+
+        result = ProviderOutput(
+            content=VALID_OUTPUT, finish_reason="stop", tool_calls=True, usage=None, model="m"
+        )
+        with pytest.raises(ai_svc.LLMUpstreamError) as exc:
+            ai_svc._validate_llm_output(result, SNAPSHOT)
+        assert not isinstance(exc.value, ai_svc.LLMOutputRejectedError)

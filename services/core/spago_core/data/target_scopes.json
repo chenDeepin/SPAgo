@@ -1,0 +1,125 @@
+{
+  "reviewed_on": "2026-09-15",
+  "purpose": "Reviewed ligand/receptor/pathway systems for the ONLINE-00 acceptance targets. Membership is curated from the cited authoritative records, never inferred from a query string at request time (online-llm plan §2 ONLINE-00 A: 'Support additional targets through the same resolver/adapters, not target-specific keyword rules').",
+  "disclaimer": "Membership in a system does not imply that inhibition of one member is equivalent to modulation of another. Ligand binding, receptor blockade, complex disruption and reduced expression are different scientific observations and are labelled separately.",
+  "systems": [
+    {
+      "system_key": "TSLP",
+      "label": "TSLP / TSLPR system",
+      "notes": "TSLP signals through a heterodimeric receptor of CRLF2 (TSLPR) and IL7R. CRLF2 has no ChEMBL target record (observed 2026-09-15), so receptor-side discovery relies on IL7R. Inhibiting CRLF2 or IL7R is not direct TSLP binding.",
+      "members": [
+        {
+          "accession": "Q969D9",
+          "name": "Thymic stromal lymphopoietin",
+          "gene_symbol": "TSLP",
+          "role": "ligand",
+          "organism": "Homo sapiens",
+          "note": "Reviewed Swiss-Prot entry; the cytokine itself."
+        },
+        {
+          "accession": "Q9HC73",
+          "name": "Cytokine receptor-like factor 2",
+          "gene_symbol": "CRLF2",
+          "role": "receptor",
+          "organism": "Homo sapiens",
+          "note": "TSLPR; the high-affinity receptor component. No ChEMBL target record."
+        },
+        {
+          "accession": "P16871",
+          "name": "Interleukin-7 receptor subunit alpha",
+          "gene_symbol": "IL7R",
+          "role": "receptor",
+          "organism": "Homo sapiens",
+          "note": "Second receptor component; shared with IL-7 signalling."
+        }
+      ],
+      "sources": [
+        "https://www.uniprot.org/uniprotkb/Q969D9/entry",
+        "https://www.uniprot.org/uniprotkb/Q9HC73/entry",
+        "https://www.uniprot.org/uniprotkb/P16871/entry"
+      ]
+    },
+    {
+      "system_key": "CD40L",
+      "label": "CD40L / CD40 system",
+      "notes": "CD40LG (CD154) is the ligand and CD40 the receptor; the interaction is the therapeutic target. ChEMBL records the ligand alone (CHEMBL3580491), the interaction (CHEMBL4106122) and a MAC1 complex (CHEMBL4106121). Disrupting CD40L-CD40 binding is distinct from a binding site measured on either partner alone.",
+      "members": [
+        {
+          "accession": "P29965",
+          "name": "CD40 ligand",
+          "gene_symbol": "CD40LG",
+          "role": "ligand",
+          "organism": "Homo sapiens",
+          "note": "Reviewed Swiss-Prot entry (CD154)."
+        },
+        {
+          "accession": "P25942",
+          "name": "Tumor necrosis factor receptor superfamily member 5",
+          "gene_symbol": "CD40",
+          "role": "receptor",
+          "organism": "Homo sapiens",
+          "note": "Reviewed Swiss-Prot entry."
+        }
+      ],
+      "sources": [
+        "https://www.uniprot.org/uniprotkb/P29965/entry",
+        "https://www.uniprot.org/uniprotkb/P25942/entry",
+        "https://www.ncbi.nlm.nih.gov/gene/959"
+      ]
+    },
+    {
+      "system_key": "IL6",
+      "label": "IL-6 / IL-6R / gp130 system",
+      "notes": "IL6 is the ligand; IL6R (alpha subunit) and IL6ST (gp130) form the signalling complex. ChEMBL also records the IL6Ralpha/GP130 interaction (CHEMBL3137266). A downstream cytokine-output or signalling readout is not evidence of direct ligand engagement.",
+      "members": [
+        {
+          "accession": "P05231",
+          "name": "Interleukin-6",
+          "gene_symbol": "IL6",
+          "role": "ligand",
+          "organism": "Homo sapiens",
+          "note": "Reviewed Swiss-Prot entry."
+        },
+        {
+          "accession": "P08887",
+          "name": "Interleukin-6 receptor subunit alpha",
+          "gene_symbol": "IL6R",
+          "role": "receptor",
+          "organism": "Homo sapiens",
+          "note": "Reviewed Swiss-Prot entry; the IL-6-specific receptor chain."
+        },
+        {
+          "accession": "P40189",
+          "name": "Interleukin-6 receptor subunit beta",
+          "gene_symbol": "IL6ST",
+          "role": "signalling_component",
+          "organism": "Homo sapiens",
+          "note": "gp130; shared by several cytokine receptors, so activity against it is not IL-6-specific."
+        }
+      ],
+      "sources": [
+        "https://www.uniprot.org/uniprotkb/P05231/entry",
+        "https://www.uniprot.org/uniprotkb/P08887/entry",
+        "https://www.uniprot.org/uniprotkb/P40189/entry"
+      ]
+    }
+  ],
+  "positive_controls": [
+    {
+      "system_key": "EGFR",
+      "label": "EGFR (adapter positive control)",
+      "notes": "A target with dense, well-characterised small-molecule coverage. Used to prove the discovery adapters return qualifying small molecules at all, so an empty response for TSLP/CD40L/IL6R can never masquerade as a working pipeline.",
+      "members": [
+        {
+          "accession": "P00533",
+          "name": "Epidermal growth factor receptor",
+          "gene_symbol": "EGFR",
+          "role": "receptor",
+          "organism": "Homo sapiens",
+          "note": "Reviewed Swiss-Prot entry."
+        }
+      ],
+      "sources": ["https://www.uniprot.org/uniprotkb/P00533/entry"]
+    }
+  ]
+}

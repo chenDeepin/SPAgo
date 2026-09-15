@@ -31,6 +31,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["spago_core*"]
 
+# The reviewed ligand/receptor/pathway catalog is data, so it must ship inside
+# the installed package. Without it the resolver silently loses its scope
+# expansion in a container while still working from a source checkout (found by
+# a deployed-artifact browser check, 2026-09-15).
+[tool.setuptools.package-data]
+spago_core = ["data/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

@@ -43,6 +43,24 @@ services:
       SPAGO_LLM_BASE_URL: ${SPAGO_LLM_BASE_URL:-}
       SPAGO_LLM_API_KEY: ${SPAGO_LLM_API_KEY:-}
       SPAGO_LLM_MODEL: ${SPAGO_LLM_MODEL:-}
+      # Opt-in thinking-disable switch (DeepSeek-style `thinking` parameter);
+      # off unless the operator sets it, see .env.example.
+      SPAGO_LLM_DISABLE_THINKING: ${SPAGO_LLM_DISABLE_THINKING:-false}
+      # Opt-in JSON decoding mode (`response_format`); off unless set.
+      SPAGO_LLM_JSON_MODE: ${SPAGO_LLM_JSON_MODE:-false}
+      # Model-usage bounds (ONLINE-04). Non-zero by default so a misconfigured
+      # deployment cannot offer unlimited paid usage; set 0 deliberately to lift.
+      SPAGO_LLM_USER_TOKEN_LIMIT: ${SPAGO_LLM_USER_TOKEN_LIMIT:-200000}
+      SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT: ${SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT:-2000000}
+      SPAGO_LLM_QUOTA_WINDOW: ${SPAGO_LLM_QUOTA_WINDOW:-month}
+      # Hosted access (ONLINE-03, ADR-0002). The default keeps the local
+      # single-user product: no sign-in, existing rows stay unattached. Setting
+      # "required" makes every workspace request need a session — read
+      # docs/runbook.md §H1–H9 (HTTPS, private database, real secrets) first.
+      SPAGO_AUTH_MODE: ${SPAGO_AUTH_MODE:-disabled}
+      SPAGO_COOKIE_SECURE: ${SPAGO_COOKIE_SECURE:-false}
+      SPAGO_SESSION_TTL_HOURS: ${SPAGO_SESSION_TTL_HOURS:-12}
+      SPAGO_CORS_ORIGINS_EXTRA: ${SPAGO_CORS_ORIGINS_EXTRA:-}
     ports:
       # loopback binding by default: enable paid model keys only behind your own
       # authentication layer before exposing this port on a LAN/hosted interface

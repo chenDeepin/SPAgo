@@ -1,0 +1,2783 @@
+{
+ "page_meta": {
+  "limit": 50,
+  "next": null,
+  "offset": 0,
+  "previous": null,
+  "total_count": 3
+ },
+ "targets": [
+  {
+   "cross_references": [],
+   "organism": "Homo sapiens",
+   "pref_name": "CD40 ligand",
+   "species_group_flag": false,
+   "target_chembl_id": "CHEMBL3580491",
+   "target_components": [
+    {
+     "accession": "P29965",
+     "component_description": "CD40 ligand",
+     "component_id": 9962,
+     "component_type": "PROTEIN",
+     "relationship": "SINGLE PROTEIN",
+     "target_component_xrefs": [
+      {
+       "xref_id": "3LKJ",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6BRB",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1I9R",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6W9G",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "7SGM",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1ALY",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "GO:0005102",
+       "xref_name": "signaling receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005125",
+       "xref_name": "cytokine activity",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005164",
+       "xref_name": "tumor necrosis factor receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005174",
+       "xref_name": "CD40 receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005178",
+       "xref_name": "integrin binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005515",
+       "xref_name": "protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0002637",
+       "xref_name": "regulation of immunoglobulin production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006955",
+       "xref_name": "immune response",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007159",
+       "xref_name": "leukocyte cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007166",
+       "xref_name": "cell surface receptor signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007229",
+       "xref_name": "integrin-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0023035",
+       "xref_name": "CD40 signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030168",
+       "xref_name": "platelet activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030183",
+       "xref_name": "B cell differentiation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0031295",
+       "xref_name": "T cell costimulation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032733",
+       "xref_name": "positive regulation of interleukin-10 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032735",
+       "xref_name": "positive regulation of interleukin-12 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032753",
+       "xref_name": "positive regulation of interleukin-4 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042100",
+       "xref_name": "B cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042102",
+       "xref_name": "positive regulation of T cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043066",
+       "xref_name": "negative regulation of apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043123",
+       "xref_name": "positive regulation of canonical NF-kappaB signal transduction",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045190",
+       "xref_name": "isotype switching",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2000353",
+       "xref_name": "positive regulation of endothelial cell apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2001238",
+       "xref_name": "positive regulation of extrinsic apoptotic signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0005615",
+       "xref_name": "extracellular space",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005576",
+       "xref_name": "extracellular region",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005794",
+       "xref_name": "Golgi apparatus",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005886",
+       "xref_name": "plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009897",
+       "xref_name": "external side of plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009986",
+       "xref_name": "cell surface",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0016020",
+       "xref_name": "membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "PA36626",
+       "xref_name": "CD40 ligand",
+       "xref_src_db": "PharmGKB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": "CD40 ligand",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "1ALY",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1I9R",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3LKJ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6BRB",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6W9G",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7SGM",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "AlphaFoldDB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "IntAct"
+      },
+      {
+       "xref_id": "HGNC:11935",
+       "xref_name": "CD40LG",
+       "xref_src_db": "HGNC"
+      },
+      {
+       "xref_id": "R-HSA-198933",
+       "xref_name": "Immunoregulatory interactions between a Lymphoid and a non-Lymphoid cell",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5668541",
+       "xref_name": "TNFR2 non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5676594",
+       "xref_name": "TNF receptor superfamily (TNFSF) members mediating non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "Pharos"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "ExpressionAtlas"
+      },
+      {
+       "xref_id": "IPR003263",
+       "xref_name": "CD40L",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR021184",
+       "xref_name": "TNF_CS",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR006052",
+       "xref_name": "TNF_dom",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR008983",
+       "xref_name": "Tumour_necrosis_fac-like_dom",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "PTHR11471:SF5",
+       "xref_name": "CD40 LIGAND",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PTHR11471",
+       "xref_name": "TUMOR NECROSIS FACTOR FAMILY MEMBER",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PF00229",
+       "xref_name": "TNF",
+       "xref_src_db": "Pfam"
+      }
+     ]
+    }
+   ],
+   "target_type": "SINGLE PROTEIN",
+   "tax_id": 9606
+  },
+  {
+   "cross_references": [],
+   "organism": "Homo sapiens",
+   "pref_name": "MAC1-CD40L",
+   "species_group_flag": false,
+   "target_chembl_id": "CHEMBL4106121",
+   "target_components": [
+    {
+     "accession": "P05107",
+     "component_description": "Integrin beta-2",
+     "component_id": 1948,
+     "component_type": "PROTEIN",
+     "relationship": "INTERACTING PROTEIN",
+     "target_component_xrefs": [
+      {
+       "xref_id": "4NEH",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5E6W",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5ES4",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1YUK",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "2V7D",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5E6V",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3K71",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3K72",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5E6X",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3K6S",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "7P2D",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "2P28",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "2JF1",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5E6S",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "2P26",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5E6R",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5E6U",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "4NEN",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "GO:0001540",
+       "xref_name": "amyloid-beta binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0001851",
+       "xref_name": "complement component C3b binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005178",
+       "xref_name": "integrin binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005515",
+       "xref_name": "protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0019901",
+       "xref_name": "protein kinase binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0030369",
+       "xref_name": "ICAM-3 receptor activity",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0031072",
+       "xref_name": "heat shock protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0046872",
+       "xref_name": "metal ion binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0050839",
+       "xref_name": "cell adhesion molecule binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0001774",
+       "xref_name": "microglial cell activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0002523",
+       "xref_name": "leukocyte migration involved in inflammatory response",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006898",
+       "xref_name": "receptor-mediated endocytosis",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006909",
+       "xref_name": "phagocytosis",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006911",
+       "xref_name": "phagocytosis, engulfment",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006915",
+       "xref_name": "apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007155",
+       "xref_name": "cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007159",
+       "xref_name": "leukocyte cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007160",
+       "xref_name": "cell-matrix adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007229",
+       "xref_name": "integrin-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007267",
+       "xref_name": "cell-cell signaling",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0008360",
+       "xref_name": "regulation of cell shape",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030593",
+       "xref_name": "neutrophil chemotaxis",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0031623",
+       "xref_name": "receptor internalization",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032930",
+       "xref_name": "positive regulation of superoxide anion generation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0034113",
+       "xref_name": "heterotypic cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0035987",
+       "xref_name": "endodermal cell differentiation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043113",
+       "xref_name": "receptor clustering",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043315",
+       "xref_name": "positive regulation of neutrophil degranulation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043542",
+       "xref_name": "endothelial cell migration",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045123",
+       "xref_name": "cellular extravasation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045429",
+       "xref_name": "positive regulation of nitric oxide biosynthetic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045766",
+       "xref_name": "positive regulation of angiogenesis",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045963",
+       "xref_name": "negative regulation of dopamine metabolic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0071404",
+       "xref_name": "cellular response to low-density lipoprotein particle stimulus",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0090314",
+       "xref_name": "positive regulation of protein targeting to membrane",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0097242",
+       "xref_name": "amyloid-beta clearance",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0098609",
+       "xref_name": "cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0098742",
+       "xref_name": "cell-cell adhesion via plasma-membrane adhesion molecules",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:1904996",
+       "xref_name": "positive regulation of leukocyte adhesion to vascular endothelial cell",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:1990266",
+       "xref_name": "neutrophil migration",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2000363",
+       "xref_name": "positive regulation of prostaglandin-E synthase activity",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0005925",
+       "xref_name": "focal adhesion",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009986",
+       "xref_name": "cell surface",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005886",
+       "xref_name": "plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009897",
+       "xref_name": "external side of plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0016020",
+       "xref_name": "membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0035579",
+       "xref_name": "specific granule membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0044853",
+       "xref_name": "plasma membrane raft",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0045121",
+       "xref_name": "membrane raft",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0070062",
+       "xref_name": "extracellular exosome",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0070821",
+       "xref_name": "tertiary granule membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0101003",
+       "xref_name": "ficolin-1-rich granule membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:1903561",
+       "xref_name": "extracellular vesicle",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0008305",
+       "xref_name": "integrin complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0034687",
+       "xref_name": "integrin alphaL-beta2 complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0034688",
+       "xref_name": "integrin alphaM-beta2 complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0034689",
+       "xref_name": "integrin alphaX-beta2 complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0043235",
+       "xref_name": "receptor complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "PA29955",
+       "xref_name": "integrin subunit beta 2",
+       "xref_src_db": "PharmGKB"
+      },
+      {
+       "xref_id": "B3KTS8",
+       "xref_name": "Integrin beta-2",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "D3DSM1",
+       "xref_name": "Integrin beta-2",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q16418",
+       "xref_name": "Integrin beta-2",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q53HS5",
+       "xref_name": "Integrin beta-2",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q9UD72",
+       "xref_name": "Integrin beta-2",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "P05107",
+       "xref_name": "Integrin beta-2",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "1L3Y",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1YUK",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "2JF1",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "2P26",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "2P28",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "2V7D",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3K6S",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3K71",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3K72",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "4NEH",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "4NEN",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5E6R",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5E6S",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5E6U",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5E6V",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5E6W",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5E6X",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5ES4",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5XR1",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5ZAZ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7P2D",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7USL",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7USM",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "P05107",
+       "xref_name": null,
+       "xref_src_db": "AlphaFoldDB"
+      },
+      {
+       "xref_id": "P05107",
+       "xref_name": null,
+       "xref_src_db": "IntAct"
+      },
+      {
+       "xref_id": "HGNC:6155",
+       "xref_name": "ITGB2",
+       "xref_src_db": "HGNC"
+      },
+      {
+       "xref_id": "R-HSA-166016",
+       "xref_name": "Toll Like Receptor 4 (TLR4) Cascade",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-198933",
+       "xref_name": "Immunoregulatory interactions between a Lymphoid and a non-Lymphoid cell",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-202733",
+       "xref_name": "Cell surface interactions at the vascular wall",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-216083",
+       "xref_name": "Integrin cell surface interactions",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-6785807",
+       "xref_name": "Interleukin-4 and Interleukin-13 signaling",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-6798695",
+       "xref_name": "Neutrophil degranulation",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "P05107",
+       "xref_name": null,
+       "xref_src_db": "Pharos"
+      },
+      {
+       "xref_id": "P05107",
+       "xref_name": null,
+       "xref_src_db": "ExpressionAtlas"
+      },
+      {
+       "xref_id": "IPR057073",
+       "xref_name": "EGF_integrin_2",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR015439",
+       "xref_name": "Integrin_b-2_sf",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR033760",
+       "xref_name": "Integrin_beta_N",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR015812",
+       "xref_name": "Integrin_bsu",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR014836",
+       "xref_name": "Integrin_bsu_cyt_dom",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR012896",
+       "xref_name": "Integrin_bsu_tail",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR036349",
+       "xref_name": "Integrin_bsu_tail_dom_sf",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR002369",
+       "xref_name": "Integrin_bsu_VWA",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR032695",
+       "xref_name": "Integrin_dom_sf",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR057243",
+       "xref_name": "Integrin_I-EGF_CS",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR016201",
+       "xref_name": "PSI",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR036465",
+       "xref_name": "vWFA_dom_sf",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "PTHR10082",
+       "xref_name": "INTEGRIN BETA SUBUNIT",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PTHR10082:SF15",
+       "xref_name": "INTEGRIN BETA-2",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PF23105",
+       "xref_name": "EGF_integrin",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF08725",
+       "xref_name": "Integrin_b_cyt",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF07965",
+       "xref_name": "Integrin_B_tail",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF00362",
+       "xref_name": "Integrin_beta",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF17205",
+       "xref_name": "PSI_integrin",
+       "xref_src_db": "Pfam"
+      }
+     ]
+    },
+    {
+     "accession": "P11215",
+     "component_description": "Integrin alpha-M",
+     "component_id": 2144,
+     "component_type": "PROTEIN",
+     "relationship": "INTERACTING PROTEIN",
+     "target_component_xrefs": [
+      {
+       "xref_id": "4M76",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "8CE9",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1NA5",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "8CE6",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "4XW2",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3QA3",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1N9Z",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3Q3G",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "9GMU",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1BHQ",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1JLM",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1BHO",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "7P2D",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6RHW",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "7AKK",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1IDO",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1IDN",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1M1U",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1MF7",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "GO:0001540",
+       "xref_name": "amyloid-beta binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0001851",
+       "xref_name": "complement component C3b binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005178",
+       "xref_name": "integrin binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005515",
+       "xref_name": "protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0031072",
+       "xref_name": "heat shock protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0046872",
+       "xref_name": "metal ion binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0001774",
+       "xref_name": "microglial cell activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0002430",
+       "xref_name": "complement receptor mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0002931",
+       "xref_name": "response to ischemia",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006898",
+       "xref_name": "receptor-mediated endocytosis",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006911",
+       "xref_name": "phagocytosis, engulfment",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007155",
+       "xref_name": "cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007160",
+       "xref_name": "cell-matrix adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007229",
+       "xref_name": "integrin-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0010668",
+       "xref_name": "ectodermal cell differentiation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030900",
+       "xref_name": "forebrain development",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032930",
+       "xref_name": "positive regulation of superoxide anion generation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0033627",
+       "xref_name": "cell adhesion mediated by integrin",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0034113",
+       "xref_name": "heterotypic cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043315",
+       "xref_name": "positive regulation of neutrophil degranulation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045087",
+       "xref_name": "innate immune response",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045963",
+       "xref_name": "negative regulation of dopamine metabolic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0090314",
+       "xref_name": "positive regulation of protein targeting to membrane",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0097242",
+       "xref_name": "amyloid-beta clearance",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0098609",
+       "xref_name": "cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0098742",
+       "xref_name": "cell-cell adhesion via plasma-membrane adhesion molecules",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0150062",
+       "xref_name": "complement-mediated synapse pruning",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0150064",
+       "xref_name": "vertebrate eye-specific patterning",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:1904151",
+       "xref_name": "positive regulation of microglial cell mediated cytotoxicity",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2000363",
+       "xref_name": "positive regulation of prostaglandin-E synthase activity",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0009897",
+       "xref_name": "external side of plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005615",
+       "xref_name": "extracellular space",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005886",
+       "xref_name": "plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009986",
+       "xref_name": "cell surface",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0035579",
+       "xref_name": "specific granule membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0044853",
+       "xref_name": "plasma membrane raft",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0045121",
+       "xref_name": "membrane raft",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0070062",
+       "xref_name": "extracellular exosome",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0070821",
+       "xref_name": "tertiary granule membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0008305",
+       "xref_name": "integrin complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0034688",
+       "xref_name": "integrin alphaM-beta2 complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "PA29949",
+       "xref_name": "integrin subunit alpha M",
+       "xref_src_db": "PharmGKB"
+      },
+      {
+       "xref_id": "Q4VAK0",
+       "xref_name": "Integrin alpha-M",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q4VAK1",
+       "xref_name": "Integrin alpha-M",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q4VAK2",
+       "xref_name": "Integrin alpha-M",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "P11215",
+       "xref_name": "Integrin alpha-M",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "1BHO",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1BHQ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1IDN",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1IDO",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1JLM",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1M1U",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1MF7",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1N9Z",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1NA5",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "2LKE",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "2LKJ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3Q3G",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3QA3",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "4M76",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "4XW2",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6RHW",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7AKK",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7P2D",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7USL",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7USM",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8CE6",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8CE9",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8VOH",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8VOI",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "9GMU",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "P11215",
+       "xref_name": null,
+       "xref_src_db": "AlphaFoldDB"
+      },
+      {
+       "xref_id": "P11215",
+       "xref_name": null,
+       "xref_src_db": "IntAct"
+      },
+      {
+       "xref_id": "HGNC:6149",
+       "xref_name": "ITGAM",
+       "xref_src_db": "HGNC"
+      },
+      {
+       "xref_id": "R-HSA-166016",
+       "xref_name": "Toll Like Receptor 4 (TLR4) Cascade",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-202733",
+       "xref_name": "Cell surface interactions at the vascular wall",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-216083",
+       "xref_name": "Integrin cell surface interactions",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-6785807",
+       "xref_name": "Interleukin-4 and Interleukin-13 signaling",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-6798695",
+       "xref_name": "Neutrophil degranulation",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "P11215",
+       "xref_name": null,
+       "xref_src_db": "Pharos"
+      },
+      {
+       "xref_id": "P11215",
+       "xref_name": null,
+       "xref_src_db": "ExpressionAtlas"
+      },
+      {
+       "xref_id": "IPR013517",
+       "xref_name": "FG-GAP",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR013519",
+       "xref_name": "Int_alpha_beta-p",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR000413",
+       "xref_name": "Integrin_alpha",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR018184",
+       "xref_name": "Integrin_alpha_C_CS",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR013649",
+       "xref_name": "Integrin_alpha_Ig-like_1",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR048285",
+       "xref_name": "Integrin_alpha_Ig-like_2",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR028994",
+       "xref_name": "Integrin_alpha_N",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR032695",
+       "xref_name": "Integrin_dom_sf",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR048633",
+       "xref_name": "ITGAX-like_Ig_3",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR002035",
+       "xref_name": "VWF_A",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR036465",
+       "xref_name": "vWFA_dom_sf",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "PTHR23220",
+       "xref_name": "INTEGRIN ALPHA",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PTHR23220:SF130",
+       "xref_name": "INTEGRIN ALPHA-M",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PF01839",
+       "xref_name": "FG-GAP",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF08441",
+       "xref_name": "Integrin_A_Ig_1",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF20805",
+       "xref_name": "Integrin_A_Ig_2",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF00357",
+       "xref_name": "Integrin_alpha",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF21520",
+       "xref_name": "ITGAX-like_Ig_3",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PF00092",
+       "xref_name": "VWA",
+       "xref_src_db": "Pfam"
+      }
+     ]
+    },
+    {
+     "accession": "P29965",
+     "component_description": "CD40 ligand",
+     "component_id": 9962,
+     "component_type": "PROTEIN",
+     "relationship": "INTERACTING PROTEIN",
+     "target_component_xrefs": [
+      {
+       "xref_id": "3LKJ",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6BRB",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1I9R",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6W9G",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "7SGM",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1ALY",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "GO:0005102",
+       "xref_name": "signaling receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005125",
+       "xref_name": "cytokine activity",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005164",
+       "xref_name": "tumor necrosis factor receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005174",
+       "xref_name": "CD40 receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005178",
+       "xref_name": "integrin binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005515",
+       "xref_name": "protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0002637",
+       "xref_name": "regulation of immunoglobulin production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006955",
+       "xref_name": "immune response",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007159",
+       "xref_name": "leukocyte cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007166",
+       "xref_name": "cell surface receptor signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007229",
+       "xref_name": "integrin-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0023035",
+       "xref_name": "CD40 signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030168",
+       "xref_name": "platelet activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030183",
+       "xref_name": "B cell differentiation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0031295",
+       "xref_name": "T cell costimulation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032733",
+       "xref_name": "positive regulation of interleukin-10 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032735",
+       "xref_name": "positive regulation of interleukin-12 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032753",
+       "xref_name": "positive regulation of interleukin-4 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042100",
+       "xref_name": "B cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042102",
+       "xref_name": "positive regulation of T cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043066",
+       "xref_name": "negative regulation of apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043123",
+       "xref_name": "positive regulation of canonical NF-kappaB signal transduction",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045190",
+       "xref_name": "isotype switching",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2000353",
+       "xref_name": "positive regulation of endothelial cell apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2001238",
+       "xref_name": "positive regulation of extrinsic apoptotic signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0005615",
+       "xref_name": "extracellular space",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005576",
+       "xref_name": "extracellular region",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005794",
+       "xref_name": "Golgi apparatus",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005886",
+       "xref_name": "plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009897",
+       "xref_name": "external side of plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009986",
+       "xref_name": "cell surface",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0016020",
+       "xref_name": "membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "PA36626",
+       "xref_name": "CD40 ligand",
+       "xref_src_db": "PharmGKB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": "CD40 ligand",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "1ALY",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1I9R",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3LKJ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6BRB",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6W9G",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7SGM",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "AlphaFoldDB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "IntAct"
+      },
+      {
+       "xref_id": "HGNC:11935",
+       "xref_name": "CD40LG",
+       "xref_src_db": "HGNC"
+      },
+      {
+       "xref_id": "R-HSA-198933",
+       "xref_name": "Immunoregulatory interactions between a Lymphoid and a non-Lymphoid cell",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5668541",
+       "xref_name": "TNFR2 non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5676594",
+       "xref_name": "TNF receptor superfamily (TNFSF) members mediating non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "Pharos"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "ExpressionAtlas"
+      },
+      {
+       "xref_id": "IPR003263",
+       "xref_name": "CD40L",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR021184",
+       "xref_name": "TNF_CS",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR006052",
+       "xref_name": "TNF_dom",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR008983",
+       "xref_name": "Tumour_necrosis_fac-like_dom",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "PTHR11471:SF5",
+       "xref_name": "CD40 LIGAND",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PTHR11471",
+       "xref_name": "TUMOR NECROSIS FACTOR FAMILY MEMBER",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PF00229",
+       "xref_name": "TNF",
+       "xref_src_db": "Pfam"
+      }
+     ]
+    }
+   ],
+   "target_type": "PROTEIN-PROTEIN INTERACTION",
+   "tax_id": 9606
+  },
+  {
+   "cross_references": [],
+   "organism": "Homo sapiens",
+   "pref_name": "CD40-CD40L",
+   "species_group_flag": false,
+   "target_chembl_id": "CHEMBL4106122",
+   "target_components": [
+    {
+     "accession": "P25942",
+     "component_description": "Tumor necrosis factor receptor superfamily member 5",
+     "component_id": 5181,
+     "component_type": "PROTEIN",
+     "relationship": "INTERACTING PROTEIN",
+     "target_component_xrefs": [
+      {
+       "xref_id": "8YX1",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5IHL",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1FLL",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1D00",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1CZZ",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5DMI",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6PE8",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5DMJ",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "7P3I",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6PE9",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1LB6",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "8YX9",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6FAX",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "GO:0003823",
+       "xref_name": "antigen binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005515",
+       "xref_name": "protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0019899",
+       "xref_name": "enzyme binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0019904",
+       "xref_name": "protein domain specific binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0031625",
+       "xref_name": "ubiquitin protein ligase binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0038023",
+       "xref_name": "signaling receptor activity",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0002376",
+       "xref_name": "immune system process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0002637",
+       "xref_name": "regulation of immunoglobulin production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0002768",
+       "xref_name": "immune response-regulating cell surface receptor signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006874",
+       "xref_name": "intracellular calcium ion homeostasis",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007259",
+       "xref_name": "cell surface receptor signaling pathway via JAK-STAT",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0019724",
+       "xref_name": "B cell mediated immunity",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0023035",
+       "xref_name": "CD40 signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030168",
+       "xref_name": "platelet activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030890",
+       "xref_name": "positive regulation of B cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032735",
+       "xref_name": "positive regulation of interleukin-12 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042100",
+       "xref_name": "B cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042113",
+       "xref_name": "B cell activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043123",
+       "xref_name": "positive regulation of canonical NF-kappaB signal transduction",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043410",
+       "xref_name": "positive regulation of MAPK cascade",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043491",
+       "xref_name": "phosphatidylinositol 3-kinase/protein kinase B signal transduction",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043536",
+       "xref_name": "positive regulation of blood vessel endothelial cell migration",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045766",
+       "xref_name": "positive regulation of angiogenesis",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045944",
+       "xref_name": "positive regulation of transcription by RNA polymerase II",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0048304",
+       "xref_name": "positive regulation of isotype switching to IgG isotypes",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0050776",
+       "xref_name": "regulation of immune response",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0065003",
+       "xref_name": "protein-containing complex assembly",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0071222",
+       "xref_name": "cellular response to lipopolysaccharide",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0071260",
+       "xref_name": "cellular response to mechanical stimulus",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0090037",
+       "xref_name": "positive regulation of protein kinase C signaling",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:1902216",
+       "xref_name": "positive regulation of interleukin-4-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2000353",
+       "xref_name": "positive regulation of endothelial cell apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0009897",
+       "xref_name": "external side of plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005576",
+       "xref_name": "extracellular region",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005615",
+       "xref_name": "extracellular space",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005886",
+       "xref_name": "plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009986",
+       "xref_name": "cell surface",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0043025",
+       "xref_name": "neuronal cell body",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0043196",
+       "xref_name": "varicosity",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0070062",
+       "xref_name": "extracellular exosome",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0035631",
+       "xref_name": "CD40 receptor complex",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "PA36612",
+       "xref_name": "CD40 molecule",
+       "xref_src_db": "PharmGKB"
+      },
+      {
+       "xref_id": "6PE9",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "E1P5S9",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q53GN5",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q5JY15",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q5U007",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q7M4Q8",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q86YK5",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q9BYU0",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "P25942",
+       "xref_name": "Tumor necrosis factor receptor superfamily member 5",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "1CZZ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1D00",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1FLL",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1LB6",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5DMI",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5DMJ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5IHL",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6FAX",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6PE8",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7P3I",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8YX1",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8YX9",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "P25942",
+       "xref_name": null,
+       "xref_src_db": "AlphaFoldDB"
+      },
+      {
+       "xref_id": "P25942",
+       "xref_name": null,
+       "xref_src_db": "IntAct"
+      },
+      {
+       "xref_id": "HGNC:11919",
+       "xref_name": "CD40",
+       "xref_src_db": "HGNC"
+      },
+      {
+       "xref_id": "R-HSA-198933",
+       "xref_name": "Immunoregulatory interactions between a Lymphoid and a non-Lymphoid cell",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5668541",
+       "xref_name": "TNFR2 non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5676594",
+       "xref_name": "TNF receptor superfamily (TNFSF) members mediating non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "P25942",
+       "xref_name": null,
+       "xref_src_db": "Pharos"
+      },
+      {
+       "xref_id": "P25942",
+       "xref_name": null,
+       "xref_src_db": "ExpressionAtlas"
+      },
+      {
+       "xref_id": "IPR001368",
+       "xref_name": "TNFR/NGFR_Cys_rich_reg",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR020435",
+       "xref_name": "TNFR_5",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR052135",
+       "xref_name": "TNFRSF5",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR034021",
+       "xref_name": "TNFRSF5_N",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "PTHR46875",
+       "xref_name": "TUMOR NECROSIS FACTOR RECEPTOR SUPERFAMILY MEMBER 5",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PTHR46875:SF1",
+       "xref_name": "TUMOR NECROSIS FACTOR RECEPTOR SUPERFAMILY MEMBER 5",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PF00020",
+       "xref_name": "TNFR_c6",
+       "xref_src_db": "Pfam"
+      }
+     ]
+    },
+    {
+     "accession": "P29965",
+     "component_description": "CD40 ligand",
+     "component_id": 9962,
+     "component_type": "PROTEIN",
+     "relationship": "INTERACTING PROTEIN",
+     "target_component_xrefs": [
+      {
+       "xref_id": "3LKJ",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6BRB",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1I9R",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "6W9G",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "7SGM",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "1ALY",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "GO:0005102",
+       "xref_name": "signaling receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005125",
+       "xref_name": "cytokine activity",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005164",
+       "xref_name": "tumor necrosis factor receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005174",
+       "xref_name": "CD40 receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005178",
+       "xref_name": "integrin binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005515",
+       "xref_name": "protein binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0002637",
+       "xref_name": "regulation of immunoglobulin production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0006955",
+       "xref_name": "immune response",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007159",
+       "xref_name": "leukocyte cell-cell adhesion",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007166",
+       "xref_name": "cell surface receptor signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007229",
+       "xref_name": "integrin-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0023035",
+       "xref_name": "CD40 signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030168",
+       "xref_name": "platelet activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0030183",
+       "xref_name": "B cell differentiation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0031295",
+       "xref_name": "T cell costimulation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032733",
+       "xref_name": "positive regulation of interleukin-10 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032735",
+       "xref_name": "positive regulation of interleukin-12 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032753",
+       "xref_name": "positive regulation of interleukin-4 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042100",
+       "xref_name": "B cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0042102",
+       "xref_name": "positive regulation of T cell proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043066",
+       "xref_name": "negative regulation of apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043123",
+       "xref_name": "positive regulation of canonical NF-kappaB signal transduction",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0045190",
+       "xref_name": "isotype switching",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2000353",
+       "xref_name": "positive regulation of endothelial cell apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:2001238",
+       "xref_name": "positive regulation of extrinsic apoptotic signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0005615",
+       "xref_name": "extracellular space",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005576",
+       "xref_name": "extracellular region",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005794",
+       "xref_name": "Golgi apparatus",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005886",
+       "xref_name": "plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009897",
+       "xref_name": "external side of plasma membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0009986",
+       "xref_name": "cell surface",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0016020",
+       "xref_name": "membrane",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "PA36626",
+       "xref_name": "CD40 ligand",
+       "xref_src_db": "PharmGKB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": "CD40 ligand",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "1ALY",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "1I9R",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3LKJ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "3QD6",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6BRB",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "6W9G",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "7SGM",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "AlphaFoldDB"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "IntAct"
+      },
+      {
+       "xref_id": "HGNC:11935",
+       "xref_name": "CD40LG",
+       "xref_src_db": "HGNC"
+      },
+      {
+       "xref_id": "R-HSA-198933",
+       "xref_name": "Immunoregulatory interactions between a Lymphoid and a non-Lymphoid cell",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5668541",
+       "xref_name": "TNFR2 non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "R-HSA-5676594",
+       "xref_name": "TNF receptor superfamily (TNFSF) members mediating non-canonical NF-kB pathway",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "Pharos"
+      },
+      {
+       "xref_id": "P29965",
+       "xref_name": null,
+       "xref_src_db": "ExpressionAtlas"
+      },
+      {
+       "xref_id": "IPR003263",
+       "xref_name": "CD40L",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR021184",
+       "xref_name": "TNF_CS",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR006052",
+       "xref_name": "TNF_dom",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR008983",
+       "xref_name": "Tumour_necrosis_fac-like_dom",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "PTHR11471:SF5",
+       "xref_name": "CD40 LIGAND",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PTHR11471",
+       "xref_name": "TUMOR NECROSIS FACTOR FAMILY MEMBER",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PF00229",
+       "xref_name": "TNF",
+       "xref_src_db": "Pfam"
+      }
+     ]
+    }
+   ],
+   "target_type": "PROTEIN-PROTEIN INTERACTION",
+   "tax_id": 9606
+  }
+ ]
+}

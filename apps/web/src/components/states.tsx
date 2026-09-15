@@ -2,16 +2,33 @@ interface EmptyStateProps {
   demoHint?: string | null;
   /** Real-source deployments: what is loaded and what to enter (PROD-01). */
   sourceNote?: string | null;
+  /** Opens the synthetic sample record without going through the search box:
+   * that identifier is deliberately not publication-number shaped, so the
+   * search path classifies it as free text (ONLINE-01 browser finding). */
+  onOpenDemo?: (identifier: string) => void;
 }
 
-export function EmptyState({ demoHint, sourceNote }: EmptyStateProps) {
+export function EmptyState({ demoHint, sourceNote, onOpenDemo }: EmptyStateProps) {
   return (
     <div className="empty-state">
       <h1>Inspect patent chemistry</h1>
       <p>Enter a patent publication number to view its family, extracted compounds, and source evidence.</p>
       {demoHint && (
         <p className="hint">
-          This deployment serves a synthetic demo dataset — try <code>{demoHint}</code>.
+          This deployment serves a synthetic demo dataset —{" "}
+          {onOpenDemo ? (
+            <button
+              type="button"
+              // Reuses the inline-link action style already used for candidate
+              // picking (`evidence-link`), rather than adding a near-duplicate rule.
+              className="evidence-link"
+              onClick={() => onOpenDemo(demoHint)}
+            >
+              open <code>{demoHint}</code>
+            </button>
+          ) : (
+            <>try <code>{demoHint}</code>.</>
+          )}
         </p>
       )}
       {sourceNote && <p className="hint">{sourceNote}</p>}

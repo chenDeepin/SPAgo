@@ -2,7 +2,10 @@
 
 创建：2026-09-14，原计划基线：`6c33eea`。
 更新：2026-09-15（第二轮，核对基线 `f3da90c` + 本轮工作区改动）：**LLM-05–07 已修复并完成验收关闭**；
-760px LLM 场景与隔离 0005→0006 升级已补验；真实模型 smoke 仍 not checked。
+760px LLM 场景与隔离 0005→0006 升级已补验；真实模型 smoke 已于 2026-09-15 对 DeepSeek
+`deepseek-flash` 完成（每个 scope 一次真实调用、缓存复用、85% 单次合规；详见
+[live smoke 记录](2026-09-15-llm-live-smoke.md)）。该轮同时发现两个供应商兼容开关需求，
+已按本计划“先核对官方协议再改 adapter 参数”的要求实施并记录。
 第一轮更新（2026-09-15，核对基线 `f3da90c`）保留为修复前记录：接口已实施并有本地 mock 验证，
 LLM-05–07 待修复。§1 保留实施前发现，§2–8 是目标契约；不能将目标预算当作已经证明的保证。
 分类：CORE（现有摘要闭环的真实模型接入）。目标：配置一个模型端点，在现有 AI 标签中生成可追溯的同族摘要；保持无模型配置时的离线使用路径。
@@ -77,7 +80,8 @@ SPAGO_LLM_MODEL=your-model-id
 
 首期单进程最多 2 个模型调用；同一内容键在执行时返回已在处理（409），其余超过并发上限返回 busy（429），无持久队列。用有界的在途键集合/锁，finally 清理。多 worker/副本不在此并发保证内，部署文档明确单 worker；真有扩容需求再引入数据库 job 协调。
 
-重试策略为**自动重试 0 次**：昂贵生成请求在读超时后是否已计费未知，用户看到错误后可手动重试；错误/半截输出不缓存、不回退到离线伪装成功。429 保留经过校验的 Retry-After，不自动重新生成。记录耗时和供应商返回的 usage；缺 usage 为 null，不估算成“真实成本”。
+重试策略：**不重试超时、限流、鉴权、传输故障**（昂贵生成请求在读超时后是否已计费未知；429 不自动重发，用户看到错误后可手动重试）；**唯一的重采样**发生在「响应已完成且已计费、但内容被校验拒绝」时，由服务层有界重发同一请求一次（不修改提示词，因此 prompt_version 仍真实），2026-09-15 由 owner 决定（见
+[live smoke 记录 §9](2026-09-15-llm-live-smoke.md)）。错误/半截输出不缓存、不回退到离线伪装成功。429 保留经过校验的 Retry-After。记录耗时和供应商返回的 usage；多次尝试时按已计费的两者之和记账并记 `attempts`，缺 usage 为 null，不估算成“真实成本”。
 
 ## 5. API 与 UI 兼容契约
 
@@ -166,7 +170,7 @@ Shell 均经 `rtk`。本轮接口代码随后提交为 `f3da90c`；`6c33eea` 本
 - `config.py`：`SPAGO_LLM_BASE_URL/LLM_API_KEY(SecretStr)/LLM_MODEL`；`adapters/llm.py`：
   URL 规则（拒绝 userinfo/query/fragment；公网 http 拒绝；loopback/私网/`host.docker.internal` 允许）、
   只追加 `/chat/completions`、只发 model/messages/stream/max_tokens、无 key 不发 Authorization、
-  不跟随重定向、256 KiB 响应上限、5 s 连接/60 s 总 deadline、usage 缺失为 null、零自动重试。
+  不跟随重定向、256 KiB 响应上限、5 s 连接/60 s 总 deadline、usage 缺失为 null；adapter 无任何传输重试，内容被拒时由服务层有界重采样一次（§4 重试策略）。
 - `main.py` lifespan 管理共享 httpx.Client。MockTransport 契约测试 23 项：正常/无 key/路径拼接/401/429
   (Retry-After 透出)/500/400 协议不匹配/超时/超大响应/坏 JSON/空内容/tool_calls/非正常结束/重定向不跟随。
 
@@ -194,8 +198,10 @@ Shell 均经 `rtk`。本轮接口代码随后提交为 `f3da90c`；`6c33eea` 本
   `llm-stop-waiting-1440.png`。验证后已 `down -v` 重置并复归未配置离线部署（healthz ok）。
 
 ### 未检查 / 缺口（诚实记录）
-- **真实模型 smoke：not checked**（本环境无任何供应商凭据；未调用收费模型）。部署者配置真实端点后的
-  首次生成即为该检查；mock 无法证明真实供应商的协议兼容性。
+- **真实模型 smoke：已于 2026-09-15 执行一次**（DeepSeek `deepseek-flash`，三个 scope 各一次真实
+  调用 + 缓存复用 + 85% 单次合规率，协议、耗时、usage 与失败类别见
+  [live smoke 记录](2026-09-15-llm-live-smoke.md)）。这仍只是一个供应商的实测，不等于通用的
+  “任意 OpenAI-compatible 端点可用”结论；其余供应商仍需各自的显式 live smoke。
 - UI-07（普通列表 >500 行需真正 offset 分页）与 UI-08（结构 Load more 静默吞错）仍开放，按其优先级
   排入下一轮 UI 修复；本轮未触碰。
 - 多 worker/副本部署不在进程内并发保证内（单 worker 为当前部署前提，已在文档说明）。
@@ -215,7 +221,7 @@ Shell 均经 `rtk`。本轮接口代码随后提交为 `f3da90c`；`6c33eea` 本
 | --- | --- | --- |
 | LLM-05 / P1 | `ai.py::bound_snapshot` 至少保留每类一条，无法再裁剪时仍返回超限对象；随后 `summarize_family` 再追加说明/统计。纯函数合成输入实测：33,119 B 原样返回且 truncated=false；32,768 B 经追加 input_note 后为 32,867 B。`scaffolds` 聚合没有 LIMIT，摘录用 1024 字符而非 UTF-8 字节裁剪。 | **已修复。** scaffold 聚合加 LIMIT 并保留 `scaffold_total`；摘录按 UTF-8 字节裁剪并标记 `excerpt_truncated`；新增 `finalize_snapshot()`：先裁剪摘录 → 写入 `input_note` 与各类 omitted 计数 → 对最终 body 复核 32 KiB，按最大可选列表整条移除；必需元数据超限抛 `SnapshotBudgetError`（500），既不调用 provider 也不写成功缓存。离线文本改按 `measurement_total` 描述，被裁剪不再说成不存在。`tests/test_llm_contract.py::TestSnapshotBudget`（中文/多版本/单条超大/无可删条目/临界值/说明追加）+ `test_m5_ai.py::TestSnapshotBudgetBoundary`（数据库级：provider 调用数=0、`ai_analyses` 无新行）。 |
 | LLM-06 / P1 | `request_timeout` 声明 read=60/write=10，但 `generate` 构建请求未使用该属性；`main.py` 创建默认 Client。MockTransport 捕获实际 request.extensions.timeout 为 connect/read/write/pool 全 5 秒；总 deadline 仅在读到 chunk 后检查，尚无严格墙钟上限证明。 | **已修复。** `timeout=self.request_timeout` 现真正附到 `build_request`；deadline 在调用前与每个 chunk 之间检查。`TestRequestTimeoutBudget` 断言请求携带 connect=5/read=deadline/write=10，并用 127.0.0.1 可控慢端点验证：首字节晚于 deadline 被切断（1.0 s 预算、实测 <4 s）、持续慢流按 deadline 切断、失败后客户端仍可再用（连接释放）。仍不宣称严格墙钟：最坏超出量为一个读窗口，已在该测试注释与本节说明。 |
-| LLM-07 / P2 | 上游 429 被包装成 `LLMUpstreamError`（status_code=502）；routes 按该值返回且未传 Retry-After header。本地 mock 429/Retry-After=7 得到 502，7 只出现在 detail 文本。与 §5 的上游 429 契约不符。 | **已修复。** 新增 `LLMUpstreamRateLimitError`（429）+ `parse_retry_after()`（delta-seconds 或 HTTP-date，无效/缺失不猜测）；路由仅在有效值时回传 `Retry-After`。adapter 与 API 双层断言 + 隔离栈端到端：上游 429 + `Retry-After: 7` → HTTP 429 且响应头 `retry-after: 7`；无效头 → 429 无头；上游 500 → 仍 502；零自动重试（`TestUpstreamRateLimit`、`TestSummaryApiRateLimitMapping`）。`scripts/mock_llm_endpoint.py` 增加 `mock-rate-limit` / `mock-rate-limit-bad-header` 故障模式。 |
+| LLM-07 / P2 | 上游 429 被包装成 `LLMUpstreamError`（status_code=502）；routes 按该值返回且未传 Retry-After header。本地 mock 429/Retry-After=7 得到 502，7 只出现在 detail 文本。与 §5 的上游 429 契约不符。 | **已修复。** 新增 `LLMUpstreamRateLimitError`（429）+ `parse_retry_after()`（delta-seconds 或 HTTP-date，无效/缺失不猜测）；路由仅在有效值时回传 `Retry-After`。adapter 与 API 双层断言 + 隔离栈端到端：上游 429 + `Retry-After: 7` → HTTP 429 且响应头 `retry-after: 7`；无效头 → 429 无头；上游 500 → 仍 502；429 不重采样（`TestUpstreamRateLimit`、`TestSummaryApiRateLimitMapping`）。`scripts/mock_llm_endpoint.py` 增加 `mock-rate-limit` / `mock-rate-limit-bad-header` 故障模式。 |
 
 执行分类：上述为 CORE（已有摘要契约纠偏），先于真实模型 smoke；实现仍在现有 service/adapter/routes 中，不新增运行时、服务或配置面板。UI-07/08 及相关作用域回归同轮关闭，见 [当前修复计划](2026-09-14-ui-review-next-round.md#2026-09-15-修复实施与验收记录第二轮ui-0708--llm-0507-关闭)。
 
@@ -226,7 +232,8 @@ Shell 均经 `rtk`。本轮接口代码随后提交为 `f3da90c`；`6c33eea` 本
 - **0005→0006 前向升级**：`tests/test_migration_0006_upgrade.py` 在独立 scratch 数据库上迁移并填充到 0005，
   写入 0005 列形状的旧分析行，再升级到 0006：旧行文本/引用不变、新列为 NULL、不被当作缓存命中、
   升级后新写入用内容键并命中缓存；未触碰任何运行数据库。
-- **仍未完成**：真实模型 smoke（无凭据；`not checked`）；真实专利/活性来源；多 worker 部署不在并发保证内。
+- **仍未完成**：真实专利/活性来源；多 worker 部署不在并发保证内；真实模型仅完成一个供应商的
+  一次 smoke（见 [live smoke 记录](2026-09-15-llm-live-smoke.md)），其他供应商未验证。
 
 第一轮检查结果（保留为修复前记录）：
 

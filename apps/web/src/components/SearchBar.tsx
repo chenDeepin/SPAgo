@@ -5,17 +5,24 @@ interface SearchBarProps {
   submitted: string | null;
   isSearching: boolean;
   error: string | null;
+  /** Optional follow-up control for the failure the message describes, e.g.
+   * opening the synthetic sample record after a 404 (ONLINE-01 finding). */
+  errorAction?: { label: string; onClick: () => void } | null;
   onSearch: (value: string) => void;
   onCancel: () => void;
 }
 
-/** Patent-number search row. Empty/whitespace input is validated in place;
- * searching state offers cancel; a not-found keeps the input for retry. */
+/** Search row: a patent publication number opens a patent family, any other
+ * identifier-shaped query is resolved as a target (ONLINE-00). Empty input is
+ * validated in place; the searching state offers cancel; a not-found keeps the
+ * input for retry. The input itself decides nothing — it submits one string and
+ * the server answers. */
 export function SearchBar({
   initialQuery,
   submitted,
   isSearching,
   error,
+  errorAction,
   onSearch,
   onCancel,
 }: SearchBarProps) {
@@ -31,7 +38,7 @@ export function SearchBar({
     e.preventDefault();
     const trimmed = value.trim();
     if (!trimmed) {
-      setLocalError("Enter a patent publication number to search.");
+      setLocalError("Enter a patent publication number or a target to search.");
       return;
     }
     setLocalError(null);
@@ -42,13 +49,13 @@ export function SearchBar({
 
   return (
     <div className="searchrow">
-      <form onSubmit={submit} role="search" aria-label="Patent number search">
+      <form onSubmit={submit} role="search" aria-label="Patent or target search">
         <input
           ref={inputRef}
           className="search-input"
           type="text"
-          placeholder="Enter patent publication number"
-          aria-label="Patent publication number"
+          placeholder="Patent number (WO2018000001A1) or target (TSLP, Q969D9)"
+          aria-label="Patent publication number or target"
           aria-invalid={shownError ? true : undefined}
           value={value}
           onChange={(e) => {
@@ -78,6 +85,19 @@ export function SearchBar({
       {shownError && (
         <span className="search-error" role="alert">
           {shownError}
+          {errorAction && (
+            <>
+              {" "}
+              <button
+                type="button"
+                // Same inline-link action style as the candidate picker.
+                className="evidence-link"
+                onClick={errorAction.onClick}
+              >
+                {errorAction.label}
+              </button>
+            </>
+          )}
         </span>
       )}
     </div>

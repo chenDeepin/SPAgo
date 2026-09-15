@@ -1,0 +1,256 @@
+{
+ "page_meta": {
+  "limit": 50,
+  "next": null,
+  "offset": 0,
+  "previous": null,
+  "total_count": 1
+ },
+ "targets": [
+  {
+   "cross_references": [],
+   "organism": "Homo sapiens",
+   "pref_name": "Thymic stromal lymphopoietin",
+   "species_group_flag": false,
+   "target_chembl_id": "CHEMBL3712931",
+   "target_components": [
+    {
+     "accession": "Q969D9",
+     "component_description": "Thymic stromal lymphopoietin",
+     "component_id": 15085,
+     "component_type": "PROTEIN",
+     "relationship": "SINGLE PROTEIN",
+     "target_component_xrefs": [
+      {
+       "xref_id": "Q969D9",
+       "xref_name": null,
+       "xref_src_db": "AlphaFoldDB"
+      },
+      {
+       "xref_id": "Q969D9",
+       "xref_name": null,
+       "xref_src_db": "ExpressionAtlas"
+      },
+      {
+       "xref_id": "GO:0005576",
+       "xref_name": "extracellular region",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005615",
+       "xref_name": "extracellular space",
+       "xref_src_db": "GoComponent"
+      },
+      {
+       "xref_id": "GO:0005125",
+       "xref_name": "cytokine activity",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0005139",
+       "xref_name": "interleukin-7 receptor binding",
+       "xref_src_db": "GoFunction"
+      },
+      {
+       "xref_id": "GO:0001961",
+       "xref_name": "positive regulation of cytokine-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0007259",
+       "xref_name": "cell surface receptor signaling pathway via JAK-STAT",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0008284",
+       "xref_name": "positive regulation of cell population proliferation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0019221",
+       "xref_name": "cytokine-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032722",
+       "xref_name": "positive regulation of chemokine production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032733",
+       "xref_name": "positive regulation of interleukin-10 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032736",
+       "xref_name": "positive regulation of interleukin-13 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032754",
+       "xref_name": "positive regulation of interleukin-5 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0032755",
+       "xref_name": "positive regulation of interleukin-6 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0033005",
+       "xref_name": "positive regulation of mast cell activation",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0038111",
+       "xref_name": "interleukin-7-mediated signaling pathway",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0043066",
+       "xref_name": "negative regulation of apoptotic process",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0050729",
+       "xref_name": "positive regulation of inflammatory response",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0071654",
+       "xref_name": "positive regulation of chemokine (C-C motif) ligand 1 production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:0071657",
+       "xref_name": "positive regulation of granulocyte colony-stimulating factor production",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "GO:1904894",
+       "xref_name": "positive regulation of receptor signaling pathway via STAT",
+       "xref_src_db": "GoProcess"
+      },
+      {
+       "xref_id": "HGNC:30743",
+       "xref_name": "TSLP",
+       "xref_src_db": "HGNC"
+      },
+      {
+       "xref_id": "Q969D9",
+       "xref_name": null,
+       "xref_src_db": "IntAct"
+      },
+      {
+       "xref_id": "IPR029189",
+       "xref_name": "TSLP",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "IPR038329",
+       "xref_name": "TSLP_sf",
+       "xref_src_db": "InterPro"
+      },
+      {
+       "xref_id": "PTHR38003",
+       "xref_name": "THYMIC STROMAL LYMPHOPOIETIN",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "PTHR38003:SF1",
+       "xref_name": "THYMIC STROMAL LYMPHOPOIETIN",
+       "xref_src_db": "PANTHER"
+      },
+      {
+       "xref_id": "5J11",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5J12",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5J13",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8QFZ",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "8ZEU",
+       "xref_name": null,
+       "xref_src_db": "PDB"
+      },
+      {
+       "xref_id": "5J11",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5J12",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "5J13",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "8QFZ",
+       "xref_name": "A",
+       "xref_src_db": "PDBe"
+      },
+      {
+       "xref_id": "PF15216",
+       "xref_name": "TSLP",
+       "xref_src_db": "Pfam"
+      },
+      {
+       "xref_id": "PA162407159",
+       "xref_name": "thymic stromal lymphopoietin",
+       "xref_src_db": "PharmGKB"
+      },
+      {
+       "xref_id": "Q969D9",
+       "xref_name": null,
+       "xref_src_db": "Pharos"
+      },
+      {
+       "xref_id": "R-HSA-1266695",
+       "xref_name": "Interleukin-7 signaling",
+       "xref_src_db": "Reactome"
+      },
+      {
+       "xref_id": "G3XAM8",
+       "xref_name": "Thymic stromal lymphopoietin",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q8IW99",
+       "xref_name": "Thymic stromal lymphopoietin",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q969D9",
+       "xref_name": "Thymic stromal lymphopoietin",
+       "xref_src_db": "UniProt"
+      },
+      {
+       "xref_id": "Q96AU7",
+       "xref_name": "Thymic stromal lymphopoietin",
+       "xref_src_db": "UniProt"
+      }
+     ]
+    }
+   ],
+   "target_type": "SINGLE PROTEIN",
+   "tax_id": 9606
+  }
+ ]
+}

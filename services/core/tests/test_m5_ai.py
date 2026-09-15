@@ -23,14 +23,27 @@ def m5_engine(pg_engine, fixture_dir: Path, migrations_dir: Path):
 
 
 class TestPlanner:
+    """The deterministic planner now lives in `services.planner` and emits the
+    same typed contract the model produces (ONLINE-02)."""
+
     def test_extracts_publication_numbers_deterministically(self):
-        plan = ai.plan_query("CDK4 inhibitors like EP1234567A1 or us10102057b2, 2023+")
-        assert plan["patent_queries"] == ["EP1234567A1", "US10102057B2"]
-        assert "CDK4" in plan["unresolved_text"]
-        assert "LLM" in plan["note"]
+        from spago_core.services import planner
+
+        plan = planner.offline_plan("CDK4 inhibitors like EP1234567A1 or us10102057b2, 2023+")
+        ops = [step["op"] for step in plan.steps]
+        assert ops == ["open_patent", "open_patent"]
+        assert [s["publication_number"] for s in plan.steps] == ["EP1234567A1", "US10102057B2"]
+        assert "CDK4" in " ".join(plan.unresolved)
+        # Free text is reported unresolved, never interpreted.
+        assert plan.producer == "offline"
+        assert plan.clarification_required is True
 
     def test_empty_query_is_safe(self):
-        assert ai.plan_query("")["patent_queries"] == []
+        from spago_core.services import planner
+
+        plan = planner.offline_plan("")
+        assert plan.steps == []
+        assert plan.clarification_required is True
 
 
 class TestFamilySummary:
@@ -198,11 +211,17 @@ class TestSummaryApi:
         )
         assert res.status_code == 503
 
-    def test_plan_endpoint(self, m5_engine):
+    def test_plan_endpoint_returns_the_typed_plan(self, m5_engine):
         client = self._client(m5_engine)
         res = client.post("/api/v1/ai/plan", json={"query": "patents like US10000000B2"})
         assert res.status_code == 200
-        assert res.json()["patent_queries"] == ["US10000000B2"]
+        body = res.json()
+        assert body["plan_version"] == "search-plan-v1"
+        assert body["producer"] == "offline"
+        assert [s["op"] for s in body["steps"]] == ["open_patent"]
+        assert body["steps"][0]["parameters"]["publication_number"] == "US10000000B2"
+        # The rest of the sentence was not interpreted; it is reported.
+        assert body["unresolved"]
 
 
 class TestAiStatus:

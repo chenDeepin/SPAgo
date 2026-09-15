@@ -132,7 +132,7 @@
 
 ### 执行计划：CORE 修复与验收（已全部执行，结果见上文第二轮记录）
 
-1. **LLM 契约纠偏**：在现有 `ai.py`、`adapters/llm.py`、`api/routes.py` 及相关测试内修 LLM-05–07，按 LLM 计划逐项留存失败复现与修复后证据。保持缺省离线、typed citation、内容缓存、零自动重试与单 worker 部署；不扩展聊天/模型管理。
+1. **LLM 契约纠偏**：在现有 `ai.py`、`adapters/llm.py`、`api/routes.py` 及相关测试内修 LLM-05–07，按 LLM 计划逐项留存失败复现与修复后证据。保持缺省离线、typed citation、内容缓存、单 worker 部署与「超时/限流/鉴权/传输故障不重试」；不扩展聊天/模型管理。（2026-09-15 更新：内容被拒时有界重采样一次，见 [live smoke 记录 §9](2026-09-15-llm-live-smoke.md)。）
 2. **普通结果真正分页**：修改 `App.tsx` 与 `api/client.ts`，优先复用已安装的 TanStack Query 分页能力和现有表格，不新增请求框架。每页默认 100、单响应最多 500，下一页用服务端 offset/limit/total，不重复下载不断扩大的第一页；末页停用 Load more。将 family/document/query 纳入当前作用域；切换后作废旧页，避免重复追加或串族。
 3. **结构分页错误及选择回归**：给现有 Load more 提供错误/重试和 AbortSignal，错误归属当前 requestKey，旧请求的 catch/finally 不得改写新请求状态。检查查看行、结构抽屉、全选已加载、证据、保存和导出取自当前展示范围。现有 `selectedRow`、`structureRow`、`toggleSelectAllLoaded` 读取普通 `compoundsQuery`；需以“结构结果含普通首屏未加载化合物”场景验证，不能仅在普通首屏内点击后宣称整个结构结果闭环可用。只修复复现出的作用域问题，不扩展导出能力。
 4. **验收与记录**：先运行受影响测试与现有 frontend build，再启动当前 checkout 的隔离测试服务进行浏览器验收。明确进程/镜像对应代码、时间、来源模式、viewport；不使用用户数据库做造数或清空。LLM 的真实 smoke 在目标已明确配置且授权后执行，否则保持 not checked，不阻塞本地修复记录。

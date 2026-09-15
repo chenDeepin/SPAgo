@@ -1,10 +1,14 @@
 """OpenAI-compatible Chat Completions summary provider (LLM interface plan).
 
 Deliberately small: one active endpoint, one model, a fixed request subset
-(model / messages / stream:false / max_tokens), strict response validation,
-and hard budgets. Credentials go only to the configured endpoint; no cookie
-or Authorization forwarding, no redirect following, no automatic retries
-(read timeout may already have been billed upstream).
+(model / messages / stream:false / max_tokens, plus two opt-in compatibility
+switches: `thinking: {"type": "disabled"}` for models that reason by default,
+and `response_format: {"type": "json_object"}` for strict JSON decoding), strict
+response validation, and hard budgets. Credentials go only to the configured endpoint; no cookie
+or Authorization forwarding, no redirect following, and no transport retry of any kind
+(a read timeout may already have been billed upstream, and throttling must not be hammered).
+The only re-attempt in the system is one content re-sample performed by the service after a
+*completed, billed* response was rejected — see `LLMOutputRejectedError`.
 
 The declared budgets are attached to the outbound request (LLM-06): connect 5 s
 and a read bound equal to the total deadline, so a stalled endpoint cannot hang
@@ -34,10 +38,13 @@ from pydantic import SecretStr
 from spago_core.domain import ProvenanceState
 from spago_core.services.ai import (
     LLMAuthError,
+    LLMOutputRejectedError,
     LLMTimeoutError,
     LLMUpstreamError,
     LLMUpstreamRateLimitError,
+    MAX_LIMITATIONS,
     MAX_OUTPUT_TOKENS,
+    MAX_PARAGRAPHS,
 )
 
 # Budgets (plan §4). read timeout is a per-read bound, not the total deadline;
@@ -94,6 +101,12 @@ class LLMEndpointConfig:
     base_url: str
     api_key: SecretStr | None
     model: str
+    #: Opt-in, default off: send `thinking: {"type": "disabled"}`. Only for
+    #: providers that document the parameter; unknown parameters are rejected
+    #: by stricter OpenAI-compatible endpoints.
+    disable_thinking: bool = False
+    #: Opt-in, default off: send `response_format: {"type": "json_object"}`.
+    json_mode: bool = False
 
     @property
     def chat_url(self) -> str:
@@ -143,7 +156,15 @@ def parse_endpoint(settings) -> LLMEndpointConfig:
     else:
         raise LLMConfigProblem("LLM base URL must use http or https.")
 
-    return LLMEndpointConfig(base_url=base_url, api_key=api_key, model=model)
+    return LLMEndpointConfig(
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        # getattr keeps the parser usable by callers that build a minimal
+        # settings object (tests, embedded use).
+        disable_thinking=bool(getattr(settings, "llm_disable_thinking", False)),
+        json_mode=bool(getattr(settings, "llm_json_mode", False)),
+    )
 
 
 @dataclass(frozen=True)
@@ -159,7 +180,8 @@ class ProviderOutput:
 
 class OpenAICompatibleSummaryProvider:
     """Chat Completions subset provider. Sync httpx; bounded timeouts; a
-    256 KiB response cap; zero automatic retries."""
+    256 KiB response cap; no transport retry (the service may re-sample one
+    rejected answer, see `LLMOutputRejectedError`)."""
 
     name = "llm-openai-compatible"
     provenance_state = ProvenanceState.LLM_INFERRED
@@ -168,39 +190,99 @@ class OpenAICompatibleSummaryProvider:
         self,
         endpoint: LLMEndpointConfig,
         client: httpx.Client | None = None,
-        prompt_version: str = "family-summary-v2",
+        #: Fallback only: the service passes PROMPT_VERSION_BY_SCOPE explicitly,
+        #: and this must not drift from it (it was two versions stale).
+        prompt_version: str = "family-summary-v6",
         total_deadline_s: float = TOTAL_DEADLINE_S,
+        scope: str = "family",
     ) -> None:
         self.endpoint = endpoint
         self.model = endpoint.model
         self.endpoint_fingerprint = endpoint.endpoint_fingerprint
+        #: Mirrored onto the provider so the cache key can include it: output
+        #: produced with thinking is not the same analysis as output without it.
+        self.disable_thinking = endpoint.disable_thinking
+        self.json_mode = endpoint.json_mode
         self._client = client
         self._prompt_version = prompt_version
         self._deadline_s = total_deadline_s
+        #: The summary scope this provider instance was configured for. It
+        #: selects the instructions; the service records which scope was used.
+        self.scope = scope
 
     @property
     def request_timeout(self) -> httpx.Timeout:
         return httpx.Timeout(connect=5.0, read=self._deadline_s, write=10.0, pool=5.0)
 
+    #: Shared rules for every scope. Kept in one place so a new scope cannot
+    #: silently drop a constraint that another scope already had to obey.
+    _COMMON_RULES = (
+        "1. Use ONLY the facts in the provided JSON input. Never invent "
+        "structures, values, patent numbers, targets, assays or claims.\n"
+        "2. Answer with a single JSON object, no markdown fences, of the form:\n"
+        '{"paragraphs":[{"text":"...","fact_refs":["..."]}],"limitations":["..."]}\n'
+        f"   Use at most {MAX_PARAGRAPHS} paragraphs and at most "
+        f"{MAX_LIMITATIONS} limitation strings; prefer 6-10 short paragraphs "
+        "and merge closely related facts rather than adding another one.\n"
+        "3. Every fact paragraph must cite at least one fact_ref copied exactly "
+        "from the input's refs; never emit an empty fact_refs list. Only the `ref` "
+        "fields inside the input are fact refs: an input key such as `coverage`, "
+        "`measurement_total` or `modality_breakdown` is not a ref, and an identifier "
+        "you did not read in the input does not exist. For a coverage or totals "
+        "statement (dataset version, per-source status, counts, breakdowns, bounded "
+        "input), cite the input's root ref (`family:…`, `document:…` or `target:…`).\n"
+        "4. Never treat a measurement record as patent-text evidence.\n"
+        "5. Do not rank values across different assays or compute selectivity.\n"
+        "6. Never state or imply that a target has no inhibitors, or that a "
+        "compound is inactive, because a record is missing. Missing data is a "
+        "coverage statement, not a scientific conclusion.\n"
+        "7. List honest limitations (missing measurements, bounded input, "
+        f"sources that failed or were not queried), at most {MAX_LIMITATIONS}."
+    )
+
     def _system_prompt(self) -> str:
+        if self.scope == "document":
+            return (
+                "You are a medicinal-chemistry patent analysis assistant. You write a "
+                "structured summary of ONE patent document from the provided facts only.\n"
+                "The facts cover this document alone: never mention or imply facts from "
+                "other documents in the family, and never describe the document's family "
+                "as a whole.\n"
+                "If the input says claims were not assessed, state plainly that claims "
+                "were not assessed; do not infer claim scope.\n"
+                "Rules:\n" + self._COMMON_RULES
+            )
+        if self.scope == "target":
+            return (
+                "You are a medicinal-chemistry target analyst. You write a structured "
+                "summary of a target investigation from open-database facts only.\n"
+                "The input carries a per-source retrieval status. Treat it as part of the "
+                "result: a source that returned nothing, failed, or was not queried is "
+                "reported as such and is NOT evidence that no inhibitors exist.\n"
+                "Each entry in `sources` (and its row in `coverage`) carries its own ref "
+                "`source:<name>`: state that source's status, counts, exclusions, warnings "
+                "or dataset version against that ref. Scope-level totals and the other "
+                "aggregate fields belong to the target ref.\n"
+                "Distinguish measured direct binding, interaction disruption, functional "
+                "effects and screening data; a percent-inhibition readout is not proof of "
+                "binding. Distinguish small molecules from peptides and biologics. A "
+                "patent occurrence is not proof of inhibition, and its absence is not "
+                "proof that a compound is unclaimed.\n"
+                "Rules:\n" + self._COMMON_RULES
+            )
         return (
             "You are a medicinal-chemistry patent analysis assistant. You write a "
             "structured summary of a patent family from the provided facts only.\n"
-            "Rules:\n"
-            "1. Use ONLY the facts in the provided JSON input. Never invent "
-            "structures, values, patent numbers, targets, or claims.\n"
-            "2. Answer with a single JSON object, no markdown fences, of the form:\n"
-            '{"paragraphs":[{"text":"...","fact_refs":["..."]}],"limitations":["..."]}\n'
-            "3. Every fact paragraph must cite at least one fact_ref copied exactly "
-            "from the input's refs (family:..., measurement:..., evidence:...).\n"
-            "4. Never treat a measurement record as patent-text evidence.\n"
-            "5. Do not rank values across different assays or compute selectivity.\n"
-            "6. List honest limitations (e.g. missing measurements, bounded input)."
+            "Rules:\n" + self._COMMON_RULES
         )
 
     def _user_prompt(self, snapshot: dict) -> str:
+        subject = {
+            "document": "patent document facts",
+            "target": "target investigation facts",
+        }.get(self.scope, "patent family facts")
         return (
-            "Summarize the following patent family facts. Copy fact_ref values "
+            f"Summarize the following {subject}. Copy fact_ref values "
             "exactly from the input.\n\n"
             + json.dumps(snapshot, ensure_ascii=False, sort_keys=True)
         )
@@ -224,6 +306,16 @@ class OpenAICompatibleSummaryProvider:
             "stream": False,
             "max_tokens": MAX_OUTPUT_TOKENS,
         }
+        if self.endpoint.disable_thinking:
+            # Documented DeepSeek-style switch. Required for models that reason
+            # by default: hidden reasoning consumed the whole output budget and
+            # the call returned no content at all (live finding 2026-09-15).
+            body["thinking"] = {"type": "disabled"}
+        if self.endpoint.json_mode:
+            # OpenAI-standard decoding constraint. Live finding 2026-09-15:
+            # without it the model sometimes dropped the closing bracket of the
+            # final array and the whole summary was refused as invalid JSON.
+            body["response_format"] = {"type": "json_object"}
         # The declared budget travels with the request; the client default
         # (5 s read) must not silently decide how long a model may think (LLM-06).
         request = client.build_request(
@@ -288,11 +380,19 @@ class OpenAICompatibleSummaryProvider:
         message = choices[0].get("message") or {}
         content = message.get("content")
         if not isinstance(content, str) or not content.strip():
-            raise LLMUpstreamError("Model returned empty content.")
+            # A completed response with unusable content: re-sampling is allowed
+            # once by the service (`LLMOutputRejectedError`), since the call was
+            # answered and billed (live finding 2026-09-15: a reasoning model
+            # spent its whole budget and returned no content).
+            raise LLMOutputRejectedError("Model returned empty content.")
         if message.get("tool_calls"):
+            # Never retried: re-asking a model that tried to use tools invites
+            # the same violation (tool use is not allowed, AGENTS.md §12).
             raise LLMUpstreamError("Model attempted tool calls; tool use is not allowed.")
         if choices[0].get("finish_reason") != "stop":
-            raise LLMUpstreamError("Model did not finish normally.")
+            # `length` and other non-stop finishes are answers SPAgo cannot use;
+            # the response was received and billed, so one re-sample is allowed.
+            raise LLMOutputRejectedError("Model did not finish normally.")
         tool_calls = False
 
         usage_raw = payload.get("usage")

@@ -6,6 +6,7 @@ recorded issue, never silently dropped or coerced.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from rdkit import Chem, RDLogger
@@ -109,6 +110,30 @@ def murcko_scaffold(smiles: str) -> str:
     mol = parse(smiles)
     scaffold = MurckoScaffold.GetScaffoldForMol(mol)
     return Chem.MolToSmiles(scaffold)
+
+
+# CXSMILES extension blocks seen in external sources. BindingDB appends "|r|"
+# (racemic/relative stereo marker) and ChEMBL occasionally emits richer blocks.
+# The marker is metadata about the *source* record, so it is stripped for
+# parsing and reported to the caller rather than silently discarded.
+_CX_BLOCK_RE = re.compile(r"\s*\|[^|]*\|\s*$")
+
+
+def clean_external_smiles(raw: str) -> tuple[str, list[str]]:
+    """Normalize a source-reported SMILES string for RDKit parsing.
+
+    Returns (smiles, notes). Notes record every transformation, so a structure
+    that was annotated by its source is never mistaken for a clean one.
+    """
+    notes: list[str] = []
+    value = (raw or "").strip()
+    stripped = _CX_BLOCK_RE.sub("", value)
+    if stripped != value:
+        notes.append(
+            f"source CXSMILES annotation removed before parsing: {(value[len(stripped):]).strip()!r}"
+        )
+    value = stripped
+    return value, notes
 
 
 def chemistry_ok() -> bool:

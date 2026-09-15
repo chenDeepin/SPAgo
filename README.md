@@ -10,7 +10,37 @@ The project is designed for medicinal chemists, computational chemists, patent r
 
 ---
 
-# Current status: M0–M5 local demo + first real-source path, with open acceptance gaps
+# Current status: ONLINE-00…05 implemented locally; hosted acceptance still open
+
+**Implemented and locally verified** (read
+[the plan's verification record](docs/plans/2026-09-15-online-llm.md) before
+trusting any of it):
+
+- **Target-led open-database investigation.** Resolve a target (UniProt), then
+  retrieve bounded candidates and measurements from ChEMBL, BindingDB and
+  PubChem, each with its own recorded outcome (`complete` / `partial` / `empty` /
+  `failed` / `not_queried`). Deterministic modality classification keeps small
+  molecules apart from peptides and biologics, and measurements carry an explicit
+  evidence class (measured binding, interaction disruption, functional effect,
+  screening).
+- **Scoped, cited summaries** for a patent family, one document, or a target
+  investigation, with separate prompt versions and cache keys per scope.
+- **Validated natural-language search**: a request becomes a typed plan against a
+  fixed operation allowlist, shown for review, executed only on explicit action.
+- **Hosted access**: invitation-only sessions, per-owner projects and analyses,
+  fail-closed anonymous access, model-usage quotas, readiness checks and a hosted
+  runbook.
+
+**Not done — do not mistake implementation for acceptance:** no hosted deployment
+exists, no invited user has completed the workflow, and the live model smoke
+covers **one** provider (DeepSeek `deepseek-flash`, recorded below) rather than
+compatibility in general. [Scope and coverage statement](docs/online-capability.md) ·
+[acceptance record](docs/plans/ui-round-verification/online-beta-acceptance-2026-09-15.md).
+
+Local single-user usage is unchanged: `docker compose up -d --build` needs no
+accounts (`SPAGO_AUTH_MODE=disabled`), and existing data stays unattached.
+
+# Previous status: M0–M5 local demo + first real-source path
 
 - one-command local startup: `docker compose up -d --build` → `http://localhost:8000`;
 - **M0 Foundation**: FastAPI core + React workspace (search → family → compounds → evidence),
@@ -32,10 +62,17 @@ The project is designed for medicinal chemists, computational chemists, patent r
 - **M5 Evidence-Grounded AI**: offline extractive provider with typed citations and honest
   `machine_extracted` labeling; optional real-model path — configure
   `SPAGO_LLM_BASE_URL` / `SPAGO_LLM_API_KEY` / `SPAGO_LLM_MODEL` (the supported
-  Chat Completions subset; real-provider compatibility is not yet verified) and the AI
+  Chat Completions subset; one provider measured, see below) and the AI
   tab offers LLM summaries with content-key caching, bounded fact input,
   citation validation, and `llm_inferred` labeling; deterministic query planner;
   AI as an inspector tab;
+- **Real-model smoke (2026-09-15)**: DeepSeek `deepseek-flash` reached through the
+  running API for family, document and target scopes, and exercised through the
+  browser AI panel in LLM mode (cache reuse confirmed, 85 % single-attempt
+  compliance over 13 typed calls, median 4.7–7.3 s) — see
+  [docs/plans/2026-09-15-llm-live-smoke.md](docs/plans/2026-09-15-llm-live-smoke.md).
+  One provider is not a compatibility claim: a rejected answer is re-sampled once
+  and otherwise fails as 502, and any other endpoint needs its own smoke run;
 - **Repair round (2026-09-15)**: server-offset paging beyond the 500-row cap with
   retryable errors; the LLM input-budget / request-timeout / upstream-429 contract
   is fixed; **export scope is correct** — a structure filter exports exactly the
@@ -56,6 +93,15 @@ The project is designed for medicinal chemists, computational chemists, patent r
   database; `--no-pg` explicitly checks only a subset. See the current review
   results in [the readiness plan](docs/plans/2026-09-15-product-readiness.md).
 
+**Next milestone: hosted SPAgo with LLM-assisted search and cited summaries.**
+The [online + LLM plan](docs/plans/2026-09-15-online-llm.md) prioritizes
+target-led small-molecule investigation for TSLP, CD40L and IL-6/IL-6R, using
+UniProt/ChEMBL/BindingDB/PubChem adapters and existing patent-source links, then
+live-model summaries, validated natural-language search, private workspaces and
+hosted operation with usage limits. Direct and indirect evidence stay distinct;
+actual target coverage remains to be measured. These are planned capabilities; hosted
+access and LLM search are not implemented yet.
+
 **Release status: local trial candidate; product acceptance remains open.**
 Source refresh does not yet retract deleted/invalid mappings, interrupted import
 jobs have no recovery protocol, and manual scientific source cross-reading and
@@ -68,7 +114,7 @@ embedding, and Chrome-in-Chrome verification — recorded in
 [the product-readiness plan](docs/plans/2026-09-15-product-readiness.md). The
 real-data coverage claim is limited to the imported families; uncovered
 publication numbers return an explicit "not found in current dataset". No
-commit/tag/push has been made for this round yet.
+hosted release has been made. The local-readiness work is committed at `41ef768`.
 
 The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*` identifiers).
 It is not scientific data.
@@ -106,12 +152,24 @@ only `/chat/completions`. These are placeholders, not a default external target.
 Run `docker compose up -d --build` again to apply the environment, then explicitly
 select LLM mode in the existing AI tab. Legacy summary calls remain offline.
 
-The initial protocol sends `model`, `messages`, `stream: false`, and `max_tokens`;
-it does not support every vendor API or model. `configured` means the local settings
-are present, not that a model call succeeded. Real-model smoke is still **not checked**;
-the input-budget, timeout, and upstream-429 gaps that were tracked in the LLM plan are
-fixed and covered by tests (upstream 429 answers 429 with a validated `Retry-After`
-instead of 502) — see [the LLM contract record](docs/plans/2026-09-14-llm-interface.md).
+The protocol sends `model`, `messages`, `stream: false`, and `max_tokens`, plus
+two opt-in compatibility switches that are off unless the operator sets them:
+`SPAGO_LLM_DISABLE_THINKING=true` sends `thinking: {"type": "disabled"}` for
+models that reason by default and would otherwise spend the whole output budget
+before writing an answer, and `SPAGO_LLM_JSON_MODE=true` sends
+`response_format: {"type": "json_object"}` when a model occasionally returns
+malformed JSON. Strict endpoints reject unknown parameters, which is why neither
+is sent by default. It does not support every vendor API or model; `configured`
+means the local settings are present, not that a model call succeeded.
+
+A real-model smoke has been recorded once against DeepSeek `deepseek-flash`
+(model, protocol, latency, token usage, cache reuse and the failures found are in
+[the live-smoke record](docs/plans/2026-09-15-llm-live-smoke.md)); that is one
+provider, not a compatibility claim, and measured single-attempt compliance was
+85 %. The input-budget, timeout, and upstream-429 gaps that were tracked in the
+LLM plan are fixed and covered by tests (upstream 429 answers 429 with a
+validated `Retry-After` instead of 502) — see
+[the LLM contract record](docs/plans/2026-09-14-llm-interface.md).
 
 For an explicitly configured host-local endpoint, use
 `http://host.docker.internal:<port>/v1`; Compose already maps that hostname on Linux.

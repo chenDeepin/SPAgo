@@ -14,6 +14,8 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from spago_core import services
+from spago_core.api.auth_routes import current_user
+from spago_core.services import auth as auth_svc
 from spago_core.services import bioactivity as services_bioactivity
 from spago_core.adapters import SureChemblFixtureAdapter
 from spago_core.chemistry import StructureParseError, depict_svg
@@ -344,6 +346,9 @@ class MoleculeFiltersBody(BaseModel):
 
 
 class StructureSearchRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
     mode: str = Field(pattern="^(exact|substructure|similarity)$")
     smiles: str = Field(min_length=1, max_length=2000)
     threshold: Optional[float] = Field(default=None, ge=0.3, le=1.0)
@@ -477,6 +482,8 @@ class FamilySummaryResponse(BaseModel):
     created_at: str
     # Additive LLM-interface fields; offline calls leave them at defaults.
     mode: str = "offline"
+    #: family | document | target — the scope this analysis actually covers.
+    scope: str = "family"
     model: Optional[str] = None
     cached: bool = False
     usage: Optional[dict] = None
@@ -484,13 +491,157 @@ class FamilySummaryResponse(BaseModel):
 
 
 class PlanQueryRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
     query: str = Field(min_length=1, max_length=2000)
+    #: Context the planner may use, all of it already authorized: the open family
+    #: or document and any explicit selection. Never a whole project dataset.
+    family_id: Optional[uuid.UUID] = None
+    document_id: Optional[uuid.UUID] = None
+    selected_compound_id: Optional[uuid.UUID] = None
+    #: Explicit opt-in to the configured model. Offline planning happens first
+    #: and never requires this.
+    use_llm: bool = False
 
 
-class PlanQueryResponse(BaseModel):
-    patent_queries: list[str]
-    unresolved_text: Optional[str] = None
-    note: str
+class PlanStepResponse(BaseModel):
+    op: str
+    description: str
+    parameters: dict = {}
+    expensive: bool = False
+
+
+class SearchPlanResponse(BaseModel):
+    plan_version: str
+    query: str
+    producer: str
+    steps: list[PlanStepResponse] = []
+    unresolved: list[str] = []
+    clarification_required: bool = False
+    note: str = ""
+    model: Optional[str] = None
+    mode: str = "offline"
+
+
+class PlanExecuteRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
+    plan: dict
+
+
+class PlanStepResultResponse(BaseModel):
+    op: str
+    status: str
+    detail: str = ""
+    data: dict = {}
+
+
+class PlanExecuteResponse(BaseModel):
+    query: str
+    producer: str
+    steps: list[PlanStepResultResponse] = []
+    unresolved: list[str] = []
+
+
+def _plan_payload(plan, mode: str) -> SearchPlanResponse:
+    from spago_core.services.planner import OPERATION_SPECS, Operation
+
+    steps = []
+    for raw in plan.steps:
+        op = Operation(raw["op"])
+        parameters = {k: v for k, v in raw.items() if k not in ("op", "limit")}
+        if "limit" in raw:
+            parameters["limit"] = raw["limit"]
+        steps.append(
+            PlanStepResponse(
+                op=op.value,
+                description=OPERATION_SPECS[op]["description"],
+                parameters=parameters,
+                expensive=bool(OPERATION_SPECS[op]["expensive"]),
+            )
+        )
+    return SearchPlanResponse(
+        plan_version=plan.plan_version,
+        query=plan.query,
+        producer=plan.producer,
+        steps=steps,
+        unresolved=list(plan.unresolved),
+        clarification_required=plan.clarification_required,
+        note=plan.note,
+        model=plan.model,
+        mode=mode,
+    )
+
+
+def _run_summary(
+    request: Request,
+    engine,
+    settings,
+    scope: str,
+    scope_id: uuid.UUID,
+    mode: str,
+    response_scope_label: str,
+    include_all_modalities: bool = False,
+    owner_id: uuid.UUID | None = None,
+):
+    """Shared summary execution + error mapping for every scope.
+
+    One implementation means the status codes, timeout/auth/rate-limit mapping
+    and provenance labelling cannot drift between scopes (ONLINE-01).
+    """
+    from spago_core.adapters.llm import LLMConfigProblem, OpenAICompatibleSummaryProvider, parse_endpoint
+    from spago_core.services import ai as ai_svc
+
+    llm_provider = None
+    if mode == "llm":
+        try:
+            endpoint = parse_endpoint(settings)
+        except LLMConfigProblem as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        llm_provider = OpenAICompatibleSummaryProvider(
+            endpoint,
+            client=getattr(request.app.state, "llm_client", None),
+            scope=scope,
+            prompt_version=ai_svc.PROMPT_VERSION_BY_SCOPE.get(scope, ai_svc.PROMPT_VERSION),
+        )
+
+    # Dispatch through the scope's named service entry point, resolved at call
+    # time so tests and deployments can substitute it.
+    entry_name = ai_svc.SUMMARY_ENTRY_POINTS.get(scope)
+    if entry_name is None:
+        raise HTTPException(status_code=422, detail=f"Unsupported summary scope {scope!r}.")
+    entry = getattr(ai_svc, entry_name)
+    kwargs = {"owner_id": owner_id}
+    if scope == "target":
+        kwargs["include_all_modalities"] = include_all_modalities
+
+    try:
+        result = entry(engine, scope_id, mode=mode, llm_provider=llm_provider, **kwargs)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ai_svc.ContentInFlightError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.ProviderBusyError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMConfigError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMUpstreamRateLimitError as exc:
+        headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail, headers=headers) from exc
+    except ai_svc.LLMAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMTimeoutError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.SnapshotBudgetError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMUpstreamError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    result["mode"] = mode
+    result["scope"] = response_scope_label
+    return result
 
 
 def _ai_status_response(settings) -> dict:
@@ -532,6 +683,9 @@ def ai_status(settings: Settings = Depends(get_settings)):
 
 
 class SummaryRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
     mode: str = Field(default="offline", pattern="^(offline|llm)$")
 
 
@@ -542,65 +696,212 @@ def family_summary(
     engine=Depends(get_engine),
     settings: Settings = Depends(get_settings),
     body: SummaryRequest | None = None,
+    user: auth_svc.AuthUser = Depends(current_user),
 ):
+    owner_id = auth_svc.owner_id_for(user)
     """Family summary. Without a body (legacy callers) this stays offline; an
     explicit {"mode": "llm"} is required before any paid model call is made.
 
-    Error mapping (plan §5): 502 upstream/validation, 504 timeout, 503 not
-    configured, 409 identical content in flight, 429 busy or upstream rate
-    limited (Retry-After forwarded only when the endpoint provided a usable
-    value), 500 unrepresentable bounded input."""
-    from spago_core.adapters.llm import LLMConfigProblem, OpenAICompatibleSummaryProvider, parse_endpoint
-    from spago_core.services import ai as ai_svc
+    Error mapping: 502 upstream/validation, 504 timeout, 503 not configured,
+    409 identical content in flight, 429 busy or upstream rate limited
+    (Retry-After forwarded only when the endpoint provided a usable value),
+    500 unrepresentable bounded input."""
+    return _run_summary(
+        request,
+        engine,
+        settings,
+        "family",
+        family_id,
+        body.mode if body else "offline",
+        "family",
+        owner_id=owner_id,
+    )
 
-    mode = body.mode if body else "offline"
-    llm_provider = None
-    if mode == "llm":
+
+class DocumentSummaryRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
+    mode: str = Field(default="offline", pattern="^(offline|llm)$")
+
+
+@router.post("/documents/{document_id}/summary", response_model=FamilySummaryResponse)
+def document_summary(
+    document_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+    body: DocumentSummaryRequest | None = None,
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    owner_id = auth_svc.owner_id_for(user)
+    """Summary of exactly one patent document.
+
+    Distinct from the family summary and labelled as such: the fact set, the
+    prompt and the cache key all cover this document alone, so it can never be
+    presented as an analysis of the whole family."""
+    return _run_summary(
+        request,
+        engine,
+        settings,
+        "document",
+        document_id,
+        body.mode if body else "offline",
+        "document",
+        owner_id=owner_id,
+    )
+
+
+class TargetSummaryRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
+    mode: str = Field(default="offline", pattern="^(offline|llm)$")
+    include_all_modalities: bool = False
+
+
+@router.post("/targets/{target_id}/summary", response_model=FamilySummaryResponse)
+def target_summary(
+    target_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+    body: TargetSummaryRequest | None = None,
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    owner_id = auth_svc.owner_id_for(user)
+    """Summary of a target investigation, with its per-source coverage.
+
+    The coverage travels into the fact set, so the summary states what was
+    retrieved, what failed and what was not queried instead of implying that a
+    thin result means no inhibitors exist."""
+    return _run_summary(
+        request,
+        engine,
+        settings,
+        "target",
+        target_id,
+        body.mode if body else "offline",
+        "target",
+        include_all_modalities=body.include_all_modalities if body else False,
+        owner_id=owner_id,
+    )
+
+
+@router.post("/ai/plan", response_model=SearchPlanResponse)
+def ai_plan(
+    body: PlanQueryRequest,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+):
+    """Interpret a request into a validated, reviewable plan.
+
+    The offline planner runs first and always succeeds for deterministic
+    identifiers. `use_llm` opts in to the configured model for language
+    interpretation; without it, free text is reported unresolved rather than
+    guessed. The plan is not executed here — the caller reviews it and posts it
+    to `/ai/plan/execute`.
+    """
+    from spago_core.services import planner as planner_svc
+
+    context = _plan_context(engine, body)
+    plan = planner_svc.offline_plan(body.query, context)
+    mode = "offline"
+
+    if body.use_llm and not plan.steps:
+        from spago_core.adapters.llm import (
+            LLMConfigProblem,
+            OpenAICompatibleSummaryProvider,
+            parse_endpoint,
+        )
+
+        if not (settings.llm_base_url or "").strip() or not (settings.llm_model or "").strip():
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Language interpretation is not available: no model endpoint is configured. "
+                    "Identifier requests and manual search still work."
+                ),
+            )
         try:
             endpoint = parse_endpoint(settings)
         except LLMConfigProblem as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
-        llm_provider = OpenAICompatibleSummaryProvider(
-            endpoint, client=getattr(request.app.state, "llm_client", None)
+        provider = OpenAICompatibleSummaryProvider(
+            endpoint, client=getattr(request.app.state, "llm_client", None), scope="family"
         )
+        proposer = planner_svc.OpenAICompatiblePlanProvider(provider)
+        try:
+            proposal = proposer.propose(body.query, context)
+        except ai_svc.LLMTimeoutError as exc:
+            raise HTTPException(status_code=504, detail=exc.detail) from exc
+        except ai_svc.LLMAuthError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        except ai_svc.LLMUpstreamRateLimitError as exc:
+            headers = (
+                {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None
+            )
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail, headers=headers) from exc
+        except ai_svc.AIError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"The model response could not be read as a plan ({type(exc).__name__}).",
+            ) from exc
+        plan = planner_svc.plan_from_proposal(body.query, proposal, model=proposer.model)
+        mode = "llm"
+
+    return _plan_payload(plan, mode)
+
+
+def _plan_context(engine, body: PlanQueryRequest) -> dict:
+    """The authorized context a plan may use: the open family/document and an
+    explicit selection — resolved server-side, never a project dataset."""
+    from spago_core.services import find_patent, get_family_overview
+
+    context: dict = {}
+    if body.family_id is not None:
+        try:
+            overview = get_family_overview(engine, body.family_id)
+            context["family_id"] = str(body.family_id)
+            context["family_key"] = overview.family.family_key
+            context["document_ids"] = [str(d.id) for d in overview.documents]
+        except NotFoundError:
+            context["family_scope_error"] = "the requested family scope does not exist"
+    if body.document_id is not None:
+        context["document_id"] = str(body.document_id)
+    if body.selected_compound_id is not None:
+        context["selected_compound_id"] = str(body.selected_compound_id)
+    return context
+
+
+@router.post("/ai/plan/execute", response_model=PlanExecuteResponse)
+def ai_plan_execute(
+    body: PlanExecuteRequest,
+    engine=Depends(get_engine),
+):
+    """Execute a reviewed plan through the deterministic services.
+
+    The posted plan is re-validated against the operation allowlist before
+    anything runs, so a hand-written body cannot introduce an operation, an
+    out-of-range parameter or an invented argument.
+    """
+    from spago_core.services import plan_execution
+    from spago_core.services.planner import UnsupportedRequest
 
     try:
-        result = ai_svc.summarize_family(engine, family_id, mode=mode, llm_provider=llm_provider)
-    except NotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ai_svc.ContentInFlightError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    except ai_svc.ProviderBusyError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    except ai_svc.LLMConfigError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    except ai_svc.LLMUpstreamRateLimitError as exc:
-        # Upstream throttling is reported as 429, with Retry-After only when the
-        # endpoint supplied a usable value (LLM-07).
-        headers = (
-            {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None
-        )
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail, headers=headers) from exc
-    except ai_svc.LLMAuthError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    except ai_svc.LLMTimeoutError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    except ai_svc.SnapshotBudgetError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    except ai_svc.LLMUpstreamError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-
-    # Response fields the old callers can ignore; model/cached/usage/coverage
-    # are additive (plan §5).
-    result["mode"] = mode
-    return result
-
-
-@router.post("/ai/plan", response_model=PlanQueryResponse)
-def ai_plan(body: PlanQueryRequest):
-    from spago_core.services import ai as ai_svc
-
-    return PlanQueryResponse(**ai_svc.plan_query(body.query))
+        result = plan_execution.execute_plan(engine, body.plan)
+    except UnsupportedRequest as exc:
+        detail = exc.reason + (f" {exc.suggestion}" if exc.suggestion else "")
+        raise HTTPException(status_code=422, detail=detail) from exc
+    return PlanExecuteResponse(
+        query=result.query,
+        producer=result.producer,
+        steps=[PlanStepResultResponse(**s.to_dict()) for s in result.steps],
+        unresolved=result.unresolved,
+    )
 
 
 # --- bulk layer proof (workload A) ---------------------------------------------------
@@ -624,6 +925,753 @@ def bulk_compound_counts(settings: Settings = Depends(get_settings)):
     )
 
 
+# --- ONLINE-04: usage accounting and health ----------------------------------------
+
+
+class UsageReportResponse(BaseModel):
+    window: str
+    user_tokens: int
+    user_limit: int
+    deployment_tokens: int
+    deployment_limit: int
+    requests: int
+    failures: int
+    estimated_cost: Optional[float] = None
+    currency: Optional[str] = None
+    cost_note: str = ""
+
+
+@router.get("/usage", response_model=UsageReportResponse)
+def usage_report(
+    user: auth_svc.AuthUser = Depends(current_user),
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+):
+    """The caller's own usage and the deployment's aggregate.
+
+    A user sees their own consumption and the remaining deployment budget, but
+    not another user's breakdown: the aggregate is the operator's, the detail is
+    private.
+    """
+    from spago_core.services import usage as usage_svc
+
+    report = usage_svc.report(
+        engine,
+        window=settings.llm_quota_window,
+        user_limit=settings.llm_user_token_limit,
+        deployment_limit=settings.llm_deployment_token_limit,
+        owner_id=auth_svc.owner_id_for(user),
+        price_per_million_tokens=settings.llm_price_per_million_tokens,
+        currency=settings.llm_price_currency,
+    )
+    return UsageReportResponse(**report.to_dict())
+
+
+class UsageEventResponse(BaseModel):
+    id: str
+    owner: Optional[str] = None
+    provider: str
+    model: Optional[str] = None
+    scope: str
+    outcome: str
+    reserved_tokens: int
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    error: Optional[str] = None
+    created_at: str
+    settled_at: Optional[str] = None
+
+
+@router.get("/usage/events", response_model=list[UsageEventResponse])
+def usage_events(
+    user: auth_svc.AuthUser = Depends(current_user),
+    engine=Depends(get_engine),
+    limit: int = Query(50, ge=1, le=500),
+):
+    """The operator's usage log. Administrator-only: it spans all owners."""
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="This operation requires an administrator.")
+    from spago_core.services import usage as usage_svc
+
+    return [UsageEventResponse(**row) for row in usage_svc.recent_usage(engine, limit)]
+
+
+class ReadinessResponse(BaseModel):
+    status: str
+    checks: dict
+    notes: list[str] = []
+
+
+@router.get("/readyz", response_model=ReadinessResponse)
+def readiness(engine=Depends(get_engine), settings: Settings = Depends(get_settings)):
+    """Readiness for a hosted deployment: what must be true before serving users.
+
+    Reports each check rather than a single boolean, so a failing deployment can
+    be diagnosed from the response and a passing one is not assumed.
+    """
+    from sqlalchemy import text
+
+    from spago_core.chemistry import chemistry_ok
+    from spago_core.db import database_available
+
+    checks: dict = {}
+    notes: list[str] = []
+
+    checks["database"] = database_available(engine)
+    checks["chemistry"] = chemistry_ok()
+    checks["auth_mode_configured"] = settings.auth_required or settings.seed_mode == "demo"
+    checks["cookie_secure_for_https"] = (not settings.auth_required) or settings.cookie_secure
+    checks["model_quota_configured"] = (
+        settings.llm_user_token_limit > 0 and settings.llm_deployment_token_limit > 0
+    )
+
+    if checks["database"]:
+        with engine.connect() as conn:
+            checks["migrations_applied"] = conn.execute(
+                text("SELECT count(*) > 0 FROM information_schema.tables WHERE table_name = 'schema_migrations'")
+            ).scalar()
+            checks["rdkit_cartridge"] = conn.execute(
+                text("SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'rdkit')")
+            ).scalar()
+    else:
+        checks["migrations_applied"] = False
+        checks["rdkit_cartridge"] = False
+
+    if settings.auth_required and not settings.cookie_secure:
+        notes.append(
+            "SPAGO_AUTH_MODE=required with SPAGO_COOKIE_SECURE=false: session cookies are sent "
+            "without the Secure flag. Set it once the deployment is served over HTTPS."
+        )
+    if settings.seed_mode == "demo" and settings.auth_required:
+        notes.append(
+            "This hosted deployment is loading the synthetic demo fixture (SPAGO_SEED_MODE=demo). "
+            "Set it to none for real data."
+        )
+    if settings.llm_user_token_limit <= 0 or settings.llm_deployment_token_limit <= 0:
+        notes.append(
+            "A model token limit is disabled (0): paid usage is not bounded by the service layer."
+        )
+
+    ok = all(
+        checks[key]
+        for key in ("database", "chemistry", "migrations_applied", "rdkit_cartridge")
+    )
+    return ReadinessResponse(
+        status="ready" if ok else "not_ready",
+        checks=checks,
+        notes=notes,
+    )
+
+
+# --- ONLINE-00: target-led investigation ----------------------------------------
+
+
+class TargetScopeRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
+    query: str = Field(min_length=1, max_length=200)
+    species: str = Field(default="human", max_length=60)
+    #: Offer receptor/partner/pathway expansion. The response always labels
+    #: which members are related rather than the requested target.
+    include_related: bool = True
+
+
+class TargetComponentResponse(BaseModel):
+    accession: Optional[str] = None
+    name: Optional[str] = None
+    gene_symbol: Optional[str] = None
+    role: Optional[str] = None
+    organism: Optional[str] = None
+
+
+class ResolutionCandidateResponse(BaseModel):
+    identifier: str
+    name: Optional[str] = None
+    organism: Optional[str] = None
+    target_type: Optional[str] = None
+    source_name: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class TargetResolutionResponse(BaseModel):
+    status: str
+    query: str
+    species: str
+    target_id: Optional[uuid.UUID] = None
+    target_key: Optional[str] = None
+    name: Optional[str] = None
+    organism: Optional[str] = None
+    uniprot_accession: Optional[str] = None
+    gene_symbol: Optional[str] = None
+    target_type: Optional[str] = None
+    scope_kind: Optional[str] = None
+    aliases: list[str] = []
+    components: list[TargetComponentResponse] = []
+    candidates: list[ResolutionCandidateResponse] = []
+    excluded: list[ResolutionCandidateResponse] = []
+    notes: list[str] = []
+    source_name: str = "uniprot"
+    source_version: Optional[str] = None
+    retrieved_at: str = ""
+
+
+
+
+def _target_payload(target, resolution: Optional[TargetResolutionResponse] = None) -> ResolvedTargetResponse:
+    """Serialize a resolved target exactly once, so components are never passed
+    twice (a pydantic model dump already carries them)."""
+    payload = target.model_dump()
+    payload["components"] = [
+        TargetComponentResponse(**c.model_dump()) for c in target.components
+    ]
+    payload["resolution"] = resolution
+    return ResolvedTargetResponse(**payload)
+
+
+class ResolvedTargetResponse(BaseModel):
+    id: uuid.UUID
+    target_key: str
+    name: Optional[str] = None
+    organism: Optional[str] = None
+    taxon_id: Optional[int] = None
+    uniprot_accession: Optional[str] = None
+    gene_symbol: Optional[str] = None
+    target_type: Optional[str] = None
+    scope_kind: Optional[str] = None
+    aliases: list[str] = []
+    components: list[TargetComponentResponse] = []
+    source_name: Optional[str] = None
+    dataset_version: Optional[str] = None
+    #: Only present when the scope was actually resolved in this deployment.
+    resolution: Optional[TargetResolutionResponse] = None
+
+
+def _resolution_payload(outcome) -> TargetResolutionResponse:
+    record = outcome.record
+    target = outcome.target
+    return TargetResolutionResponse(
+        status=record.status,
+        query=record.query,
+        species=record.species,
+        target_id=target.id if target else None,
+        target_key=target.target_key if target else None,
+        name=target.name if target else None,
+        organism=target.organism if target else None,
+        uniprot_accession=target.uniprot_accession if target else None,
+        gene_symbol=target.gene_symbol if target else None,
+        target_type=target.target_type.value if target and target.target_type else None,
+        scope_kind=target.scope_kind.value if target and target.scope_kind else None,
+        aliases=list(target.aliases) if target else [],
+        components=[
+            TargetComponentResponse(**c.model_dump()) for c in (target.components if target else [])
+        ],
+        candidates=[ResolutionCandidateResponse(**c.model_dump()) for c in record.candidates],
+        excluded=[ResolutionCandidateResponse(**c.model_dump()) for c in record.excluded],
+        notes=list(record.notes),
+        source_name=record.source_name,
+        source_version=record.source_version,
+        retrieved_at=record.retrieved_at.isoformat(),
+    )
+
+
+def _get_target_service(request: Request):
+    from spago_core.services.targets import TargetResolutionService
+
+    return getattr(request.app.state, "target_service", None) or TargetResolutionService()
+
+
+def _get_discovery_service(request: Request):
+    from spago_core.services.discovery import TargetDiscoveryService
+
+    return getattr(request.app.state, "discovery_service", None) or TargetDiscoveryService()
+
+
+@router.post("/targets/resolve", response_model=TargetResolutionResponse)
+def resolve_target(
+    body: TargetScopeRequest,
+    request: Request,
+    engine=Depends(get_engine),
+):
+    """Resolve a requested target to a reviewed protein identity.
+
+    Ambiguity is reported, not resolved silently: `status` is `resolved`,
+    `ambiguous`, `not_found` or `failed`, and the alternatives are returned
+    either way. No network call happens unless the target is not already
+    resolved in this deployment.
+    """
+    from spago_core.services.targets import TargetResolutionService
+
+    service = _get_target_service(request)
+    existing = service.find_target(engine, body.query)
+    if existing is not None:
+        record = service.latest_resolution(engine, existing.id)
+        return TargetResolutionResponse(
+            status="resolved",
+            query=body.query,
+            species=body.species,
+            target_id=existing.id,
+            target_key=existing.target_key,
+            name=existing.name,
+            organism=existing.organism,
+            uniprot_accession=existing.uniprot_accession,
+            gene_symbol=existing.gene_symbol,
+            target_type=existing.target_type.value if existing.target_type else None,
+            scope_kind=existing.scope_kind.value if existing.scope_kind else None,
+            aliases=existing.aliases,
+            components=[TargetComponentResponse(**c.model_dump()) for c in existing.components],
+            candidates=(
+                [ResolutionCandidateResponse(**c.model_dump()) for c in record.candidates]
+                if record
+                else []
+            ),
+            excluded=(
+                [ResolutionCandidateResponse(**c.model_dump()) for c in record.excluded]
+                if record
+                else []
+            ),
+            notes=(
+                list(record.notes) if record else ["No stored resolution record for this scope."]
+            )
+            + ["Reused the already-resolved scope; no new source lookup was performed."],
+            source_name=(record.source_name if record else existing.source_name) or "uniprot",
+            source_version=record.source_version if record else None,
+            retrieved_at=(record.retrieved_at.isoformat() if record else ""),
+        )
+    outcome = service.resolve(
+        engine, body.query, body.species, include_related=body.include_related
+    )
+    return _resolution_payload(outcome)
+
+
+@router.get("/targets", response_model=list[ResolvedTargetResponse])
+def list_targets(engine=Depends(get_engine), request: Request = None):
+    service = _get_target_service(request)
+    return [_target_payload(t) for t in service.list_targets(engine)]
+
+
+@router.get("/targets/{target_id}", response_model=ResolvedTargetResponse)
+def get_target(target_id: uuid.UUID, engine=Depends(get_engine), request: Request = None):
+    from spago_core.services import NotFoundError
+
+    service = _get_target_service(request)
+    try:
+        target = service.get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    record = service.latest_resolution(engine, target.id)
+    return _target_payload(
+        target,
+        resolution=(
+            TargetResolutionResponse(
+                status=record.status,
+                query=record.query,
+                species=record.species,
+                target_id=target.id,
+                target_key=target.target_key,
+                name=target.name,
+                organism=target.organism,
+                uniprot_accession=target.uniprot_accession,
+                gene_symbol=target.gene_symbol,
+                target_type=target.target_type.value if target.target_type else None,
+                scope_kind=target.scope_kind.value if target.scope_kind else None,
+                aliases=target.aliases,
+                components=[
+                    TargetComponentResponse(**c.model_dump()) for c in target.components
+                ],
+                candidates=[
+                    ResolutionCandidateResponse(**c.model_dump()) for c in record.candidates
+                ],
+                excluded=[
+                    ResolutionCandidateResponse(**c.model_dump()) for c in record.excluded
+                ],
+                notes=list(record.notes),
+                source_name=record.source_name,
+                source_version=record.source_version,
+                retrieved_at=record.retrieved_at.isoformat(),
+            )
+            if record
+            else None
+        ),
+    )
+
+
+class DiscoverRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
+    target_id: uuid.UUID
+    sources: list[str] = Field(
+        default_factory=lambda: ["chembl", "bindingdb", "pubchem"],
+        max_length=4,
+    )
+    include_related: bool = False
+
+
+class RetrievalResponse(BaseModel):
+    source_name: str
+    status: str
+    query: dict = {}
+    dataset_version: Optional[str] = None
+    source_version: Optional[str] = None
+    pages_fetched: int = 0
+    records_seen: int = 0
+    records_kept: int = 0
+    records_excluded: int = 0
+    rejection_counts: dict = {}
+    latency_ms: Optional[int] = None
+    warnings: list[str] = []
+    checksum: Optional[str] = None
+    retrieved_at: str
+
+
+class DiscoverResponse(BaseModel):
+    target_id: uuid.UUID
+    target_key: str
+    sources: list[RetrievalResponse]
+    compounds_stored: int
+    compounds_reused: int
+    measurements_stored: int
+    candidates_stored: int
+    small_molecule_candidates: int
+    modality_counts: dict = {}
+    rejections: dict = {}
+    warnings: list[str] = []
+    #: Required by the plan: an empty result must never read as "no inhibitors".
+    coverage_note: str = (
+        "A source that returned nothing, failed, or was not queried is reported as such. "
+        "Missing records do not demonstrate that no inhibitors exist."
+    )
+
+
+@router.post("/targets/discover", response_model=DiscoverResponse)
+def discover_target(
+    body: DiscoverRequest,
+    request: Request,
+    engine=Depends(get_engine),
+):
+    """Run bounded retrieval from the open sources for a resolved target."""
+    from spago_core.services import NotFoundError
+    from spago_core.services.discovery import EXTERNAL_SOURCES
+
+    unknown = [s for s in body.sources if s not in EXTERNAL_SOURCES]
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported source(s): {', '.join(unknown)}. "
+            f"Supported: {', '.join(EXTERNAL_SOURCES)}.",
+        )
+    target_service = _get_target_service(request)
+    try:
+        target = target_service.get_target(engine, body.target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    service = _get_discovery_service(request)
+    report = service.investigate(engine, target, body.sources)
+    return DiscoverResponse(
+        target_id=report.target_id,
+        target_key=report.target_key,
+        sources=[
+            RetrievalResponse(
+                source_name=r.source_name,
+                status=r.status.value,
+                query=r.query,
+                dataset_version=r.dataset_version,
+                source_version=r.source_version,
+                pages_fetched=r.pages_fetched,
+                records_seen=r.records_seen,
+                records_kept=r.records_kept,
+                records_excluded=r.records_excluded,
+                rejection_counts=r.rejection_counts,
+                latency_ms=r.latency_ms,
+                warnings=r.warnings,
+                checksum=r.checksum,
+                retrieved_at=r.retrieved_at.isoformat(),
+            )
+            for r in report.retrievals
+        ],
+        compounds_stored=report.compounds_stored,
+        compounds_reused=report.compounds_reused,
+        measurements_stored=report.measurements_stored,
+        candidates_stored=report.candidates_stored,
+        small_molecule_candidates=report.small_molecule_candidates,
+        modality_counts=report.modality_counts,
+        rejections=report.rejections,
+        warnings=report.warnings,
+    )
+
+
+class CandidateResponse(BaseModel):
+    compound_id: uuid.UUID
+    canonical_smiles: str
+    inchikey: str
+    molecular_formula: Optional[str] = None
+    molecular_weight: Optional[float] = None
+    modality: str
+    modality_rule: Optional[str] = None
+    modality_source: Optional[str] = None
+    source_name: str
+    source_record_id: str
+    evidence_class: str
+    #: How many patent occurrences exist. Zero is a first-class, savable state:
+    #: a candidate with no patent mapping is not discarded (ONLINE-00 C).
+    patent_occurrences: int = 0
+    patent_labels: list[str] = []
+    measurements: int = 0
+
+
+class CandidatePageResponse(BaseModel):
+    total: int
+    offset: int
+    limit: int
+    items: list[CandidateResponse]
+    modality_breakdown: dict = {}
+    default_filter: str = "small molecules and unclassified entities"
+
+
+@router.get("/targets/{target_id}/candidates", response_model=CandidatePageResponse)
+def list_target_candidates(
+    target_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+    modality: Optional[str] = None,
+    evidence_class: Optional[str] = None,
+    include_all_modalities: bool = False,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(_DEFAULT_PAGE, ge=1),
+):
+    """Candidate compounds for a target.
+
+    The default view is small molecules and unclassified entities. Peptides,
+    oligonucleotides and biologics are excluded by an explicit, labelled filter
+    whose counts are returned in `modality_breakdown` — never dropped silently.
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services import discovery as discovery_svc
+
+    offset, limit = services.clamp_page(
+        offset, limit, settings.default_page_size, settings.max_page_size
+    )
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    total, items = discovery_svc.list_candidates(
+        engine,
+        target_id,
+        modality=modality,
+        evidence_class=evidence_class,
+        include_all_modalities=include_all_modalities,
+        offset=offset,
+        limit=limit,
+    )
+    return CandidatePageResponse(
+        total=total,
+        offset=offset,
+        limit=limit,
+        items=[CandidateResponse(**item.model_dump(mode="json")) for item in items],
+        modality_breakdown=discovery_svc.modality_breakdown(engine, target_id),
+        default_filter=(
+            "all modalities"
+            if include_all_modalities
+            else "small molecules and unclassified entities"
+        ),
+    )
+
+
+@router.get("/targets/{target_id}/coverage", response_model=list[RetrievalResponse])
+def target_coverage(target_id: uuid.UUID, request: Request, engine=Depends(get_engine)):
+    """The coverage matrix for one target: per-source retrieval outcome."""
+    from spago_core.services import NotFoundError
+    from spago_core.services import discovery as discovery_svc
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [
+        RetrievalResponse(
+            source_name=r.source_name,
+            status=r.status.value,
+            query=r.query,
+            dataset_version=r.dataset_version,
+            source_version=r.source_version,
+            pages_fetched=r.pages_fetched,
+            records_seen=r.records_seen,
+            records_kept=r.records_kept,
+            records_excluded=r.records_excluded,
+            rejection_counts=r.rejection_counts,
+            latency_ms=r.latency_ms,
+            warnings=r.warnings,
+            checksum=r.checksum,
+            retrieved_at=r.retrieved_at.isoformat(),
+        )
+        for r in discovery_svc.list_source_retrievals(engine, target_id)
+    ]
+
+
+class MeasurementResponse(BaseModel):
+    id: uuid.UUID
+    compound_id: uuid.UUID
+    inchikey: Optional[str] = None
+    #: The object the measurement is actually against. For an interaction or
+    #: complex target this is that object, not the investigated protein.
+    target_name: Optional[str] = None
+    target_key: Optional[str] = None
+    target_type: Optional[str] = None
+    assay_key: str
+    assay_type: Optional[str] = None
+    assay_description: Optional[str] = None
+    assay_format: Optional[str] = None
+    standard_type: str
+    value: float
+    unit: str
+    relation: str
+    raw_value: Optional[str] = None
+    evidence_class: str
+    species: Optional[str] = None
+    target_construct: Optional[str] = None
+    variant_accession: Optional[str] = None
+    variant_mutation: Optional[str] = None
+    pchembl_value: Optional[float] = None
+    potential_duplicate: bool = False
+    validity_comment: Optional[str] = None
+    document_ref: Optional[str] = None
+    source_url: Optional[str] = None
+    source_record_id: Optional[str] = None
+    source_name: str
+    extraction_method: str
+    provenance_state: str
+    dataset_version: str
+    retrieved_at: str
+
+
+@router.get("/targets/{target_id}/measurements", response_model=list[MeasurementResponse])
+def target_measurements(
+    target_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    compound_id: Optional[uuid.UUID] = None,
+    evidence_class: Optional[str] = None,
+    include_duplicates: bool = True,
+    limit: int = Query(200, ge=1, le=500),
+):
+    """Every measurement for a target, with its assay context.
+
+    Values are never ranked or averaged across assays: Kd, Ki, IC50 and EC50
+    stay distinct, contradictions are preserved, and records that share an
+    original document reference are flagged (ONLINE-00 C).
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services import discovery as discovery_svc
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return discovery_svc.list_target_measurements(
+        engine,
+        target_id,
+        compound_id=compound_id,
+        evidence_class=evidence_class,
+        include_duplicates=include_duplicates,
+        limit=limit,
+    )
+
+
+class CoverageMatrixRow(BaseModel):
+    target_id: uuid.UUID
+    target_key: str
+    target_name: Optional[str] = None
+    gene_symbol: Optional[str] = None
+    uniprot_accession: Optional[str] = None
+    target_type: Optional[str] = None
+    organism: Optional[str] = None
+    source_name: str
+    status: str
+    query: dict = {}
+    records_seen: int = 0
+    records_kept: int = 0
+    records_excluded: int = 0
+    rejection_counts: dict = {}
+    candidates: int = 0
+    small_molecule_candidates: int = 0
+    dataset_version: Optional[str] = None
+    source_version: Optional[str] = None
+    latency_ms: Optional[int] = None
+    retrieved_at: str
+    warnings: list[str] = []
+
+
+@router.get("/targets/coverage/matrix", response_model=list[CoverageMatrixRow])
+def coverage_matrix(engine=Depends(get_engine)):
+    """Dated source-by-target coverage: exact queries, counts, outcomes, versions.
+
+    This is the artifact that makes an honest coverage claim possible. A row
+    with `status: empty` and a row with `status: failed` are different facts and
+    stay different here.
+    """
+    from spago_core.services import discovery as discovery_svc
+
+    return [CoverageMatrixRow(**row) for row in discovery_svc.coverage_matrix(engine)]
+
+
+# --- ONLINE-00: saving a candidate that has no patent mapping ----------------------
+
+
+class SaveCandidateRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
+    target_id: uuid.UUID
+    compound_ids: list[uuid.UUID] = Field(min_length=1, max_length=500)
+    evidence_class: Optional[str] = None
+
+
+class SaveCandidateResponse(BaseModel):
+    created_rows: int
+    already_present_rows: int
+    target_key: str
+    dataset_versions: list[dict] = []
+
+
+@router.post(
+    "/projects/{project_id}/candidates", response_model=SaveCandidateResponse, status_code=201
+)
+def save_candidates(
+    project_id: uuid.UUID,
+    body: SaveCandidateRequest,
+    request: Request,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    """Save target candidates to a project, including compounds with no patent
+    occurrence. Such an item keeps its target scope and an identity snapshot
+    (ONLINE-00 C: a non-patent candidate must remain usable and savable)."""
+    from spago_core.services import NotFoundError
+    from spago_core.services import projects as projects_svc
+
+    try:
+        _get_target_service(request).get_target(engine, body.target_id)
+        result = projects_svc.save_candidates(
+            engine,
+            project_id,
+            body.target_id,
+            body.compound_ids,
+            body.evidence_class,
+            auth_svc.owner_id_for(user),
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except projects_svc.ProjectScopeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return SaveCandidateResponse(**result.__dict__)
+
+
 # --- projects (M1: save-to-project) --------------------------------------------------
 
 
@@ -637,8 +1685,10 @@ class ProjectSummaryResponse(BaseModel):
 
 class ProjectItemResponse(BaseModel):
     id: uuid.UUID
-    family_id: uuid.UUID
-    family_key: str
+    #: Patent-scoped items carry a family; target-candidate items carry a
+    #: target scope instead (ONLINE-00 C).
+    family_id: Optional[uuid.UUID] = None
+    family_key: Optional[str] = None
     compound_id: Optional[uuid.UUID] = None
     inchikey: Optional[str] = None
     canonical_smiles: Optional[str] = None
@@ -648,6 +1698,10 @@ class ProjectItemResponse(BaseModel):
     record_missing: bool = False
     source_updated: bool = False
     added_at: str
+    target_id: Optional[uuid.UUID] = None
+    target_key: Optional[str] = None
+    target_name: Optional[str] = None
+    evidence_class: Optional[str] = None
 
 
 class ProjectDetailResponse(ProjectSummaryResponse):
@@ -655,6 +1709,9 @@ class ProjectDetailResponse(ProjectSummaryResponse):
 
 
 class CreateProjectRequest(BaseModel):
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
     name: str = Field(min_length=1, max_length=120)
     description: Optional[str] = Field(default=None, max_length=500)
 
@@ -676,24 +1733,44 @@ class SaveScopeResponse(BaseModel):
 
 
 @router.get("/projects", response_model=list[ProjectSummaryResponse])
-def list_projects(engine=Depends(get_engine)):
+def list_projects(engine=Depends(get_engine), user: auth_svc.AuthUser = Depends(current_user)):
+    """Only the caller's own projects. An unassigned legacy project is not listed
+    in hosted mode; it is attached by an operator command (ADR-0002)."""
     from spago_core.services import projects as projects_svc
 
-    return projects_svc.list_projects(engine)
+    return projects_svc.list_projects(engine, auth_svc.owner_id_for(user))
 
 
 @router.post("/projects", response_model=ProjectSummaryResponse, status_code=201)
-def create_project(body: CreateProjectRequest, engine=Depends(get_engine)):
+def create_project(
+    body: CreateProjectRequest,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
     from spago_core.services import projects as projects_svc
 
-    return projects_svc.create_project(engine, body.name, body.description)
+    try:
+        return projects_svc.create_project(
+            engine, body.name, body.description, auth_svc.owner_id_for(user)
+        )
+    except projects_svc.ProjectScopeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/projects/{project_id}", response_model=ProjectDetailResponse)
-def get_project(project_id: uuid.UUID, engine=Depends(get_engine)):
+def get_project(
+    project_id: uuid.UUID,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
     from spago_core.services import projects as projects_svc
 
-    summary, items = projects_svc.get_project(engine, project_id)
+    try:
+        summary, items = projects_svc.get_project(
+            engine, project_id, auth_svc.owner_id_for(user)
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ProjectDetailResponse(
         **summary.__dict__,
         items=[ProjectItemResponse(**i.__dict__) for i in items],
@@ -701,12 +1778,22 @@ def get_project(project_id: uuid.UUID, engine=Depends(get_engine)):
 
 
 @router.post("/projects/{project_id}/items", response_model=SaveScopeResponse)
-def save_scope(project_id: uuid.UUID, body: SaveScopeRequest, engine=Depends(get_engine)):
+def save_scope(
+    project_id: uuid.UUID,
+    body: SaveScopeRequest,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
     from spago_core.services import projects as projects_svc
 
     try:
         result = projects_svc.save_scope(
-            engine, project_id, body.family_id, body.compound_ids, body.dataset_version
+            engine,
+            project_id,
+            body.family_id,
+            body.compound_ids,
+            body.dataset_version,
+            auth_svc.owner_id_for(user),
         )
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -714,11 +1801,16 @@ def save_scope(project_id: uuid.UUID, body: SaveScopeRequest, engine=Depends(get
 
 
 @router.delete("/projects/{project_id}/items/{item_id}", status_code=204)
-def remove_item(project_id: uuid.UUID, item_id: uuid.UUID, engine=Depends(get_engine)):
+def remove_item(
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
     from spago_core.services import projects as projects_svc
 
     try:
-        projects_svc.remove_item(engine, project_id, item_id)
+        projects_svc.remove_item(engine, project_id, item_id, auth_svc.owner_id_for(user))
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -734,13 +1826,22 @@ class ExportStructureQueryBody(BaseModel):
 
 
 class ExportRequest(BaseModel):
-    family_id: uuid.UUID
+    # Unknown fields are refused, not ignored: a caller must not be able to
+    # smuggle in an endpoint, a model name or another scope.
+    model_config = {"extra": "forbid"}
+    # Exactly one scope owner: a patent family, or a target investigation
+    # (ONLINE-00: a candidate with no patent mapping must still be exportable).
+    family_id: Optional[uuid.UUID] = None
+    target_id: Optional[uuid.UUID] = None
     document_id: Optional[uuid.UUID] = None
     # Explicit selection wins over family/document/structure scope.
     compound_ids: Optional[list[uuid.UUID]] = None
     # Re-executed server-side so the export covers every match, not just the
     # loaded page. Requires the same chemistry contract as structure search.
     structure_query: Optional[ExportStructureQueryBody] = None
+    # Candidate exports default to the same small-molecule focus as the table;
+    # the labelled expansion is an explicit request.
+    include_all_modalities: bool = False
     format: str = Field(pattern="^(csv|sdf)$")
 
 
@@ -753,6 +1854,12 @@ def export_scope(body: ExportRequest, engine=Depends(get_engine)):
     oversized scopes are rejected with 422 from the counting phase."""
     from spago_core.services import export as export_svc
     from spago_core.services import structure_search as ss
+
+    if (body.family_id is None) == (body.target_id is None):
+        raise HTTPException(
+            status_code=422,
+            detail="Provide exactly one export scope: family_id or target_id.",
+        )
 
     structure_query = None
     if body.structure_query is not None and body.compound_ids is None:
@@ -768,13 +1875,21 @@ def export_scope(body: ExportRequest, engine=Depends(get_engine)):
         )
 
     try:
-        rows = export_svc.collect_export_rows(
-            engine,
-            family_id=body.family_id,
-            document_id=body.document_id,
-            compound_ids=body.compound_ids,
-            structure_query=structure_query,
-        )
+        if body.target_id is not None:
+            rows = export_svc.collect_candidate_export_rows(
+                engine,
+                body.target_id,
+                compound_ids=body.compound_ids,
+                include_all_modalities=body.include_all_modalities,
+            )
+        else:
+            rows = export_svc.collect_export_rows(
+                engine,
+                family_id=body.family_id,
+                document_id=body.document_id,
+                compound_ids=body.compound_ids,
+                structure_query=structure_query,
+            )
         if body.format == "csv":
             content = export_svc.render_csv(rows)
             media_type = "text/csv; charset=utf-8"

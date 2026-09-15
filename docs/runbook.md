@@ -188,3 +188,202 @@ docker compose up -d          # app applies forward migrations at startup
   read/write projects and (if configured) trigger paid model calls. Keep the
   loopback binding when an LLM key is configured.
 - LLM keys live in `.env` (never committed); the app never returns them.
+
+---
+
+# Hosted deployment runbook (invited beta)
+
+Scope: the ONLINE-03/04 shape — one app worker, HTTPS ingress, invitation-only
+accounts, PostgreSQL private, bounded model usage. This section is separate from
+the local runbook above because the security model is different: in local mode
+there is one trusted user, and here there are several mutually untrusted ones.
+
+Do not follow this section for a local install, and do not run the local shape
+on a public interface.
+
+## H1. Prerequisites and decisions to make first
+
+| Decision | Why it must be made before deployment |
+| --- | --- |
+| Host and domain | Cookie `Secure` behaviour, CORS origins and the invitation link all depend on the public URL. |
+| Model endpoint and model id | Recorded with every analysis; must be an endpoint you are authorized to bill. |
+| Monthly token budget | The service refuses paid calls past `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT`; the provider bill is not bounded by *that* number alone. |
+| Invited cohort | Invitations are per-address; there is no signup. |
+| Data privacy/retention | What may be sent to the model provider and how long usage rows are kept. |
+
+Record the answers in the active plan before admitting users. Purchasing
+infrastructure and public deployment are separate, explicit decisions.
+
+## H2. Configuration
+
+```bash
+# Required for hosted mode
+SPAGO_AUTH_MODE=required
+SPAGO_COOKIE_SECURE=true                # HTTPS only
+SPAGO_SEED_MODE=none                    # never ship the demo fixture to users
+SPAGO_DATABASE_URL=postgresql+psycopg://<user>:<password>@<private-host>:5432/spago
+SPAGO_CORS_ORIGINS=https://<your-domain>   # explicit origins, never "*"
+
+# Model usage bounds (ONLINE-04)
+SPAGO_LLM_BASE_URL=https://<endpoint-prefix>
+SPAGO_LLM_MODEL=<model-id>
+SPAGO_LLM_API_KEY=<secret>
+SPAGO_LLM_USER_TOKEN_LIMIT=200000
+SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT=2000000
+SPAGO_LLM_QUOTA_WINDOW=month
+# Optional: only if you know the price. Unset reports tokens without a currency figure.
+#SPAGO_LLM_PRICE_PER_MILLION_TOKENS=
+```
+
+- Secrets are injected by the platform's secret mechanism, never baked into an
+  image or committed. `.env` is for local development.
+- `SPAGO_AUTH_MODE=required` plus `SPAGO_COOKIE_SECURE=false` is reported by
+  `/api/v1/readyz` as a note; fix it before inviting anyone.
+- The database must not have a public listener. Verify from outside: a
+  connection attempt to the database port must fail.
+
+## H3. First deployment
+
+```bash
+docker compose build            # or your platform's equivalent
+docker compose up -d
+curl -fsS https://<domain>/healthz          # public, reveals nothing sensitive
+```
+
+Create the first administrator and an invitation (these are operator commands):
+
+```bash
+docker compose exec app python -m spago_core.admin invite you@example.org --base-url https://<domain>
+# redeem the printed link once, then grant admin deliberately in SQL if needed:
+#   UPDATE users SET is_admin = true WHERE email = 'you@example.org';
+docker compose exec app python -m spago_core.admin users
+```
+
+`/api/v1/readyz` is the operational readiness check. It sits behind the session
+gate because it reports configuration detail, so an operator account is needed:
+
+```bash
+curl -fsS -b cookies.txt https://<domain>/api/v1/readyz | jq
+```
+
+Expect `"status":"ready"` with `database`, `chemistry`, `migrations_applied`,
+`rdkit_cartridge`, `model_quota_configured` all true, and read the `notes` array.
+
+## H4. Inviting users, and revoking access
+
+```bash
+# Invite (prints the redeem link once; only the hash is stored afterwards)
+docker compose exec app python -m spago_core.admin invite ada@example.org --base-url https://<domain>
+# Cancel a pending invitation
+docker compose exec app python -m spago_core.admin revoke-invitation <invitation-id>
+# Sign a user out everywhere (lost laptop, offboarding)
+docker compose exec app python -m spago_core.admin revoke-sessions ada@example.org
+# Disable an account entirely
+docker compose exec db psql -U spago -d spago -c \
+  "UPDATE users SET disabled_at = now() WHERE email = 'ada@example.org';"
+```
+
+Session expiry is `SPAGO_SESSION_TTL_HOURS` (default 12). There is no refresh
+token: an expired session means signing in again with a new invitation.
+
+## H5. Migrating an existing local installation
+
+Local projects have `owner_id IS NULL`, which hosted users **cannot** see. This
+is deliberate: they must not be handed to whoever signs in first.
+
+```bash
+docker compose exec app python -m spago_core.admin legacy-projects
+docker compose exec app python -m spago_core.admin assign-project <project-id> you@example.org
+```
+
+The command refuses to reassign a project that already has an owner. Review each
+project individually; do not bulk-assign.
+
+## H6. Model usage, cost and quotas
+
+- Every paid call reserves budget before it is sent and records its real usage
+  afterwards. A call that never settles keeps its reservation, so an interrupted
+  request cannot silently free budget.
+- `/api/v1/usage` shows the caller their own window and the deployment total.
+  `/api/v1/usage/events` is administrator-only and lists operational rows:
+  provider, model, scope, outcome, tokens, truncated error text. No provider
+  payload and no credential is stored.
+- If `SPAGO_LLM_PRICE_PER_MILLION_TOKENS` is unset, the report says no price is
+  configured and reports tokens only. The provider invoice is authoritative in
+  every case.
+- Lowering a limit takes effect for the next request; it does not cancel a call
+  already in flight.
+
+## H7. Backup and restore
+
+Same shape as the local runbook §3, with one addition: owned rows must survive a
+restore *with their ownership*.
+
+```bash
+docker compose exec db pg_dump -U spago -d spago -Fc > spago-$(date +%F).dump
+
+# Restore into a fresh, isolated database and verify ownership survived.
+# Two steps matter and are easy to get wrong (both found by a drill, see below):
+#   1. the rdkit extension needs superuser rights, so create it first;
+#   2. restoring as the non-superuser app role needs --no-comments, because
+#      COMMENT ON EXTENSION is not permitted for a role that does not own it.
+createdb -h <host> spago_restore
+psql -h <host> -d spago_restore -c "CREATE EXTENSION IF NOT EXISTS rdkit;"   # as a superuser role
+pg_restore -h <host> -U spago -d spago_restore --no-owner --no-comments spago-<date>.dump
+
+# Ownership must match the source. Count both sides of the split:
+psql -h <host> -d spago_restore -c \
+  "SELECT count(*) FILTER (WHERE owner_id IS NULL) AS unowned, count(*) AS projects FROM projects;"
+psql -h <host> -d spago_restore -c \
+  "SELECT count(*) FILTER (WHERE owner_id IS NULL) AS unowned, count(*) AS analyses FROM ai_analyses;"
+psql -h <host> -d spago_restore -c \
+  "SELECT u.email, count(p.id) FROM users u LEFT JOIN projects p ON p.owner_id = u.id
+   GROUP BY u.email ORDER BY u.email;"
+```
+
+A restore that loses ownership would either hide everyone's work (all rows
+unowned) or, worse, expose it. Never point a restored database at the production
+app until the counts and the per-user split match the source.
+
+### Drill log (2026-09-15)
+
+Executed on the verification stack: two users, one project each with the same
+name plus one unowned legacy project, one analysis per user, and the seeded
+compound structures.
+
+| Check after restore | Result |
+| --- | --- |
+| `pg_restore` completion (app role, `--no-owner --no-comments`) | clean, no errors |
+| projects | 3 total: 1 unowned (legacy) + 1 Ada + 1 Bob |
+| analyses | 2 total, 0 unowned, 2 distinct owners |
+| saved project items | 2 |
+| compound rows with an RDKit `mol` value | 10 (chemistry intact) |
+
+Findings from the drill, now reflected above:
+
+- With `--exit-on-error` and without `--no-comments`, the restore aborts on
+  `COMMENT ON EXTENSION rdkit` when run as the non-superuser app role. Piping
+  `pg_restore` output through a tool that closes the pipe early can also make a
+  partial restore look successful — check the exit status, not just the tail.
+- The `rdkit` extension must exist before the restore; a fresh database created
+  by the app role cannot create it.
+
+## H8. Failure drills and what "healthy" means
+
+| Failure | Expected behaviour | How to verify |
+| --- | --- | --- |
+| Model endpoint down | Search, evidence and target discovery keep working; summaries report a provider failure (502/504), never an empty success. | `curl` the summary route with the endpoint pointed at a black hole. |
+| Provider rate limit | 429 with `Retry-After` only when the endpoint supplied a usable value; never re-sampled automatically. | Point the endpoint at a stub returning 429. |
+| Model answer rejected by validation (bad JSON, unknown fact ref) | One automatic re-sample of the identical request; if the second answer is rejected too, 502 with the validation reason and a usage row at outcome `invalid_output`. Token accounting sums both billed attempts. | Point the endpoint at `scripts/mock_llm_endpoint.py` in a mock mode that returns invalid JSON twice. |
+| Database unavailable | `/healthz` reports `database: down`; API calls fail with 5xx rather than returning empty data. | Stop the db container. |
+| External source down | The affected source's coverage row says `failed`; the rest of the investigation still returns. | Block the source's host. |
+| Session expired mid-use | 401 on the next request; the UI returns to the sign-in view. | Delete the session row. |
+| Container restart | Sessions survive (they are rows); in-flight model calls do not. | Restart the app container and reload. |
+
+## H9. Explicit limits of this beta
+
+- Single app worker. Multi-worker safety for the in-flight model-call registry is
+  not claimed; use one worker.
+- No password reset, no self-service signup, no team sharing, no SSO.
+- A long-lived session is a long-lived session: there is no sliding refresh.
+- `/api/v1/readyz` and the usage log are operator surfaces, not user features.

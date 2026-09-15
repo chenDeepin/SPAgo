@@ -9,6 +9,8 @@ __pycache__/
 # Node
 node_modules/
 apps/web/dist/
+# TypeScript incremental build state: generated, machine-specific, not source.
+*.tsbuildinfo
 
 # Runtime state and caches
 /local/

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError } from "../api/client";
+import { api } from "../api/client";
 import type { Compound, EvidenceRecord, Mention } from "../api/types";
+import { AiPanel, type AiScopeOption } from "./AiPanel";
 
 interface EvidencePanelProps {
   compound: Compound;
@@ -143,7 +144,9 @@ export function EvidencePanel({
       {tab === "ai" ? (
         <AiTab
           familyId={familyId}
+          documentId={occurrence?.document_id ?? null}
           familyKey={familyKey}
+          documentLabel={occurrence?.publication_number ?? null}
           onOpenCitation={openCitation}
         />
       ) : (
@@ -262,193 +265,48 @@ export function EvidencePanel({
 
 function AiTab({
   familyId,
+  documentId,
   familyKey,
+  documentLabel,
   onOpenCitation,
 }: {
   familyId: string;
+  documentId: string | null;
   familyKey: string;
+  documentLabel: string | null;
   onOpenCitation: (factRef: string) => void;
 }) {
-  const statusQuery = useQuery({
-    queryKey: ["ai-status"],
-    queryFn: ({ signal }) => api.aiStatus(signal),
-    staleTime: 30_000,
-  });
-  const status = statusQuery.data;
-  const llmConfigured = status?.state === "configured";
-
-  const [mode, setMode] = useState<"offline" | "llm">("offline");
-  const [summary, setSummary] = useState<import("../api/types").FamilySummaryResponse | null>(null);
-  const [summaryFamily, setSummaryFamily] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const closedRef = useRef(false);
-
-  // Reset when the family changes: a summary of another family never shows here.
-  useEffect(() => {
-    setSummary(null);
-    setSummaryFamily(null);
-    setError(null);
-    abortRef.current?.abort();
-  }, [familyId]);
-
-  // Unmount aborts any in-flight generation; late responses are dropped.
-  useEffect(
-    () => () => {
-      closedRef.current = true;
-      abortRef.current?.abort();
-    },
-    [],
-  );
-
-  const effectiveMode: "offline" | "llm" = mode === "llm" && llmConfigured ? "llm" : "offline";
-
-  const generate = async () => {
-    setError(null);
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setBusy(true);
-    try {
-      const res = await api.familySummary(familyId, effectiveMode, controller.signal);
-      if (controller.signal.aborted || closedRef.current) return;
-      if (res.cached === false && summaryFamily !== null && summaryFamily !== familyId) return;
-      setSummary(res);
-      setSummaryFamily(familyId);
-    } catch (err) {
-      if (controller.signal.aborted) return;
-      setError(err instanceof ApiError ? err.message : "Summary generation failed.");
-    } finally {
-      if (!controller.signal.aborted) setBusy(false);
-    }
-  };
-
-  const stopWaiting = () => {
-    abortRef.current?.abort();
-    setBusy(false);
-  };
-
-  if (!familyId) {
-    return (
-      <div className="state-banner">
-        <span>AI summary is available per patent family.</span>
-      </div>
-    );
-  }
-
-  const shown = summary && summaryFamily === familyId ? summary : null;
-
-  return (
-    <div>
-      <div className="ai-scope-line">
-        <span>
+  // The scopes on offer are named, and the chosen one is what the request
+  // states: a document summary is never presented as a family summary.
+  const options: AiScopeOption[] = [];
+  if (familyId) {
+    options.push({
+      scope: "family" as const,
+      id: familyId,
+      label: `Family ${familyKey}`,
+      description: (
+        <>
           Family scope: <span className="mono">{familyKey}</span> — generated from the family's
           stored source records only (not the open compound, not full documents).
-        </span>
-      </div>
-
-      <div className="input-label">Summary mode</div>
-      <div role="radiogroup" aria-label="Summary mode" className="radio-col">
-        <label className="radio-row">
-          <input
-            type="radio"
-            name="ai-mode"
-            checked={effectiveMode === "offline"}
-            onChange={() => setMode("offline")}
-          />
-          <span>Offline summary (extractive, no model)</span>
-        </label>
-        <label className="radio-row">
-          <input
-            type="radio"
-            name="ai-mode"
-            checked={effectiveMode === "llm"}
-            disabled={!llmConfigured}
-            onChange={() => setMode("llm")}
-          />
-          <span>
-            LLM summary{" "}
-            {status?.state === "configured"
-              ? `(model: ${status.model})`
-              : status
-                ? "(not configured)"
-                : ""}
-          </span>
-        </label>
-      </div>
-      {status?.state === "config_invalid" && (
-        <p className="hint-note">LLM configuration is invalid: {status.reason}</p>
-      )}
-      {effectiveMode === "llm" && (
-        <p className="hint-note">
-          The selected family's stored facts are sent to the configured model endpoint
-          {status?.target ? ` (${status.target})` : ""}. LLM output is labeled llm_inferred and must
-          be checked against the cited records.
-        </p>
-      )}
-
-      {busy ? (
-        <>
-          <button className="btn btn-quiet" onClick={stopWaiting}>
-            Stop waiting
-          </button>
-          <p className="hint-note">
-            Waiting for the summary… a request that was already sent may still be billed by the
-            provider; stopping only stops waiting for it.
-          </p>
         </>
-      ) : (
-        !shown && (
-          <button className="btn btn-primary" onClick={generate}>
-            Generate summary
-          </button>
-        )
-      )}
-
-      {error && (
-        <div className="state-banner error" role="alert">
-          <span>{error}</span>
-        </div>
-      )}
-
-      {shown && (
-        <div style={{ marginTop: 12 }}>
-          <span className="provenance-chip">
-            <span className="dot" aria-hidden="true" style={{ background: "var(--accent)" }} />
-            {PROVENANCE_LABELS[shown.provenance_state] ?? shown.provenance_state} ·{" "}
-            {shown.provider}
-            {shown.model ? ` · ${shown.model}` : ""}
-            {shown.cached ? " · cached" : ""}
-          </span>
-          <pre className="ai-summary-text">{shown.text}</pre>
-          <div className="input-label" style={{ marginTop: 10 }}>
-            Citations ({shown.citations.length})
-          </div>
-          <ul className="citation-list">
-            {shown.citations.map((c) => (
-              <li key={c.fact_ref}>
-                <button className="citation-link" onClick={() => onOpenCitation(c.fact_ref)}>
-                  <span className="citation-kind">{c.kind}</span> {c.label ?? c.fact_ref}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="hint-note">
-            LLM conclusions are inferences (llm_inferred): check them against the cited records.
-            Measurement citations link to database records, not patent text.
-          </p>
-        </div>
-      )}
-
-      {!shown && !busy && (
-        <p className="hint-note" style={{ marginTop: 10 }}>
-          Cached summaries are reused automatically; the same family data always yields the same
-          summary.
-        </p>
-      )}
-    </div>
-  );
+      ),
+    });
+  }
+  if (documentId) {
+    options.push({
+      scope: "document" as const,
+      id: documentId,
+      label: `Document ${documentLabel ?? "current"}`,
+      description: (
+        <>
+          Document scope: <span className="mono">{documentLabel ?? "selected document"}</span> —
+          this document's own compounds, measurements and evidence only. Claims text is not stored
+          in this deployment, so claims are reported as not assessed.
+        </>
+      ),
+    });
+  }
+  return <AiPanel options={options} onOpenCitation={onOpenCitation} />;
 }
 
 function BioactivitySection({ compoundId, open }: { compoundId: string; open: boolean }) {

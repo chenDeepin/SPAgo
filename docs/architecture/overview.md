@@ -127,12 +127,16 @@ apps/web     (search → family → compounds → evidence/structure search)
   offline/configured/config_invalid without calling the provider. The planner
   parses publication-number identifiers only.
 - LLM execution uses one shared synchronous HTTP client and process-local in-flight
-  tracking (two calls, one worker). No automatic retry or provider fallback exists.
-  The declared budget is attached to each outbound request (connect 5 s, read = total
-  deadline 60 s) and the deadline is re-checked between response chunks; upstream
-  throttling answers 429 with a validated `Retry-After`, distinct from other upstream
-  failures (502). See
-  [the LLM contract record](../plans/2026-09-14-llm-interface.md).
+  tracking (two calls, one worker); no provider fallback exists. Failures that may
+  not have been billed — timeout, upstream throttle, auth, transport, protocol —
+  are never retried; the only re-attempt is one identical re-sample after a
+  *completed, billed* answer was rejected by validation (owner decision
+  2026-09-15). The declared budget is attached to each outbound request (connect
+  5 s, read = total deadline 60 s) and the deadline is re-checked between response
+  chunks; upstream throttling answers 429 with a validated `Retry-After`, distinct
+  from other upstream failures (502). See
+  [the LLM contract record](../plans/2026-09-14-llm-interface.md) and
+  [the live-smoke record](../plans/2026-09-15-llm-live-smoke.md).
 - URL state: `?q=&doc=&c=`; new searches push history entries, selection
   replaces; Back/Forward restore via popstate.
 - Deployment shape: both published ports bind to loopback by default

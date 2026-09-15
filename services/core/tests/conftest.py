@@ -18,6 +18,16 @@ MIGRATIONS_DIR = REPO_ROOT / "migrations"
 
 TEST_DB = "spago_test"
 
+# The suite must be hermetic about the model endpoint. A developer who exports
+# `SPAGO_LLM_*` (to try the real provider) would otherwise turn the "no endpoint
+# configured → 503" tests into live *paid* calls that also fail their assertion —
+# observed on 2026-09-15: three tests reached DeepSeek from an exported shell.
+# Blanking beats deleting here: an empty value overrides whatever the shell
+# exported, and a test that needs an endpoint still sets its own with
+# monkeypatch (those tests also clear the settings cache).
+for _endpoint_var in ("SPAGO_LLM_BASE_URL", "SPAGO_LLM_MODEL", "SPAGO_LLM_API_KEY"):
+    os.environ[_endpoint_var] = ""
+
 
 def _base_url() -> str:
     url = os.environ.get(
@@ -86,6 +96,47 @@ def compound_id_by_inchikey(engine, inchikey: str):
                 ).scalar_one()
             )
         )
+
+
+#: Tables a test module resets when it needs a known scientific state. Ordered
+#: child-first so CASCADE is not required, though it is used anyway.
+RESETTABLE_TABLES = (
+    "ai_analyses",
+    "project_items",
+    "projects",
+    "target_candidates",
+    "source_retrievals",
+    "measurements",
+    "assays",
+    "target_resolutions",
+    "evidence_records",
+    "compound_mentions",
+    "ingestion_issues",
+    "patent_documents",
+    "patent_families",
+    "compounds",
+    "targets",
+    "dataset_info",
+)
+
+
+@pytest.fixture(scope="module")
+def seeded_engine(pg_engine, fixture_dir, migrations_dir):
+    """The scratch database with migrations applied and the demo fixture loaded.
+
+    The session's scratch database is shared by every PG test module, so a
+    module that truncates (the ONLINE-00 tests do) would otherwise leave a later
+    module without the fixture it expects. Resetting and re-seeding here makes a
+    module's starting state explicit instead of dependent on collection order.
+    """
+    from spago_core.db import run_migrations
+    from spago_core.seed import seed
+
+    run_migrations(pg_engine, migrations_dir)
+    with pg_engine.begin() as conn:
+        conn.execute(text("TRUNCATE " + ", ".join(RESETTABLE_TABLES) + " CASCADE"))
+    seed(pg_engine, fixture_dir, migrations_dir)
+    return pg_engine
 
 
 @pytest.fixture(scope="session")

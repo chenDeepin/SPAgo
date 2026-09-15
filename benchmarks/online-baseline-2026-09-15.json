@@ -1,0 +1,136 @@
+{
+  "generated_at": "2026-09-15T05:17:20.212848+00:00",
+  "base_url": "http://127.0.0.1:8123",
+  "dataset": "demo-fixture-v1 (synthetic; scale is not representative of bulk data)",
+  "benchmarks": {
+    "patent_lookup": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 2.11,
+      "p95_ms": 2.71,
+      "mean_ms": 2.17
+    },
+    "family_compounds_page": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 5.48,
+      "p95_ms": 6.7,
+      "mean_ms": 5.96
+    },
+    "depiction_cold_single_ms": 1.63,
+    "depiction_warm": {
+      "runs": 20,
+      "errors": 0,
+      "p50_ms": 1.38,
+      "p95_ms": 2.06,
+      "mean_ms": 1.5
+    },
+    "evidence_fetch": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 1.57,
+      "p95_ms": 1.95,
+      "mean_ms": 1.6
+    },
+    "bulk_compound_counts": {
+      "runs": 10,
+      "errors": 0,
+      "p50_ms": 4.62,
+      "p95_ms": 4.97,
+      "mean_ms": 4.63
+    },
+    "document_scoped_compounds": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 4.92,
+      "p95_ms": 5.66,
+      "mean_ms": 4.99
+    },
+    "summary_family_offline": {
+      "runs": 20,
+      "errors": 0,
+      "p50_ms": 6.34,
+      "p95_ms": 7.14,
+      "mean_ms": 6.47
+    },
+    "summary_document_offline": {
+      "runs": 20,
+      "errors": 0,
+      "p50_ms": 5.41,
+      "p95_ms": 6.43,
+      "mean_ms": 5.48
+    },
+    "plan_identifier": {
+      "runs": 20,
+      "errors": 0,
+      "p50_ms": 1.03,
+      "p95_ms": 1.58,
+      "mean_ms": 1.15
+    },
+    "plan_execute": {
+      "runs": 10,
+      "errors": 0,
+      "p50_ms": 7.66,
+      "p95_ms": 9.25,
+      "mean_ms": 7.63
+    },
+    "patent_lookup_via_plan_equivalent": {
+      "runs": 10,
+      "errors": 0,
+      "p50_ms": 2.79,
+      "p95_ms": 3.49,
+      "mean_ms": 2.85
+    },
+    "target_candidates_page": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 4.29,
+      "p95_ms": 5.68,
+      "mean_ms": 4.43
+    },
+    "target_coverage": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 1.99,
+      "p95_ms": 2.44,
+      "mean_ms": 2.06
+    },
+    "target_measurements": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 5.38,
+      "p95_ms": 6.21,
+      "mean_ms": 5.45
+    },
+    "summary_target_offline": {
+      "runs": 20,
+      "errors": 0,
+      "p50_ms": 9.02,
+      "p95_ms": 10.33,
+      "mean_ms": 9.27
+    }
+  },
+  "health": {
+    "status": "ok",
+    "database": "up",
+    "chemistry": "ok",
+    "rdkit_cartridge": "installed",
+    "dataset_version": "demo-fixture-v1",
+    "ingestion_issues": 1,
+    "api_version": "0.1.0"
+  },
+  "payload_bytes": {
+    "compounds_page_default_100": 9118,
+    "depiction_svg_280x160": 7852,
+    "evidence_list": 735,
+    "summary_response": 3175,
+    "plan_response": 470,
+    "target_candidates_page_100": 667
+  },
+  "open_patent_note": "The demo fixture's synthetic publication ids are not acceptable to the plan validator by design; `open_patent` execution timing therefore comes from the benchmark below using the fixture's own id through the patent route, not from a plan step.",
+  "target_notes": "Target reads are served from the stored investigation; they issue no external request. Live source retrieval latency is recorded per source in the coverage matrix (benchmarks/online00-coverage-*.json) and is excluded here.",
+  "notes": [
+    "Fixture scale: these numbers track regressions, they are not hosted SLOs.",
+    "LLM planning/summary latency and token usage require a configured provider and are recorded separately by the operator for the chosen host/model."
+  ]
+}

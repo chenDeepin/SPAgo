@@ -1,28 +1,62 @@
 # SPAgo — Initial Engineering Prompt
 
-> **Handoff note (2026-09-15, implementation review; `66ce8d9` + working tree):**
-> The first real-source viewer path exists, but product acceptance is still open.
-> Review corrected cross-family occurrence/versions, bounded structure exports,
-> source-package validation, stable occurrence updates, saved snapshot deletion,
-> multi-family project reopening and stale responses, and the restore procedure.
-> Migration 0008 preserves saved references after source deletion; it cannot
-> recover historical records already lost before this upgrade.
+> **Current handoff (2026-09-15; baseline `41ef768`, uncommitted ONLINE work in
+> the working tree): online SPAgo with LLM enhancement — implemented, not yet
+> hosted.**
+> ONLINE-00…ONLINE-05 are implemented and locally verified: target-led open-database
+> discovery (UniProt + ChEMBL + BindingDB + PubChem), scoped evidence-grounded
+> summaries (family / document / target), validated natural-language plans,
+> invitation-only hosted sessions with per-owner data, usage quotas and a hosted
+> runbook. Read `docs/plans/2026-09-15-online-llm.md` §4 for the verification
+> record, and `docs/plans/ui-round-verification/online-beta-acceptance-2026-09-15.md`
+> for exactly what is verified versus still open.
 >
-> The current assessment, regression results and remaining scope are in
-> `docs/plans/2026-09-15-product-readiness.md` (§ Third-round review).
-> Operations: `docs/runbook.md`. Durable data contracts:
-> `docs/architecture/overview.md`. Earlier real-source timings in
-> `benchmarks/real-source-2026-09-15.md` remain historical evidence; they are not
-> a fresh run of the corrected extractor.
+> **What is NOT done — do not mistake the implementation for acceptance:**
+> no **hosted** deployment exists (ONLINE-04 acceptance is open) and no invited
+> user has been through the workflow (ONLINE-05 is open). One live model provider
+> has been smoke-tested from the dev stack: DeepSeek `deepseek-flash` reached for
+> family, document and target scopes and through the browser AI panel, recorded in
+> `docs/plans/2026-09-15-llm-live-smoke.md`; that is one provider, not a
+> compatibility claim. ONLINE-01 has a repeatable evaluation baseline
+> (`benchmarks/online01-llm-eval-2026-09-15.md`: 45 recorded requests over four
+> runs, per-call compliance, refusal classes, token cost) and the per-source
+> citation defect it found is fixed and re-measured — run 4 answered 18/18
+> requests with the target scope clean and citing its three `source:` refs, and the
+> new citation chip was checked in the browser
+> (`docs/plans/2026-09-15-llm-eval-and-demo-open.md` §7.1). What remains unproven
+> is the class *not* recurring for other targets and providers, and content
+> correctness: schema validity is not scientific truth.
+> Host, provider, budget and cohort remain operator decisions; this work does not
+> authorize purchasing infrastructure, sending private datasets to a provider, or
+> public deployment.
 >
-> Next CORE work: define source refresh/retraction semantics and interrupted-job
-> handling; complete manual scientific source cross-reading, clean-install
-> real-source regression/performance checks and an external-user G1 walkthrough.
-> Keep first-release scope local, single-user, one worker, imported-family
-> chemistry viewer. Real bioactivity (PROD-06), live model smoke (PROD-07) and
-> multi-user authorization (PROD-08) remain separately gated. M6 stays deferred.
-> No tag, push or publication was performed. Preserve existing uncommitted work;
-> verify current files before implementation and update the active Q&A/plan.
+> **Start here for the next turn:**
+> 1. Re-read `docs/online-capability.md` (the scope statement) and
+>    `docs/runbook.md` §H1–H9 (the hosted deployment contract).
+> 2. Carry the recorded live smoke into the hosted acceptance: same model id and
+>    endpoint fingerprint, per-scope call, token usage, latency, failure rate,
+>    cache behaviour. Quotas (`SPAGO_LLM_USER_TOKEN_LIMIT`
+>    / `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT`) must be set to real values first.
+> 3. Run the acceptance script in the beta record, including a restore against
+>    the real host and independent cross-reading of retrieved chemistry.
+> 4. Carry the source/job defects listed in plan §4.6 into ONLINE-04.
+> 5. If summary quality is measured again, extend the evaluation set before the
+>    numbers: the runner has one demo family, one demo document and one live
+>    target; a sparse target (`DEMO-TARGET-1`, no retrievals) and a second
+>    provider would test the two claims the current record explicitly cannot
+>    make. The runner and the record's method section are in
+>    `benchmarks/online01-llm-eval-2026-09-15.md`.
+>
+> Current source coverage is genuinely thin for some acceptance targets (human
+> TSLP has one small-molecule candidate in these sources; IL-6R has one and
+> BindingDB does not answer for it). Report that honestly rather than promising
+> inhibitor coverage. Model output stays inference; chemistry stays deterministic.
+> Full-document extraction/M6 and general chat remain deferred.
+>
+> The previous local milestone is committed at `41ef768`. Historical review,
+> verification and unresolved defects remain in
+> `docs/plans/2026-09-15-product-readiness.md`; do not mistake its earlier
+> uncommitted-state notes or local-first priorities for this stage's status.
 > The rest of this document remains the standing engineering contract.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.

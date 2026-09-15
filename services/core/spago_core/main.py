@@ -7,12 +7,15 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from spago_core import __version__
+from spago_core.api.auth_routes import router as auth_router
 from spago_core.api.routes import health_payload, router
 from spago_core.config import get_settings
 from spago_core.db import make_engine
+from spago_core.services import auth as auth_svc
 
 
 def create_app() -> FastAPI:
@@ -37,16 +40,46 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origin_list,
-        allow_credentials=False,
+        # Credentials are allowed only in hosted mode, where the session cookie
+        # must travel; the local product stays credential-free. Origins are
+        # explicit, never "*", so a browser cannot be told to send the cookie
+        # cross-origin.
+        allow_origins=settings.all_cors_origins,
+        allow_credentials=settings.auth_required,
         allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def require_session_for_api(request, call_next):
+        """Authentication gate for hosted mode (ONLINE-03, ADR-0002).
+
+        This is the outer gate, not the authorization decision: it guarantees
+        that no workspace endpoint is reachable anonymously, including routes
+        added later. Per-object authorization (whose project, whose analysis)
+        lives in the services, where it can see the data.
+
+        In `disabled` mode the gate is inert, which is what keeps
+        `docker compose up` a usable single-user product.
+        """
+        current = get_settings()
+        path = request.url.path
+        if (
+            current.auth_required
+            and path.startswith("/api/")
+            and not path.startswith("/api/v1/auth/")
+        ):
+            try:
+                auth_svc.authenticate(app.state.engine, request.cookies.get(auth_svc.SESSION_COOKIE))
+            except auth_svc.AuthError as exc:
+                return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        return await call_next(request)
 
     @app.get("/healthz", response_model=None)
     def healthz():
         return health_payload(app)
 
+    app.include_router(auth_router)
     app.include_router(router)
 
     _mount_web(app)

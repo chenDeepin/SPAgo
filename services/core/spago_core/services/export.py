@@ -43,6 +43,12 @@ CSV_FIELDS = [
     "evidence_source_urls",
     "dataset_version",
     "dataset_versions",
+    # ONLINE-00: target-candidate exports carry their biological scope and
+    # conservative evidence class instead of patent labels.
+    "target_key",
+    "target_name",
+    "modality",
+    "evidence_class",
 ]
 
 
@@ -86,6 +92,10 @@ class ExportRow:
     evidence_source_urls: list[str]
     dataset_version: str
     dataset_versions: list[dict] = field(default_factory=list)
+    target_key: str | None = None
+    target_name: str | None = None
+    modality: str | None = None
+    evidence_class: str | None = None
 
 
 def _base_query(scope_clause: str, doc_clause_tpl: str, doc_params: dict) -> str:
@@ -319,6 +329,158 @@ def collect_export_rows(
     ]
 
 
+CANDIDATE_EVIDENCE_ORDER = (
+    "measured_direct_binding",
+    "interaction_disruption",
+    "functional_effect",
+    "screening_assay",
+    "computational_prediction",
+    "unspecified",
+)
+
+
+def collect_candidate_export_rows(
+    engine: Engine,
+    target_id: uuid.UUID,
+    *,
+    compound_ids: list[uuid.UUID] | None = None,
+    include_all_modalities: bool = True,
+) -> list[ExportRow]:
+    """Export target candidates, including compounds with no patent mapping.
+
+    Scope is the target's candidate set; an explicit selection must be a subset
+    of it. Patent numbers/labels are populated only for candidates that also
+    occur in the loaded patent corpus, so a patent-free candidate exports as
+    patent-free rather than as an empty string that could be misread.
+    """
+    if compound_ids == []:
+        return []
+    with engine.connect() as conn:
+        target = conn.execute(
+            text("SELECT id, target_key, name FROM targets WHERE id = :tid"), {"tid": target_id}
+        ).mappings().first()
+        if target is None:
+            raise NotFoundError(f"Target {target_id} not found")
+
+        scope_clause = "tc.target_id = :tid"
+        params: dict = {"tid": target_id}
+        if compound_ids:
+            params["ids"] = list(compound_ids)
+            valid = set(
+                conn.execute(
+                    text(
+                        "SELECT DISTINCT compound_id FROM target_candidates "
+                        "WHERE target_id = :tid AND compound_id = ANY(:ids)"
+                    ),
+                    {"tid": target_id, "ids": list(compound_ids)},
+                ).scalars().all()
+            )
+            unknown = [cid for cid in compound_ids if cid not in valid]
+            if unknown:
+                raise ExportScopeError(
+                    f"{len(unknown)} selected compound(s) are not candidates of this target; "
+                    "the export was not created."
+                )
+            scope_clause += " AND tc.compound_id = ANY(:ids)"
+        elif not include_all_modalities:
+            scope_clause += " AND (c.modality IS NULL OR c.modality IN ('small_molecule','unclassified'))"
+
+        total = int(
+            conn.execute(
+                text(
+                    f"SELECT count(DISTINCT tc.compound_id) FROM target_candidates tc "
+                    f"JOIN compounds c ON c.id = tc.compound_id WHERE {scope_clause}"
+                ),
+                params,
+            ).scalar_one()
+        )
+        if total > MAX_EXPORT_ROWS:
+            raise ExportTooLargeError(
+                f"Export scope covers {total} candidates; the synchronous limit is "
+                f"{MAX_EXPORT_ROWS}. Narrow the selection."
+            )
+
+        rows = conn.execute(
+            text(
+                f"""
+                SELECT c.id, c.inchikey, c.canonical_smiles, c.molecular_formula,
+                       c.molecular_weight, c.hbd, c.hba, c.tpsa, c.logp,
+                       c.modality,
+                       COALESCE(cand.classes, ARRAY[]::text[]) AS classes,
+                       COALESCE(docs.docs, ARRAY[]::text[]) AS docs,
+                       COALESCE(ment.labels, ARRAY[]::text[]) AS labels,
+                       COALESCE(ver.versions, '[]'::jsonb) AS dataset_versions
+                FROM target_candidates tc
+                JOIN compounds c ON c.id = tc.compound_id
+                LEFT JOIN LATERAL (
+                    SELECT array_agg(DISTINCT coalesce(tc2.evidence_class, 'unspecified')) AS classes
+                    FROM target_candidates tc2
+                    WHERE tc2.target_id = tc.target_id AND tc2.compound_id = c.id
+                ) cand ON true
+                LEFT JOIN LATERAL (
+                    SELECT array_agg(DISTINCT d.publication_number) AS docs
+                    FROM compound_mentions m JOIN patent_documents d ON d.id = m.document_id
+                    WHERE m.compound_id = c.id
+                ) docs ON true
+                LEFT JOIN LATERAL (
+                    SELECT array_agg(DISTINCT d.publication_number || ':' || COALESCE(m.patent_label, ''))
+                    AS labels
+                    FROM compound_mentions m JOIN patent_documents d ON d.id = m.document_id
+                    WHERE m.compound_id = c.id
+                ) ment ON true
+                LEFT JOIN LATERAL (
+                    SELECT jsonb_agg(v ORDER BY v.dataset_version, v.source_name) AS versions
+                    FROM (
+                        SELECT DISTINCT source_name, dataset_version
+                        FROM source_retrievals
+                        WHERE target_id = tc.target_id AND dataset_version IS NOT NULL
+                    ) v
+                ) ver ON true
+                WHERE {scope_clause}
+                GROUP BY c.id, c.modality, cand.classes, docs.docs, ment.labels, ver.versions
+                ORDER BY c.inchikey
+                """
+            ),
+            params,
+        ).mappings().all()
+
+    result: list[ExportRow] = []
+    for r in rows:
+        classes = set(r["classes"] or [])
+        evidence_class = next(
+            (c for c in CANDIDATE_EVIDENCE_ORDER if c in classes), "unspecified"
+        )
+        versions = list(r["dataset_versions"] or [])
+        labels = {v["dataset_version"] for v in versions}
+        result.append(
+            ExportRow(
+                compound_id=r["id"],
+                inchikey=r["inchikey"],
+                canonical_smiles=r["canonical_smiles"],
+                molecular_formula=r["molecular_formula"],
+                molecular_weight=r["molecular_weight"],
+                hbd=r["hbd"],
+                hba=r["hba"],
+                tpsa=r["tpsa"],
+                logp=r["logp"],
+                patent_numbers=sorted(r["docs"] or []),
+                patent_labels=sorted(r["labels"] or []),
+                evidence_ids=[],
+                provenance_states=["database_curated"],
+                evidence_source_urls=[],
+                dataset_version=(
+                    next(iter(labels)) if len(labels) == 1 else ("mixed" if labels else "external:open-databases")
+                ),
+                dataset_versions=versions,
+                target_key=target["target_key"],
+                target_name=target["name"],
+                modality=r["modality"],
+                evidence_class=evidence_class,
+            )
+        )
+    return result
+
+
 def render_csv(rows: list[ExportRow]) -> str:
     """CSV with one row per compound; mentions and evidence refs are joined with '|'
     so spreadsheet tools keep them in one cell."""
@@ -343,6 +505,10 @@ def render_csv(rows: list[ExportRow]) -> str:
                 "evidence_source_urls": "|".join(row.evidence_source_urls),
                 "dataset_version": row.dataset_version,
                 "dataset_versions": json.dumps(row.dataset_versions, sort_keys=True),
+                "target_key": row.target_key or "",
+                "target_name": row.target_name or "",
+                "modality": row.modality or "",
+                "evidence_class": row.evidence_class or "",
             }
         )
     return buf.getvalue()
@@ -375,6 +541,14 @@ def render_sdf(rows: list[ExportRow]) -> str:
                 mol.SetProp("evidence_source_urls", "|".join(row.evidence_source_urls))
             mol.SetProp("dataset_version", row.dataset_version)
             mol.SetProp("dataset_versions", json.dumps(row.dataset_versions, sort_keys=True))
+            if row.target_key:
+                mol.SetProp("target_key", row.target_key)
+            if row.target_name:
+                mol.SetProp("target_name", row.target_name)
+            if row.modality:
+                mol.SetProp("modality", row.modality)
+            if row.evidence_class:
+                mol.SetProp("evidence_class", row.evidence_class)
             writer.write(mol)
     finally:
         writer.close()

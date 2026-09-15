@@ -2,10 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 
 interface ExportMenuProps {
-  familyId: string;
-  documentId: string | null;
+  /** Patent-family scope. Exactly one of familyId/targetId is set. */
+  familyId?: string;
+  /** Target-investigation scope (ONLINE-00): exports candidates, including
+   * those with no patent mapping. */
+  targetId?: string;
+  /** The candidate table's labelled modality filter, passed through as-is. */
+  includeAllModalities?: boolean;
+  documentId?: string | null;
   selectedIds: string[];
-  /** Total of the plain list in the current family/document scope. */
+  /** Total of the plain list in the current family/document/target scope. */
   resultsTotal: number;
   /** Active structure filter, if any: "current results" then means the
    * structure result set, re-executed server-side at export time. */
@@ -27,7 +33,9 @@ type ExportScope = "selection" | "results";
  * exact scope (PROD-02). */
 export function ExportMenu({
   familyId,
-  documentId,
+  targetId,
+  includeAllModalities = false,
+  documentId = null,
   selectedIds,
   resultsTotal,
   structureFilter,
@@ -50,7 +58,9 @@ export function ExportMenu({
     setError(null);
     try {
       await api.exportFile({
-        family_id: familyId,
+        family_id: familyId ?? null,
+        target_id: targetId ?? null,
+        include_all_modalities: targetId ? includeAllModalities : undefined,
         document_id: scope === "results" && !structureFilter ? documentId : null,
         compound_ids: scope === "selection" ? selectedIds : null,
         structure_query:
@@ -74,9 +84,11 @@ export function ExportMenu({
   const selectionDisabled = selectedIds.length === 0;
   const resultsLabel = structureFilter
     ? `Structure results (${structureFilter.total})`
-    : documentId
-      ? `Current document (${resultsTotal})`
-      : `Current family (${resultsTotal})`;
+    : targetId
+      ? `Current candidates (${resultsTotal})`
+      : documentId
+        ? `Current document (${resultsTotal})`
+        : `Current family (${resultsTotal})`;
 
   return (
     <div className="export-root" ref={rootRef}>
@@ -131,7 +143,9 @@ export function ExportMenu({
           <p className="hint-note">
             {structureFilter
               ? "The structure query is re-run on the server, so the export covers every match, not just the loaded rows."
-              : "Exports keep patent numbers, labels, evidence references, and dataset version."}
+              : targetId
+                ? "Candidate exports carry the target scope, modality, evidence class and source versions; a candidate with no patent mapping exports with empty patent columns rather than being dropped."
+                : "Exports keep patent numbers, labels, evidence references, and dataset version."}
           </p>
         </div>
       )}

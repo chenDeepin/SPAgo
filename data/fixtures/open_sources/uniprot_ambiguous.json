@@ -1,0 +1,23 @@
+{
+ "_note": "Ambiguity fixture: two real reviewed UniProt entries (human TSLP Q969D9 and human IL-6 P05231) presented as if both matched one gene query, so the resolver's ambiguity branch is exercised. These are real identifiers, not invented ones; the arrangement is synthetic and marked as such.",
+ "fixture_derived": true,
+ "results": [
+  {
+   "primaryAccession": "Q969D9",
+   "uniProtkbId": "TSLP_HUMAN",
+   "entryType": "UniProtKB reviewed (Swiss-Prot)",
+   "organism": {"scientificName": "Homo sapiens", "taxonId": 9606},
+   "genes": [{"geneName": {"value": "TSLP"}}],
+   "proteinDescription": {"recommendedName": {"fullName": {"value": "Thymic stromal lymphopoietin"}}}
+  },
+  {
+   "primaryAccession": "P05231",
+   "uniProtkbId": "IL6_HUMAN",
+   "entryType": "UniProtKB reviewed (Swiss-Prot)",
+   "organism": {"scientificName": "Homo sapiens", "taxonId": 9606},
+   "genes": [{"geneName": {"value": "TSLP"}}],
+   "proteinDescription": {"recommendedName": {"fullName": {"value": "Interleukin-6"}}}
+  }
+ ],
+ "totalResults": 2
+}

@@ -151,8 +151,9 @@ export interface ProjectSummary {
 
 export interface ProjectItem {
   id: string;
-  family_id: string;
-  family_key: string;
+  /** Null for a target-candidate item: it has no patent mapping. */
+  family_id: string | null;
+  family_key: string | null;
   compound_id: string | null;
   inchikey: string | null;
   canonical_smiles: string | null;
@@ -162,6 +163,11 @@ export interface ProjectItem {
   record_missing?: boolean;
   source_updated?: boolean;
   added_at: string;
+  /** ONLINE-00: target scope of a saved candidate. */
+  target_id?: string | null;
+  target_key?: string | null;
+  target_name?: string | null;
+  evidence_class?: string | null;
 }
 
 export interface ProjectDetail extends ProjectSummary {
@@ -193,11 +199,16 @@ export interface StructureSearchResponse {
 
 export interface CitationRef {
   fact_ref: string;
-  kind: "family" | "measurement" | "evidence";
+  /** The citation kinds the server can emit. `source` is a per-source retrieval
+   * outcome in a target analysis (`source:<name>`); clicking it focuses the
+   * matching coverage chip rather than a molecule or an excerpt. */
+  kind: "family" | "document" | "target" | "candidate" | "measurement" | "source" | "evidence";
   label?: string;
   evidence_id?: string;
   inchikey?: string;
   measurement_id?: string;
+  /** Set on `source` citations: the coverage chip to focus. */
+  source_name?: string;
 }
 
 export interface CoverageEntry {
@@ -211,6 +222,8 @@ export interface CoverageEntry {
 export interface FamilySummaryResponse {
   analysis_id: string;
   provider: string;
+  /** family | document | target — the scope the analysis actually covers. */
+  scope?: "family" | "document" | "target";
   provenance_state: string;
   text: string;
   citations: CitationRef[];
@@ -229,4 +242,232 @@ export interface AiStatusResponse {
   model: string | null;
   target: string | null;
   reason: string | null;
+}
+
+/* --- ONLINE-00: target-led investigation --- */
+
+export interface TargetComponent {
+  accession: string | null;
+  name: string | null;
+  gene_symbol: string | null;
+  role: string | null;
+  organism: string | null;
+}
+
+export interface ResolutionCandidate {
+  identifier: string;
+  name: string | null;
+  organism: string | null;
+  target_type: string | null;
+  source_name: string | null;
+  reason: string | null;
+}
+
+export interface TargetResolution {
+  status: "resolved" | "ambiguous" | "not_found" | "not_queried" | "failed";
+  query: string;
+  species: string;
+  target_id: string | null;
+  target_key: string | null;
+  name: string | null;
+  organism: string | null;
+  uniprot_accession: string | null;
+  gene_symbol: string | null;
+  target_type: string | null;
+  scope_kind: string | null;
+  aliases: string[];
+  components: TargetComponent[];
+  candidates: ResolutionCandidate[];
+  excluded: ResolutionCandidate[];
+  notes: string[];
+  source_name: string;
+  source_version: string | null;
+  retrieved_at: string;
+}
+
+export interface ResolvedTarget {
+  id: string;
+  target_key: string;
+  name: string | null;
+  organism: string | null;
+  taxon_id: number | null;
+  uniprot_accession: string | null;
+  gene_symbol: string | null;
+  target_type: string | null;
+  scope_kind: string | null;
+  aliases: string[];
+  components: TargetComponent[];
+  source_name: string | null;
+  dataset_version: string | null;
+  resolution?: TargetResolution | null;
+}
+
+/** Per-source retrieval outcome. `empty` and `failed` are different facts and
+ * the UI must keep them different (never "no inhibitors exist"). */
+export interface SourceRetrieval {
+  source_name: string;
+  status: "complete" | "partial" | "empty" | "failed" | "not_queried";
+  query: Record<string, unknown>;
+  dataset_version: string | null;
+  source_version: string | null;
+  pages_fetched: number;
+  records_seen: number;
+  records_kept: number;
+  records_excluded: number;
+  rejection_counts: Record<string, number>;
+  latency_ms: number | null;
+  warnings: string[];
+  checksum: string | null;
+  retrieved_at: string;
+}
+
+export interface DiscoverResponse {
+  target_id: string;
+  target_key: string;
+  sources: SourceRetrieval[];
+  compounds_stored: number;
+  compounds_reused: number;
+  measurements_stored: number;
+  candidates_stored: number;
+  small_molecule_candidates: number;
+  modality_counts: Record<string, number>;
+  rejections: Record<string, number>;
+  warnings: string[];
+  coverage_note: string;
+}
+
+export interface Candidate {
+  compound_id: string;
+  canonical_smiles: string;
+  inchikey: string;
+  molecular_formula: string | null;
+  molecular_weight: number | null;
+  modality: "small_molecule" | "peptide" | "oligonucleotide" | "biologic" | "unclassified" | "unparseable";
+  modality_rule: string | null;
+  modality_source: string | null;
+  source_name: string;
+  source_record_id: string;
+  evidence_class:
+    | "measured_direct_binding"
+    | "interaction_disruption"
+    | "functional_effect"
+    | "screening_assay"
+    | "computational_prediction"
+    | "unspecified";
+  patent_occurrences: number;
+  patent_labels: string[];
+  measurements: number;
+}
+
+export interface CandidatePage {
+  total: number;
+  offset: number;
+  limit: number;
+  items: Candidate[];
+  modality_breakdown: Record<string, number>;
+  default_filter: string;
+}
+
+export interface TargetMeasurement {
+  id: string;
+  compound_id: string;
+  inchikey: string | null;
+  target_name: string | null;
+  target_key: string | null;
+  target_type: string | null;
+  assay_key: string;
+  assay_type: string | null;
+  assay_description: string | null;
+  assay_format: string | null;
+  standard_type: string;
+  value: number;
+  unit: string;
+  relation: string;
+  raw_value: string | null;
+  evidence_class: string;
+  species: string | null;
+  target_construct: string | null;
+  variant_accession: string | null;
+  variant_mutation: string | null;
+  pchembl_value: number | null;
+  potential_duplicate: boolean;
+  validity_comment: string | null;
+  document_ref: string | null;
+  source_url: string | null;
+  source_record_id: string | null;
+  source_name: string;
+  extraction_method: string;
+  provenance_state: string;
+  dataset_version: string;
+  retrieved_at: string;
+}
+
+/* --- ONLINE-02: interpreted search plans --- */
+
+export interface PlanStep {
+  op: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  expensive: boolean;
+}
+
+export interface SearchPlanResponse {
+  plan_version: string;
+  query: string;
+  producer: "offline" | "llm";
+  steps: PlanStep[];
+  unresolved: string[];
+  clarification_required: boolean;
+  note: string;
+  model: string | null;
+  mode: string;
+}
+
+export interface PlanStepResult {
+  op: string;
+  status: "ok" | "not_found" | "invalid" | "failed";
+  detail: string;
+  data: Record<string, unknown>;
+}
+
+export interface PlanExecuteResponse {
+  query: string;
+  producer: string;
+  steps: PlanStepResult[];
+  unresolved: string[];
+}
+
+/* --- ONLINE-03: hosted access --- */
+
+export interface AuthStatus {
+  mode: "disabled" | "required";
+  required: boolean;
+  authenticated: boolean;
+  email?: string | null;
+  display_name?: string | null;
+  is_admin?: boolean;
+  csrf_token?: string | null;
+  session_expires_at?: string | null;
+  note?: string;
+}
+
+export interface SessionInfo {
+  email: string;
+  display_name?: string | null;
+  is_admin: boolean;
+  csrf_token: string;
+  expires_in_hours: number;
+}
+
+export interface UsageReport {
+  window: string;
+  user_tokens: number;
+  user_limit: number;
+  deployment_tokens: number;
+  deployment_limit: number;
+  requests: number;
+  failures: number;
+  estimated_cost: number | null;
+  currency: string | null;
+  cost_note: string;
 }
