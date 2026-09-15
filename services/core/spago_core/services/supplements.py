@@ -50,6 +50,8 @@ from spago_core.domain import (
     SupplementRow,
     SupplementRowOutcome,
     USER_SUPPLEMENT_SOURCE,
+    WithdrawalResult,
+    WithdrawnSupplement,
 )
 from spago_core.domain.patent_numbers import normalize_patent_number
 from spago_core.services import NotFoundError
@@ -197,7 +199,10 @@ def _store_remark(
                   relation = EXCLUDED.relation,
                   doi = EXCLUDED.doi,
                   pmid = EXCLUDED.pmid,
-                  patent_number = EXCLUDED.patent_number
+                  patent_number = EXCLUDED.patent_number,
+                  -- A re-posted row is current again (ONLINE-08).
+                  retracted_at = NULL,
+                  retracted_reason = NULL
             """
         ),
         {
@@ -225,7 +230,11 @@ def _store_remark(
     if row.value is None:
         reasons.append("no value was supplied, so this row carries only the note")
     return SupplementRowOutcome(
-        index=index, status="remark", name=row.name.strip(), reasons=reasons
+        index=index,
+        status="remark",
+        name=row.name.strip(),
+        record_id=record_id,
+        reasons=reasons,
     )
 
 
@@ -394,7 +403,11 @@ def import_supplements(
                             document_doi = EXCLUDED.document_doi,
                             document_pmid = EXCLUDED.document_pmid,
                             document_patent_number = EXCLUDED.document_patent_number,
-                            retrieved_at = EXCLUDED.retrieved_at
+                            retrieved_at = EXCLUDED.retrieved_at,
+                            -- Re-posting a row that was withdrawn makes it current
+                            -- again: the user's re-post is the statement (ONLINE-08).
+                            retracted_at = NULL,
+                            retracted_reason = NULL
                         """
                     ),
                     {
@@ -449,7 +462,11 @@ def import_supplements(
                     ON CONFLICT (target_id, source_name, source_record_id) DO UPDATE
                       SET evidence_class = EXCLUDED.evidence_class,
                           modality = EXCLUDED.modality,
-                          retrieved_at = EXCLUDED.retrieved_at
+                          retrieved_at = EXCLUDED.retrieved_at,
+                          -- Withdrawing a row takes the compound out of this
+                          -- investigation; re-posting it puts it back (defect D3).
+                          retracted_at = NULL,
+                          retracted_reason = NULL
                     """
                 ),
                 {
@@ -488,6 +505,7 @@ def import_supplements(
                     index=index,
                     status="measurement",
                     name=row.name.strip(),
+                    record_id=record_id,
                     compound_id=compound_id,
                     inchikey=candidate.inchikey,
                     activity_class=activity_class,
@@ -500,17 +518,25 @@ def import_supplements(
     return result
 
 
-def list_supplement_remarks(engine: Engine, target_id: uuid.UUID) -> list[SupplementRemark]:
-    """Stored structure-less rows for one target (newest first)."""
+def list_supplement_remarks(
+    engine: Engine, target_id: uuid.UUID, *, include_withdrawn: bool = False
+) -> list[SupplementRemark]:
+    """Stored structure-less rows for one target (newest first).
+
+    Withdrawn rows stay readable — a user must be able to see what they took back
+    and why — so they are included only when the caller asks for them, and the
+    verdict counts them separately (AGENTS.md §10).
+    """
+    scope = "" if include_withdrawn else "AND retracted_at IS NULL"
     with engine.connect() as conn:
         rows = conn.execute(
             text(
-                """
+                f"""
                 SELECT id, target_id, source_record_id, name, note, activity_type, value,
                        unit, relation, doi, pmid, patent_number, provenance_state,
-                       created_at
+                       created_at, retracted_at, retracted_reason
                 FROM target_supplement_remarks
-                WHERE target_id = :tid
+                WHERE target_id = :tid {scope}
                 ORDER BY created_at DESC, name
                 """
             ),
@@ -522,7 +548,12 @@ def list_supplement_remarks(engine: Engine, target_id: uuid.UUID) -> list[Supple
 def count_supplement_remarks(
     engine: Engine, target_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, int]:
-    """Stored remark count per target, for the reference verdict."""
+    """Stored remark count per target, for the reference verdict.
+
+    Withdrawn remarks are not counted: the verdict says what the target holds now.
+    ``count_withdrawn_supplements`` reports them separately so a withdrawal is
+    visible rather than looking like a row that never existed.
+    """
     ids = list(target_ids)
     if not ids:
         return {}
@@ -530,8 +561,179 @@ def count_supplement_remarks(
         rows = conn.execute(
             text(
                 "SELECT target_id, count(*) AS n FROM target_supplement_remarks "
-                "WHERE target_id = ANY(:tids) GROUP BY target_id"
+                "WHERE target_id = ANY(:tids) AND retracted_at IS NULL GROUP BY target_id"
             ),
             {"tids": ids},
+        ).mappings().all()
+    return {row["target_id"]: int(row["n"]) for row in rows}
+
+
+def withdraw_supplement(
+    engine: Engine,
+    target_id: uuid.UUID,
+    record_id: str,
+    reason: str,
+) -> WithdrawalResult:
+    """Take back a hand-added row the user owns (ONLINE-08).
+
+    Only rows this service created can be withdrawn: a source row is not the
+    user's to remove, and a withdrawal is never a way to edit a database fact.
+    The row is retracted rather than deleted, so its note, its provenance and the
+    reason for the withdrawal stay readable.
+
+    Taking back the last live measurement of a hand-added compound also takes that
+    compound out of the investigation's candidate list; the compound record itself
+    stays, because another target or a patent occurrence may still refer to it.
+    """
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("A withdrawal must state why the row is being taken back.")
+    with engine.begin() as conn:
+        target = _target_row(conn, target_id)
+        measurement = conn.execute(
+            text(
+                """
+                SELECT id, compound_id FROM measurements
+                WHERE source_name = :source AND source_record_id = :rid
+                  AND assay_id IN (SELECT id FROM assays WHERE target_id = :tid)
+                """
+            ),
+            {"source": USER_SUPPLEMENT_SOURCE, "rid": record_id, "tid": target["id"]},
+        ).mappings().first()
+        remark = None
+        if measurement is None:
+            remark = conn.execute(
+                text(
+                    "SELECT id FROM target_supplement_remarks "
+                    "WHERE target_id = :tid AND source_record_id = :rid"
+                ),
+                {"tid": target["id"], "rid": record_id},
+            ).mappings().first()
+        if measurement is None and remark is None:
+            raise NotFoundError(
+                f"No hand-added row {record_id!r} for this target. Source rows cannot "
+                "be withdrawn here."
+            )
+        if measurement is not None:
+            conn.execute(
+                text(
+                    "UPDATE measurements SET retracted_at = now(), retracted_reason = :reason "
+                    "WHERE id = :id AND retracted_at IS NULL"
+                ),
+                {"id": measurement["id"], "reason": reason},
+            )
+            live = conn.execute(
+                text(
+                    "SELECT count(*) FROM measurements WHERE compound_id = :cid "
+                    "AND assay_id IN (SELECT id FROM assays WHERE target_id = :tid) "
+                    "AND retracted_at IS NULL"
+                ),
+                {"cid": measurement["compound_id"], "tid": target["id"]},
+            ).scalar_one()
+            candidates_retracted = 0
+            if int(live) == 0:
+                candidates_retracted = conn.execute(
+                    text(
+                        "UPDATE target_candidates SET retracted_at = now(), "
+                        "retracted_reason = :reason WHERE target_id = :tid "
+                        "AND compound_id = :cid AND retracted_at IS NULL"
+                    ),
+                    {
+                        "reason": (
+                            "every live measurement of this compound for this target was "
+                            f"withdrawn: {reason}"
+                        ),
+                        "tid": target["id"],
+                        "cid": measurement["compound_id"],
+                    },
+                ).rowcount
+            return WithdrawalResult(
+                kind="measurement",
+                record_id=record_id,
+                compound_id=str(measurement["compound_id"]),
+                candidate_retracted=bool(candidates_retracted),
+                reason=reason,
+            )
+        conn.execute(
+            text(
+                "UPDATE target_supplement_remarks SET retracted_at = now(), "
+                "retracted_reason = :reason WHERE id = :id AND retracted_at IS NULL"
+            ),
+            {"id": remark["id"], "reason": reason},
+        )
+        return WithdrawalResult(kind="remark", record_id=record_id, reason=reason)
+
+
+def list_withdrawn_supplements(
+    engine: Engine, target_id: uuid.UUID
+) -> list[WithdrawnSupplement]:
+    """Hand-added rows the user took back, newest first (defect D3).
+
+    Both kinds in one list: the reader's question is "what did I take back, and
+    why", and that answer must not depend on whether the row had a structure. The
+    rows are retracted, never deleted, so this list is the audit trail behind the
+    verdict's `withdrawn_supplements` count.
+    """
+    with engine.begin() as conn:
+        target = _target_row(conn, target_id)
+        rows = conn.execute(
+            text(
+                """
+                SELECT 'measurement' AS kind, m.source_record_id AS record_id,
+                       coalesce(m.assay_description, '') AS name,
+                       m.assay_description AS note,
+                       m.standard_type AS activity_type,
+                       m.value, m.unit, m.relation,
+                       m.retracted_at, m.retracted_reason,
+                       EXISTS (
+                           SELECT 1 FROM target_candidates tc
+                            WHERE tc.target_id = :tid AND tc.compound_id = m.compound_id
+                              AND tc.retracted_at IS NOT NULL
+                       ) AS candidate_retracted
+                  FROM measurements m
+                  JOIN assays a ON a.id = m.assay_id
+                 WHERE m.source_name = :source AND m.retracted_at IS NOT NULL
+                   AND a.target_id = :tid
+                UNION ALL
+                SELECT 'remark' AS kind, source_record_id AS record_id,
+                       name, note, activity_type, value, unit, relation,
+                       retracted_at, retracted_reason, false AS candidate_retracted
+                  FROM target_supplement_remarks
+                 WHERE target_id = :tid AND retracted_at IS NOT NULL
+                 ORDER BY retracted_at DESC, record_id
+                """
+            ),
+            {"tid": target["id"], "source": USER_SUPPLEMENT_SOURCE},
+        ).mappings().all()
+    return [WithdrawnSupplement(**dict(row)) for row in rows]
+
+
+def count_withdrawn_supplements(    engine: Engine, target_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Hand-added rows that were withdrawn, per target, for the verdict."""
+    ids = list(target_ids)
+    if not ids:
+        return {}
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT target_id, sum(measurements + remarks) AS n FROM (
+                    SELECT a.target_id AS target_id, count(*) AS measurements, 0 AS remarks
+                    FROM measurements m
+                    JOIN assays a ON a.id = m.assay_id
+                    WHERE m.source_name = :source AND m.retracted_at IS NOT NULL
+                      AND a.target_id = ANY(:tids)
+                    GROUP BY a.target_id
+                    UNION ALL
+                    SELECT target_id, 0, count(*)
+                    FROM target_supplement_remarks
+                    WHERE target_id = ANY(:tids) AND retracted_at IS NOT NULL
+                    GROUP BY target_id
+                ) counts
+                GROUP BY target_id
+                """
+            ),
+            {"tids": ids, "source": USER_SUPPLEMENT_SOURCE},
         ).mappings().all()
     return {row["target_id"]: int(row["n"]) for row in rows}

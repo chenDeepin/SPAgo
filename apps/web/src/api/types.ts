@@ -421,6 +421,9 @@ export interface SupplementRowOutcome {
   index: number;
   status: "measurement" | "remark" | "rejected";
   name: string;
+  /** The id `…/supplements/{record_id}/withdraw` accepts, so the row just stored
+   * can be taken back without a re-read (defect D3). */
+  record_id?: string | null;
   compound_id?: string | null;
   inchikey?: string | null;
   activity_class?: ActivityClass | null;
@@ -456,6 +459,36 @@ export interface SupplementRemark {
   patent_number?: string | null;
   provenance_state: string;
   created_at: string;
+  /** Present when the row was taken back: the row stays readable and states why. */
+  source_record_id: string;
+  retracted_at?: string | null;
+  retracted_reason?: string | null;
+}
+
+/** A hand-added row the user took back (defect D3). */
+export interface WithdrawnSupplement {
+  kind: "measurement" | "remark";
+  record_id: string;
+  name: string;
+  note?: string | null;
+  activity_type?: string | null;
+  value?: number | null;
+  unit?: string | null;
+  relation?: string | null;
+  retracted_at: string;
+  retracted_reason?: string | null;
+  /** True when the compound also left the investigation's candidate list. */
+  candidate_retracted: boolean;
+}
+
+/** What one withdrawal did, so the dialog can state it instead of guessing. */
+export interface SupplementWithdrawal {
+  kind: string;
+  record_id: string;
+  status: string;
+  reason: string;
+  compound_id?: string | null;
+  candidate_retracted: boolean;
 }
 
 /** What one compound's own reports support under the stated threshold. */
@@ -490,6 +523,9 @@ export interface Candidate {
   potency_label?: string | null;
   sources: string[];
   source_declared_patents: string[];
+  /** Defect D2: true only for a row returned because it was asked for by id
+   * while the active filter excludes it (not part of `total`). */
+  outside_filter?: boolean;
 }
 
 export interface CandidatePage {
@@ -521,7 +557,6 @@ export interface TargetMeasurement {
   raw_value: string | null;
   evidence_class: string;
   species: string | null;
-  target_construct: string | null;
   variant_accession: string | null;
   variant_mutation: string | null;
   pchembl_value: number | null;

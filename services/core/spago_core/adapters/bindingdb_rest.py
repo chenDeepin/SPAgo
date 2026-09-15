@@ -176,7 +176,7 @@ class BindingDBRestAdapter:
         warnings.append(
             f"BindingDB returns {body.get('bdb.hit', 'an unstated number of')} hit(s) for "
             f"{query}; the service does not report assay-level context, so species and "
-            "construct are unavailable from this path."
+            "variant context are unavailable from this path."
         )
         return self._result(
             retrieved_at, records, status, 1, seen, excluded, rejection_counts, warnings

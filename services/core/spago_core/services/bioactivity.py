@@ -69,7 +69,7 @@ def family_activity(
                 JOIN targets t ON t.id = a.target_id
                 WHERE m.compound_id IN (
                     SELECT DISTINCT m2.compound_id
-                    FROM compound_mentions m2
+                    FROM current_compound_mentions m2
                     JOIN patent_documents d ON d.id = m2.document_id
                     WHERE d.family_id = :fid {scope}
                 )

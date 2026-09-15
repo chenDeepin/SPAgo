@@ -17,12 +17,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import re
+
 import pytest
 from sqlalchemy import text
 
 from spago_core.adapters.bindingdb_rest import BindingDBRestAdapter
 from spago_core.adapters.bioactivity_base import ActivityRecord
-from spago_core.adapters.chembl_discovery import ChEMBLDiscoveryAdapter, classify_evidence
+from spago_core.adapters.chembl_discovery import (
+    ACTIVITY_FIELDS,
+    ChEMBLDiscoveryAdapter,
+    classify_evidence,
+)
 from spago_core.adapters.http import SourceUnavailableError
 from spago_core.adapters.pubchem import PubChemAdapter
 from spago_core.adapters.uniprot import UniProtTargetResolver
@@ -190,6 +196,34 @@ class TestChEMBLDiscovery:
         result = adapter.activities("CHEMBL3712931", TargetType.SINGLE_PROTEIN)
         assert result.status == RetrievalStatus.FAILED.value
         assert result.warnings and "500" in result.warnings[0]
+
+    def test_activity_requests_are_projected_to_the_mapped_fields(self):
+        """Every activity request asks for the mapped subset (ONLINE-08 cost).
+
+        Measured on the live API 2026-09-16 for `CHEMBL3712931` at `limit=200`:
+        216,632 → 127,415 bytes (-41%) per page. The projection is only safe
+        because it names every field the mapper reads — which is what the second
+        half of this test pins down, so a new field cannot silently read as
+        absent.
+        """
+        import inspect
+
+        adapter = ChEMBLDiscoveryAdapter(
+            client=StubSourceClient(
+                {"activity.json": {"activities": [], "page_meta": {"total_count": 0}}}
+            )
+        )
+        adapter.activities("CHEMBL3712931", TargetType.SINGLE_PROTEIN)
+        activity_calls = [p for url, p in adapter.client.calls if "activity.json" in url]
+        assert activity_calls, "no activity request was made"
+        for params in activity_calls:
+            assert params.get("only") == ACTIVITY_FIELDS
+
+        mapped = set(
+            re.findall(r'activity\.get\("([^"]+)"\)', inspect.getsource(ChEMBLDiscoveryAdapter._to_record))
+        )
+        projected = set(ACTIVITY_FIELDS.split(","))
+        assert mapped <= projected, f"fields read but not projected: {sorted(mapped - projected)}"
 
 
 class TestBindingDBAdapter:

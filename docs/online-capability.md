@@ -79,6 +79,12 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   exported or counted as a compound; a row without a note is refused instead of
   receiving a generated one. Re-posting the same row updates it, and supplying a
   structure later supersedes the remark it replaces.
+- **A hand-added row can be taken back, and the trail stays.** Withdrawal requires
+  a reason, marks the row instead of deleting it, drops it out of every count
+  (`withdrawn_supplements` in the verdict) and leaves it readable in the dialog's
+  "taken back by you" list with that reason and time. If the withdrawal empties the
+  compound's live rows for the target, the compound leaves the candidate list and
+  the withdrawal says so. Re-adding the same row restores it — identity, not a copy.
 - Save and reopen a candidate with no patent mapping; it keeps its target scope,
   source versions and identity snapshot.
 
@@ -104,12 +110,13 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   note is mandatory because the row's provenance cannot be reconstructed later, and
   a row that is not a potency (kinetic constant, percent readout, non-concentration
   unit) is classified `not a potency` rather than counted as active.
-- **A hand-added row can be corrected, not deleted.** Re-posting the same row
-  (same target, name, endpoint, value, unit, relation and document references)
-  updates the stored row, and supplying a structure supersedes a structure-less
-  remark for the same claim; withdrawing a row outright is not implemented, so a
-  record once added stays visible until that path is designed (it needs its own
-  decision about whether a removal keeps a trail).
+- **A hand-added row is corrected or withdrawn, never deleted.** Re-posting the
+  same row (same target, name, endpoint, value, unit, relation and document
+  references) updates the stored row, and supplying a structure supersedes a
+  structure-less remark for the same claim. Taking a row back is a recorded
+  retraction with a required reason, not a deletion: the row stays readable, the
+  verdict reports it as withdrawn, and a source refresh follows the same rule. The
+  UI has no physical delete, so no count changes without a reason on the row.
 - **The reference verdict is a count, not a biological conclusion.** "2 of 3
   in-scope compounds at or below 10 µM" states what the retrieved records support
   under the stated policy. It is not a claim about the literature, not an
@@ -133,6 +140,11 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 
 ## 6. Required before admitting users
 
+This section is the gate: this checklist and the script below are what a new
+deployment must satisfy. The dated register of what one earlier round did and did not
+verify is kept as history in `docs/archive/2026-09-15-beta-acceptance.md` — it records a
+past run, it does not replace this list.
+
 - [ ] Host/domain chosen; HTTPS terminated; `SPAGO_COOKIE_SECURE=true`.
 - [ ] `SPAGO_AUTH_MODE=required`, `SPAGO_SEED_MODE=none`, database listener private.
 - [ ] Model endpoint, model id and monthly token budget recorded; both quota
@@ -143,6 +155,38 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 - [ ] Backup taken and a restore verified per runbook §H7 (ownership counts match).
 - [ ] Coverage matrix re-recorded for the acceptance targets on the deployed build.
 - [ ] Invited cohort listed; invitation links issued individually.
+- [ ] One real model provider smoke-tested from the deployed build (model id,
+      endpoint fingerprint, per-scope call, token usage, latency, failure rate,
+      cache behaviour); any other endpoint stays unverified.
+- [ ] An invited user — not the implementer — completed the script below, and any
+      defect they reported was answered before the beta is called usable.
+- [ ] Independent scientific cross-reading of retrieved structures,
+      stereochemistry and occurrence fields against the original sources.
+- [ ] Latency and cost targets for the chosen host and model defined, then
+      measured for a go/no-go.
+
+### Acceptance script for the invited-beta run
+
+A scientist using only the browser must be able to complete, in one sitting:
+
+1. Open the invitation link, sign in.
+2. Resolve a requested target (TSLP, CD40L, IL-6, IL-6R, or another) and read
+   the scope: what was resolved, what was excluded, which partners are related.
+3. Run a supported natural-language request (review the plan, then Run) **or**
+   use manual search/structure search.
+4. Read the per-source coverage and distinguish small-molecule from
+   peptide/biologic evidence, and direct binding from functional/interaction
+   evidence.
+5. Inspect a candidate's structures and assay evidence, and the patent linkage
+   status (including a candidate that has none).
+6. Generate a scoped, cited summary and check at least one citation against the
+   underlying record.
+7. Save the selection, sign out, sign in again, reopen the project, and export.
+8. Report any defect before the beta is called usable.
+
+Record the outcome per step, with the build identity from `/healthz` and the coverage
+matrix for the run. A run against the local stack is a rehearsal, not this gate: it
+proves the workflow, not the deployment.
 
 ## 7. Rollback
 
@@ -188,11 +232,12 @@ The deployment is one app image plus one database. To roll back:
   the planner is not allowed to turn text into an identifier (AGENTS.md §12).
 - PubChem contributes screening context only; a CID→AID measurement path is not
   implemented (it would require unbounded BioAssay harvesting).
-- BindingDB's REST path supplies no assay description, species or construct, so
-  those context fields are empty for BindingDB records.
-- **Assay construct is declared but never mapped.** No adapter fills
-  `target_construct`, so `measurements.construct` is empty for every source and the
-  evidence panel reads "context not provided" even where the source described a
-  construct in prose. ChEMBL's variant accession and mutation are mapped separately
-  and are shown when the source supplies them. Recorded as a limitation rather than
-  printed as a source omission.
+- BindingDB's REST path supplies no assay description, species or variant context,
+  so those fields are empty for BindingDB records (stated on the retrieval, not
+  presented as the source's omission).
+- **Assay construct is not part of the contract.** No adapter in this build can map
+  a protein construct, so no construct field is declared and none is displayed: a
+  construct described in prose by a source is not carried into SPAgo, which is a
+  coverage limitation rather than something the reader should read as an empty
+  column. ChEMBL's variant accession and mutation *are* mapped and shown when the
+  source supplies them.

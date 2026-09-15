@@ -100,7 +100,7 @@ def _candidate_sql(scope: str, match_clause: str, filter_clauses: list[str]) -> 
         WITH matched AS (
             SELECT DISTINCT c.id
             FROM compounds c
-            JOIN compound_mentions m ON m.compound_id = c.id
+            JOIN current_compound_mentions m ON m.compound_id = c.id
             JOIN patent_documents d ON d.id = m.document_id
             WHERE d.family_id = :fid {scope} AND {match_clause}
         )

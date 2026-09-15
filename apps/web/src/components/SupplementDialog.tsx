@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { SupplementImport, SupplementRowInput } from "../api/types";
 import { Modal } from "./Modal";
 import { activityClassLabel } from "./ReferenceStrip";
+import { TakeBackControl } from "./TakeBackControl";
 
 interface SupplementDialogProps {
   targetId: string;
@@ -111,6 +112,11 @@ export function SupplementDialog({
     queryFn: ({ signal }) => api.targetSupplementRemarks(targetId, signal),
   });
 
+  const withdrawnQuery = useQuery({
+    queryKey: ["target-withdrawn-supplements", targetId],
+    queryFn: ({ signal }) => api.targetWithdrawnSupplements(targetId, signal),
+  });
+
   const importMutation = useMutation({
     mutationFn: (payload: SupplementRowInput[]) => api.targetSupplements(targetId, payload),
     onSuccess: (outcome) => {
@@ -126,6 +132,26 @@ export function SupplementDialog({
     },
     onError: (err) => setError((err as Error).message),
   });
+
+  // One withdraw action for the whole dialog: every read that counts the row is
+  // refreshed, so a taken-back row cannot linger in a count (defect D3).
+  const withdrawMutation = useMutation({
+    mutationFn: ({ recordId, reason }: { recordId: string; reason: string }) =>
+      api.withdrawTargetSupplement(targetId, recordId, reason),
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["target-reference", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["candidates", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["candidate-measurements", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-coverage", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-supplement-remarks", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-withdrawn-supplements", targetId] });
+    },
+    onError: (err) => setError((err as Error).message),
+  });
+
+  const withdraw = (recordId: string, reason: string) =>
+    withdrawMutation.mutateAsync({ recordId, reason }).then(() => undefined);
 
   const problems = rows.map((row) => toRow(row));
   const blocked = problems.find((p) => p.problem);
@@ -147,6 +173,7 @@ export function SupplementDialog({
   };
 
   const remarks = remarksQuery.data ?? [];
+  const withdrawn = withdrawnQuery.data ?? [];
   const outcomeByIndex = new Map((result?.rows ?? []).map((row) => [row.index, row]));
   const stored = result
     ? result.measurements + result.remarks
@@ -336,6 +363,15 @@ export function SupplementDialog({
                     Open evidence
                   </button>
                 )}
+                {outcome.record_id && outcome.status !== "rejected" && (
+                  <TakeBackControl
+                    what="This row"
+                    pending={withdrawMutation.isPending}
+                    onWithdraw={(why) =>
+                      withdraw(outcome.record_id as string, why).catch(() => undefined)
+                    }
+                  />
+                )}
               </div>
             )}
           </div>
@@ -371,7 +407,7 @@ export function SupplementDialog({
         {remarks.length > 0 && (
           <ul className="plain-list">
             {remarks.map((remark) => (
-              <li key={remark.id}>
+              <li key={remark.id} className={remark.retracted_at ? "withdrawn-row" : undefined}>
                 <span className="mono">{remark.name}</span>
                 {remark.value != null && (
                   <span>
@@ -385,6 +421,54 @@ export function SupplementDialog({
                   <span className="fineprint"> {remark.patent_number}</span>
                 )}
                 <div className="fineprint">{remark.note}</div>
+                {remark.retracted_at ? (
+                  <div className="withdrawn-reason">
+                    Taken back {new Date(remark.retracted_at).toLocaleString()} —{" "}
+                    {remark.retracted_reason ?? "no reason recorded"}
+                  </div>
+                ) : (
+                  <TakeBackControl
+                    what="This remark"
+                    pending={withdrawMutation.isPending}
+                    onWithdraw={(reason) =>
+                      withdraw(remark.source_record_id, reason).catch(() => undefined)
+                    }
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Rows the user added by hand and later took back. Both kinds in one list:
+            the question "what did I take back, and why" does not depend on whether
+            the row carried a structure (defect D3). */}
+        <h3 className="section-title">Taken back by you</h3>
+        {withdrawnQuery.isLoading && <span className="skeleton-note">Reading…</span>}
+        {!withdrawnQuery.isLoading && withdrawn.length === 0 && (
+          <span className="fineprint">Nothing has been taken back for this target.</span>
+        )}
+        {withdrawn.length > 0 && (
+          <ul className="plain-list">
+            {withdrawn.map((row) => (
+              <li key={`${row.kind}-${row.record_id}`} className="withdrawn-row">
+                <span className="mono">{row.name || row.record_id}</span>
+                <span className="badge">{row.kind === "remark" ? "remark" : "measurement"}</span>
+                {row.value != null && (
+                  <span>
+                    {" "}
+                    {row.relation} {row.value} {row.unit} {row.activity_type}
+                  </span>
+                )}
+                <div className="withdrawn-reason">
+                  Taken back {new Date(row.retracted_at).toLocaleString()} —{" "}
+                  {row.retracted_reason ?? "no reason recorded"}
+                  {row.candidate_retracted && " · the compound left the candidate list"}
+                </div>
+                <div className="fineprint">
+                  The row is still stored: re-adding it restores it instead of creating a
+                  second copy.
+                </div>
               </li>
             ))}
           </ul>

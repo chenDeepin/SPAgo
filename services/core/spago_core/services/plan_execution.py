@@ -326,11 +326,9 @@ def _compare_evidence(engine: Engine, step: CompareEvidenceStep) -> StepResult:
                        count(*) AS n,
                        count(DISTINCT m.compound_id) AS compounds,
                        min(a.target_id::text) AS target_sample
-                FROM measurements m
+                FROM investigation_measurements m
                 JOIN assays a ON a.id = m.assay_id
-                WHERE m.compound_id IN (
-                    SELECT compound_id FROM target_candidates WHERE target_id = :tid
-                )
+                WHERE m.investigation_target_id = :tid
                 GROUP BY 1 ORDER BY 2 DESC, 1
                 """
             ),

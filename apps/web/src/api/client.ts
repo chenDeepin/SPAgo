@@ -273,6 +273,10 @@ export const api = {
       evidence_class?: string | null;
       include_all_modalities?: boolean;
       activity_threshold_nm?: number | null;
+      /** Defect D2: keep these compounds visible (labelled rows) even when the
+       * filter excludes them — the selected one and every item an opened project
+       * saved for this target. */
+      include_compound_ids?: string[];
     },
     signal?: AbortSignal,
   ) => {
@@ -284,6 +288,9 @@ export const api = {
     if (params.include_all_modalities) search.set("include_all_modalities", "true");
     if (params.activity_threshold_nm != null) {
       search.set("activity_threshold_nm", String(params.activity_threshold_nm));
+    }
+    for (const id of params.include_compound_ids ?? []) {
+      search.append("include_compound_id", id);
     }
     return getJson<import("./types").CandidatePage>(
       `/api/v1/targets/${targetId}/candidates?${search.toString()}`,
@@ -335,6 +342,26 @@ export const api = {
   targetSupplementRemarks: (targetId: string, signal?: AbortSignal) =>
     getJson<import("./types").SupplementRemark[]>(
       `/api/v1/targets/${targetId}/supplements/remarks`,
+      signal,
+    ),
+  /** Rows this user added by hand and later took back: the audit trail behind the
+   * verdict's `withdrawn_supplements` count (defect D3). */
+  targetWithdrawnSupplements: (targetId: string, signal?: AbortSignal) =>
+    getJson<import("./types").WithdrawnSupplement[]>(
+      `/api/v1/targets/${targetId}/supplements/withdrawn`,
+      signal,
+    ),
+  /** Take a hand-added row back. A reason is required by the API: a withdrawal
+   * that cannot say why is a silent edit. The row is never deleted. */
+  withdrawTargetSupplement: (
+    targetId: string,
+    recordId: string,
+    reason: string,
+    signal?: AbortSignal,
+  ) =>
+    postJson<import("./types").SupplementWithdrawal>(
+      `/api/v1/targets/${targetId}/supplements/${encodeURIComponent(recordId)}/withdraw`,
+      { reason },
       signal,
     ),
 };

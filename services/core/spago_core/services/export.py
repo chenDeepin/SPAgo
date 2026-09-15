@@ -141,18 +141,18 @@ def _base_query(scope_clause: str, doc_clause_tpl: str, doc_params: dict) -> str
                COALESCE(ev_agg.states, '{{}}') AS states,
                COALESCE(ev_agg.urls, '{{}}') AS urls
         FROM compounds c
-        JOIN compound_mentions m ON m.compound_id = c.id
+        JOIN current_compound_mentions m ON m.compound_id = c.id
         JOIN patent_documents d ON d.id = m.document_id
         LEFT JOIN LATERAL (
             SELECT array_agg(DISTINCT d2.publication_number) AS docs
-            FROM compound_mentions m2
+            FROM current_compound_mentions m2
             JOIN patent_documents d2 ON d2.id = m2.document_id
             WHERE m2.compound_id = c.id AND {doc2}
         ) doc_agg ON true
         LEFT JOIN LATERAL (
             SELECT array_agg(DISTINCT d3.publication_number || ':' || COALESCE(m3.patent_label, ''))
             AS labels
-            FROM compound_mentions m3
+            FROM current_compound_mentions m3
             JOIN patent_documents d3 ON d3.id = m3.document_id
             WHERE m3.compound_id = c.id AND {doc3}
         ) mention_agg ON true
@@ -160,7 +160,7 @@ def _base_query(scope_clause: str, doc_clause_tpl: str, doc_params: dict) -> str
             SELECT jsonb_agg(v ORDER BY v.dataset_version, v.source_name) AS versions
             FROM (
                 SELECT DISTINCT m3.source_name, m3.dataset_version
-                FROM compound_mentions m3
+                FROM current_compound_mentions m3
                 JOIN patent_documents d3 ON d3.id = m3.document_id
                 WHERE m3.compound_id = c.id AND {doc3}
             ) v
@@ -169,7 +169,7 @@ def _base_query(scope_clause: str, doc_clause_tpl: str, doc_params: dict) -> str
             SELECT array_agg(e.id ORDER BY e.id) AS evidence,
                    array_agg(e.provenance_state ORDER BY e.id) AS states,
                    array_agg(e.source_url ORDER BY e.id) AS urls
-            FROM evidence_records e
+            FROM current_evidence_records e
             JOIN patent_documents ed ON ed.id = e.document_id
             WHERE e.compound_id = c.id AND {doc_ev}
         ) ev_agg ON true
@@ -184,7 +184,7 @@ def _count_sql(scope_clause: str) -> str:
     return f"""
         SELECT count(DISTINCT c.id)
         FROM compounds c
-        JOIN compound_mentions m ON m.compound_id = c.id
+        JOIN current_compound_mentions m ON m.compound_id = c.id
         JOIN patent_documents d ON d.id = m.document_id
         WHERE {scope_clause}
     """
@@ -276,7 +276,7 @@ def collect_export_rows(
         # never silently dropped or exported.
         valid_sql = """
             SELECT DISTINCT m.compound_id
-            FROM compound_mentions m
+            FROM current_compound_mentions m
             JOIN patent_documents d ON d.id = m.document_id
             WHERE m.compound_id = ANY(:ids) AND d.family_id = :fid
         """
@@ -390,7 +390,7 @@ def collect_candidate_export_rows(
         if target is None:
             raise NotFoundError(f"Target {target_id} not found")
 
-        scope_clause = "tc.target_id = :tid"
+        scope_clause = "tc.target_id = :tid AND tc.retracted_at IS NULL"
         params: dict = {"tid": target_id}
         if compound_ids:
             params["ids"] = list(compound_ids)
@@ -453,18 +453,19 @@ def collect_candidate_export_rows(
                 -- fact (AGENTS.md §10).
                 LEFT JOIN LATERAL (
                     SELECT array_agg(DISTINCT m.provenance_state) AS states
-                    FROM measurements m
+                    FROM investigation_measurements m
                     WHERE m.compound_id = c.id
+                      AND m.investigation_target_id = tc.target_id
                 ) prov ON true
                 LEFT JOIN LATERAL (
                     SELECT array_agg(DISTINCT d.publication_number) AS docs
-                    FROM compound_mentions m JOIN patent_documents d ON d.id = m.document_id
+                    FROM current_compound_mentions m JOIN patent_documents d ON d.id = m.document_id
                     WHERE m.compound_id = c.id
                 ) docs ON true
                 LEFT JOIN LATERAL (
                     SELECT array_agg(DISTINCT d.publication_number || ':' || COALESCE(m.patent_label, ''))
                     AS labels
-                    FROM compound_mentions m JOIN patent_documents d ON d.id = m.document_id
+                    FROM current_compound_mentions m JOIN patent_documents d ON d.id = m.document_id
                     WHERE m.compound_id = c.id
                 ) ment ON true
                 LEFT JOIN LATERAL (

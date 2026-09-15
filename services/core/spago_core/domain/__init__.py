@@ -34,4 +34,6 @@ from spago_core.domain.models import (  # noqa: F401
     TargetResolutionRecord,
     TargetType,
     USER_SUPPLEMENT_SOURCE,
+    WithdrawalResult,
+    WithdrawnSupplement,
 )

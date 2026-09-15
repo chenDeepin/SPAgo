@@ -136,8 +136,9 @@ A scientist using only the browser must finish: sign in → resolve a requested 
 
 ONLINE-00 through ONLINE-05 are **implemented** (committed in `cb21720`; this section
 records what was built, what was verified and what is explicitly still open). The
-acceptance detail lives in
-[the invited-beta acceptance record](../archive/2026-09-15-beta-acceptance.md).
+acceptance gate and its invited-user script live in
+[the capability statement §6](../online-capability.md#6-required-before-admitting-users);
+that section, not this record, is what a deployment is checked against.
 
 ### 4.1 Stage status
 

@@ -232,7 +232,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                 """
                 SELECT count(DISTINCT c.id)
                 FROM compounds c
-                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN current_compound_mentions m ON m.compound_id = c.id
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE d.family_id = :fid
                 """
@@ -245,7 +245,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                 """
                 SELECT count(DISTINCT c.scaffold)
                 FROM compounds c
-                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN current_compound_mentions m ON m.compound_id = c.id
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE d.family_id = :fid AND c.scaffold IS NOT NULL
                 """
@@ -257,7 +257,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                 """
                 SELECT c.scaffold, count(DISTINCT c.id) AS n
                 FROM compounds c
-                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN current_compound_mentions m ON m.compound_id = c.id
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE d.family_id = :fid AND c.scaffold IS NOT NULL
                 GROUP BY c.scaffold ORDER BY n DESC, c.scaffold
@@ -272,7 +272,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                 """
                 SELECT count(DISTINCT mm.id)
                 FROM measurements mm
-                JOIN compound_mentions cm ON cm.compound_id = mm.compound_id
+                JOIN current_compound_mentions cm ON cm.compound_id = mm.compound_id
                 JOIN patent_documents d ON d.id = cm.document_id
                 WHERE d.family_id = :fid
                 """
@@ -293,7 +293,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                 WHERE mm.id IN (
                     SELECT DISTINCT mm2.id
                     FROM measurements mm2
-                    JOIN compound_mentions cm ON cm.compound_id = mm2.compound_id
+                    JOIN current_compound_mentions cm ON cm.compound_id = mm2.compound_id
                     JOIN patent_documents d ON d.id = cm.document_id
                     WHERE d.family_id = :fid
                 )
@@ -308,7 +308,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
             text(
                 """
                 SELECT count(DISTINCT e.id)
-                FROM evidence_records e
+                FROM current_evidence_records e
                 JOIN patent_documents d ON d.id = e.document_id
                 WHERE d.family_id = :fid
                 """
@@ -320,7 +320,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                 """
                 SELECT e.id, e.source_type, e.section, e.page, e.raw_excerpt,
                        d.publication_number
-                FROM evidence_records e
+                FROM current_evidence_records e
                 JOIN patent_documents d ON d.id = e.document_id
                 WHERE d.family_id = :fid
                 ORDER BY e.id
@@ -339,7 +339,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                        count(DISTINCT mm.id) AS measurements,
                        di.synthetic AS synthetic
                 FROM patent_documents d
-                LEFT JOIN compound_mentions cm ON cm.document_id = d.id
+                LEFT JOIN current_compound_mentions cm ON cm.document_id = d.id
                 LEFT JOIN measurements mm ON mm.compound_id = cm.compound_id
                 LEFT JOIN dataset_info di
                        ON di.dataset_version = d.dataset_version
@@ -441,7 +441,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
 
         compound_count = conn.execute(
             text(
-                "SELECT count(DISTINCT compound_id) FROM compound_mentions WHERE document_id = :did"
+                "SELECT count(DISTINCT compound_id) FROM current_compound_mentions WHERE document_id = :did"
             ),
             {"did": document_id},
         ).scalar_one()
@@ -450,7 +450,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
                 """
                 SELECT c.scaffold, count(DISTINCT c.id) AS n
                 FROM compounds c
-                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN current_compound_mentions m ON m.compound_id = c.id
                 WHERE m.document_id = :did AND c.scaffold IS NOT NULL
                 GROUP BY c.scaffold ORDER BY n DESC, c.scaffold
                 LIMIT :limit
@@ -463,7 +463,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
                 """
                 SELECT count(DISTINCT c.scaffold)
                 FROM compounds c
-                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN current_compound_mentions m ON m.compound_id = c.id
                 WHERE m.document_id = :did AND c.scaffold IS NOT NULL
                 """
             ),
@@ -475,7 +475,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
                 """
                 SELECT count(DISTINCT mm.id)
                 FROM measurements mm
-                JOIN compound_mentions cm ON cm.compound_id = mm.compound_id
+                JOIN current_compound_mentions cm ON cm.compound_id = mm.compound_id
                 WHERE cm.document_id = :did
                 """
             ),
@@ -492,7 +492,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
                 JOIN assays a ON a.id = mm.assay_id
                 JOIN targets t ON t.id = a.target_id
                 WHERE mm.compound_id IN (
-                    SELECT DISTINCT compound_id FROM compound_mentions WHERE document_id = :did
+                    SELECT DISTINCT compound_id FROM current_compound_mentions WHERE document_id = :did
                 )
                 ORDER BY mm.id LIMIT :limit
                 """
@@ -501,7 +501,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
         ).mappings().all()
 
         evidence_total = conn.execute(
-            text("SELECT count(*) FROM evidence_records WHERE document_id = :did"),
+            text("SELECT count(*) FROM current_evidence_records WHERE document_id = :did"),
             {"did": document_id},
         ).scalar_one()
         evidence_rows = conn.execute(
@@ -509,7 +509,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
                 """
                 SELECT e.id, e.source_type, e.section, e.page, e.raw_excerpt,
                        e.provenance_state, e.source_url
-                FROM evidence_records e
+                FROM current_evidence_records e
                 WHERE e.document_id = :did
                 ORDER BY e.id LIMIT :limit
                 """
@@ -523,7 +523,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
         # the summary claim to have assessed claim scope.
         claim_count = conn.execute(
             text(
-                "SELECT count(*) FROM evidence_records "
+                "SELECT count(*) FROM current_evidence_records "
                 "WHERE document_id = :did AND source_type = 'claim'"
             ),
             {"did": document_id},
@@ -649,11 +649,8 @@ def _collect_target_facts(
             text(
                 """
                 SELECT count(*)
-                FROM measurements m
-                JOIN assays a ON a.id = m.assay_id
-                WHERE m.compound_id IN (
-                    SELECT compound_id FROM target_candidates WHERE target_id = :tid
-                )
+                FROM investigation_measurements m
+                WHERE m.investigation_target_id = :tid
                 """
             ),
             {"tid": target_id},
@@ -662,10 +659,8 @@ def _collect_target_facts(
             text(
                 """
                 SELECT coalesce(m.evidence_class, 'unspecified') AS cls, count(*) AS n
-                FROM measurements m
-                WHERE m.compound_id IN (
-                    SELECT compound_id FROM target_candidates WHERE target_id = :tid
-                )
+                FROM investigation_measurements m
+                WHERE m.investigation_target_id = :tid
                 GROUP BY 1 ORDER BY 2 DESC, 1
                 """
             ),
@@ -677,7 +672,7 @@ def _collect_target_facts(
                 SELECT count(DISTINCT tc.compound_id)
                 FROM target_candidates tc
                 WHERE tc.target_id = :tid
-                  AND EXISTS (SELECT 1 FROM compound_mentions cm WHERE cm.compound_id = tc.compound_id)
+                  AND EXISTS (SELECT 1 FROM current_compound_mentions cm WHERE cm.compound_id = tc.compound_id)
                 """
             ),
             {"tid": target_id},

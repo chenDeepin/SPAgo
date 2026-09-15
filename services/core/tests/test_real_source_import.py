@@ -321,6 +321,132 @@ class TestImportCommand:
             ).mappings().all()
         assert failed and "refusing to guess" in failed[-1]["error"]
 
+    def test_a_release_that_drops_a_row_retracts_it(self, real_source_engine, tmp_path):
+        """D4: a refresh is a statement about its source's current content.
+
+        The second release of the same source does not carry one mapping row, so
+        that row is retracted with the version that dropped it — not deleted, not
+        left current — and the dropped row's evidence goes with it.
+        """
+        from spago_core.import_package import import_package
+
+        engine = real_source_engine
+        first = _build_real_schema_package(tmp_path / "v1")
+        summary = import_package(engine, first)["summary"]
+        assert summary["retracted_mentions"] == 0
+        assert summary["retracted_evidence"] == 0
+        with engine.connect() as conn:
+            baseline = conn.execute(
+                text(
+                    "SELECT count(*) FROM current_compound_mentions "
+                    "WHERE source_name = 'surechembl_bulk'"
+                )
+            ).scalar_one()
+
+        # The same family, one compound mention fewer, a new dataset version.
+        second = tmp_path / "v2"
+        second.mkdir()
+        for name in ("patents.parquet", "compounds.parquet"):
+            (second / name).write_bytes((first / name).read_bytes())
+        mapping = pq.read_table(first / "patent_compound_map.parquet").to_pydict()
+        dropped = {
+            (patent, compound, field)
+            for patent, compound, field in zip(
+                mapping["patent_id"], mapping["compound_id"], mapping["field_id"]
+            )
+        }
+        dropped_row = (7002, 500003, 1)
+        assert dropped_row in dropped
+        keep = [i for i, row in enumerate(zip(mapping["patent_id"], mapping["compound_id"], mapping["field_id"])) if row != dropped_row]
+        pq.write_table(
+            pa.table({key: pa.array([values[i] for i in keep], type=pa.array(values).type) for key, values in mapping.items()}),
+            second / "patent_compound_map.parquet",
+        )
+        manifest = json.loads((first / "manifest.json").read_text())
+        manifest["dataset_version"] = "surechembl-test-release-2"
+        manifest["release"] = "test-release-2"
+        (second / "manifest.json").write_text(json.dumps(manifest))
+
+        again = import_package(engine, second)
+        assert again["status"] == "completed"
+        assert again["summary"]["retracted_mentions"] == 1
+        assert again["summary"]["retracted_evidence"] == 1
+
+        with engine.connect() as conn:
+            retracted = conn.execute(
+                text(
+                    """
+                    SELECT m.patent_label, m.dataset_version, m.retracted_reason,
+                           m.retracted_by_dataset_version
+                      FROM compound_mentions m
+                     WHERE m.source_name = 'surechembl_bulk' AND m.retracted_at IS NOT NULL
+                    """
+                )
+            ).mappings().all()
+            assert len(retracted) == 1
+            assert retracted[0]["retracted_by_dataset_version"] == "surechembl-test-release-2"
+            assert "not in dataset_version surechembl-test-release-2" == retracted[0]["retracted_reason"]
+            # The rows the release still carries are current, not collateral.
+            current = conn.execute(
+                text(
+                    """
+                    SELECT count(*) FROM current_compound_mentions m
+                     WHERE m.source_name = 'surechembl_bulk'
+                    """
+                )
+            ).scalar_one()
+            assert current == baseline - 1, "only the dropped mention stops counting"
+
+        # A later release that carries the row again makes it current (identity, not
+        # a second record) — the same rule the hand-added rows follow.
+        back = import_package(engine, first)
+        assert back["status"] == "completed"
+        assert back["summary"]["retracted_mentions"] == 0
+        with engine.connect() as conn:
+            still_retracted = conn.execute(
+                text(
+                    """
+                    SELECT count(*) FROM compound_mentions
+                     WHERE source_name = 'surechembl_bulk' AND retracted_at IS NOT NULL
+                    """
+                )
+            ).scalar_one()
+        assert still_retracted == 0, "re-importing a release clears the earlier retraction"
+
+    def test_a_killed_import_is_recovered_as_interrupted(self, real_source_engine, real_package):
+        """D5: a `running` row whose process died must not read as in progress."""
+        from spago_core.import_package import import_package, list_jobs
+
+        engine = real_source_engine
+        stale_id = uuid.uuid4()
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO import_jobs (id, source_name, dataset_version, synthetic, status,
+                                             started_at)
+                    VALUES (:id, 'surechembl_bulk', 'surechembl-test-release', true, 'running',
+                            now() - interval '2 hours')
+                    """
+                ),
+                {"id": stale_id},
+            )
+
+        outcome = import_package(engine, real_package)
+        assert outcome["recovered_jobs"] == 1
+
+        jobs = {job["id"]: job for job in list_jobs(engine)}
+        stale = jobs[stale_id]
+        assert stale["status"] == "interrupted"
+        assert stale["finished_at"] is not None
+        assert "stopped before finishing" in stale["error"]
+        assert str(uuid.UUID(outcome["job_id"])) in stale["error"]
+        # The run that recovered it is untouched.
+        assert jobs[uuid.UUID(outcome["job_id"])]["status"] == "completed"
+
+        # A second import finds nothing to recover: the state is not re-written.
+        assert import_package(engine, real_package)["recovered_jobs"] == 0
+
     def test_seed_mode_none_leaves_real_data_unmixed(self, real_source_engine, real_package, monkeypatch):
         """SPAGO_SEED_MODE only gates the *demo* fixture; imported packages are
         the explicit real-data path and re-running them stays idempotent."""

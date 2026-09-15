@@ -148,7 +148,8 @@ class TestCacheIsScoped:
 
 class TestTargetScope:
     @pytest.fixture(scope="class")
-    def target_id(self, online_engine):
+    @classmethod
+    def target_id(cls, online_engine):
         """A minimal target investigation, built without network access.
 
         Class-scoped because `targets.target_key` is unique: a per-test insert

@@ -89,6 +89,11 @@ export function App() {
   } | null>(null);
   const projectNavigationAbort = useRef<AbortController | null>(null);
   const [openedProjectFamilyId, setOpenedProjectFamilyId] = useState<string | null>(null);
+  // Compounds the opened project saved for the current target. Kept in state, not
+  // in the URL: a project can hold many items, and the URL carries the selected
+  // one only (AGENTS.md §19). They are passed to the candidate query so a saved
+  // item the filter would exclude stays visible as a labelled row (defect D2).
+  const [projectSavedCompoundIds, setProjectSavedCompoundIds] = useState<string[]>([]);
   const [projectLoading, setProjectLoading] = useState(false);
   // Structure-result paging: one in-flight request at a time, abortable on any
   // context change; the error is tagged with the request it belongs to.
@@ -194,6 +199,14 @@ export function App() {
     enabled: resolvedTargetId !== null,
   });
 
+  // The selected compound plus every compound the opened project saved for this
+  // target, deduplicated and ordered so the query key is stable.
+  const pinnedCompoundIds = useMemo(() => {
+    const ids = new Set(projectSavedCompoundIds);
+    if (urlState.c) ids.add(urlState.c);
+    return [...ids].sort();
+  }, [projectSavedCompoundIds, urlState.c]);
+
   const candidatesQuery = useInfiniteQuery({
     queryKey: [
       "candidates",
@@ -201,6 +214,8 @@ export function App() {
       allModalities,
       evidenceClassFilter,
       referenceThresholdNanomolar,
+      urlState.c,
+      pinnedCompoundIds,
     ],
     queryFn: ({ pageParam, signal }) =>
       api.targetCandidates(
@@ -211,6 +226,9 @@ export function App() {
           include_all_modalities: allModalities,
           evidence_class: evidenceClassFilter,
           activity_threshold_nm: referenceThresholdNanomolar,
+          // Defect D2: a saved or deep-linked compound is also returned when the
+          // filter excludes it, labelled rather than hidden.
+          include_compound_ids: pinnedCompoundIds,
         },
         signal,
       ),
@@ -255,6 +273,22 @@ export function App() {
         signal,
       ),
     enabled: resolvedTargetId !== null && urlState.c !== null,
+  });
+
+  // Taking a hand-added row back (ONLINE-07 / defect D3). One action owner for the
+  // mutation, used by both surfaces that can withdraw a row.
+  const withdrawSupplementMutation = useMutation({
+    mutationFn: ({ recordId, reason }: { recordId: string; reason: string }) =>
+      api.withdrawTargetSupplement(resolvedTargetId as string, recordId, reason),
+    onSuccess: () => {
+      const targetId = resolvedTargetId as string;
+      queryClient.invalidateQueries({ queryKey: ["candidate-measurements", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["candidates", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-reference", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-coverage", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-supplement-remarks", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-withdrawn-supplements", targetId] });
+    },
   });
 
   const planMutation = useMutation({
@@ -407,6 +441,7 @@ export function App() {
     setOpenedProject(null);
     setOpenedProjectFamilyId(null);
     setProjectError(null);
+    setProjectSavedCompoundIds([]);
   }, [cancelProjectNavigation]);
 
   useEffect(() => () => projectNavigationAbort.current?.abort(), []);
@@ -658,14 +693,30 @@ export function App() {
     // compound (ONLINE-00 C).
     if (first.target_id) {
       structurePagingAbort.current?.abort();
+      setProjectSavedCompoundIds(
+        project.items
+          .filter((it) => it.target_id === first.target_id && it.compound_id)
+          .map((it) => it.compound_id as string),
+      );
       setSearchSummary(null);
       setStructurePaging(false);
       setStructurePagingError(null);
       setSubmittedQuery(null);
       setTargetQuery(first.target_key ?? first.target_name ?? "");
-      setAllModalities(true);
       setEvidenceClassFilter(null);
-      updateUrl({ q: first.target_key ?? null, doc: null, c: null, t: first.target_id }, "push");
+      // Defect D2: reopening a project restores the scope the reader was in, not
+      // a wider one. The saved compound is selected and, if the filter excludes
+      // it, comes back as a labelled `outside_filter` row (`candidateItemsQuery`
+      // below) — so the item stays visible without a control moving by itself.
+      updateUrl(
+        {
+          q: first.target_key ?? null,
+          doc: null,
+          c: first.compound_id ?? null,
+          t: first.target_id,
+        },
+        "push",
+      );
       return;
     }
     setProjectError(
@@ -1061,6 +1112,10 @@ export function App() {
               error={(measurementsQuery.error as Error | null)?.message ?? null}
               includeAllModalities={allModalities}
               onFocusSource={focusSourceChip}
+              withdrawing={withdrawSupplementMutation.isPending}
+              onWithdrawSupplement={(recordId, reason) =>
+                withdrawSupplementMutation.mutateAsync({ recordId, reason }).then(() => undefined)
+              }
               onClose={handleCloseEvidence}
             />
           )}

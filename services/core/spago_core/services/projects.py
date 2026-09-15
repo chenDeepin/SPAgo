@@ -216,7 +216,7 @@ def get_project(
                        i.target_id, i.target_key, i.target_name, i.evidence_class,
                        t.id AS live_target_id,
                        EXISTS (
-                           SELECT 1 FROM compound_mentions m
+                           SELECT 1 FROM current_compound_mentions m
                            JOIN patent_documents d ON d.id = m.document_id
                            WHERE m.compound_id = i.compound_id AND d.family_id = i.family_id
                        ) AS live_membership,
@@ -227,7 +227,7 @@ def get_project(
                             WHERE d.family_id = i.family_id AND i.compound_id IS NULL
                             UNION
                             SELECT DISTINCT m.source_name, m.dataset_version
-                            FROM compound_mentions m
+                            FROM current_compound_mentions m
                             JOIN patent_documents d ON d.id = m.document_id
                             WHERE d.family_id = i.family_id AND m.compound_id = i.compound_id
                         ) v) AS live_versions
@@ -316,7 +316,7 @@ def _derive_compound_versions(conn, family_id: uuid.UUID, compound_ids: list[uui
         text(
             """
             SELECT DISTINCT m.compound_id, m.source_name, m.dataset_version
-            FROM compound_mentions m
+            FROM current_compound_mentions m
             JOIN patent_documents d ON d.id = m.document_id
             WHERE m.compound_id = ANY(:ids) AND d.family_id = :fid
             ORDER BY m.compound_id, m.dataset_version, m.source_name
@@ -403,7 +403,7 @@ def save_scope(
             valid = conn.execute(
                 text(
                     """
-                    SELECT DISTINCT m.compound_id FROM compound_mentions m
+                    SELECT DISTINCT m.compound_id FROM current_compound_mentions m
                     WHERE m.compound_id = ANY(:ids)
                       AND m.document_id = ANY(:doc_ids)
                     """

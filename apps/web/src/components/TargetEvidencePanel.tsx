@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Candidate, ResolvedTarget, TargetMeasurement } from "../api/types";
 import { AiPanel, type AiScopeOption } from "./AiPanel";
+import { TakeBackControl } from "./TakeBackControl";
 import { activityClassLabel } from "./ReferenceStrip";
 import { evidenceClassLabel, modalityLabel } from "./TargetHeader";
 
@@ -15,6 +16,10 @@ interface TargetEvidencePanelProps {
   /** Focus a per-source coverage chip when the summary cites `source:<name>`.
    * Without it that citation would switch tabs and go nowhere. */
   onFocusSource?: (sourceName: string) => void;
+  /** Take back a row this user added by hand (ONLINE-07 / defect D3). A
+   * retrieved row belongs to its source and is not withdrawable here. */
+  onWithdrawSupplement?: (recordId: string, reason: string) => Promise<void>;
+  withdrawing?: boolean;
   onClose: () => void;
 }
 
@@ -34,6 +39,8 @@ export function TargetEvidencePanel({
   error,
   includeAllModalities,
   onFocusSource,
+  onWithdrawSupplement,
+  withdrawing,
   onClose,
 }: TargetEvidencePanelProps) {
   const [showDuplicates, setShowDuplicates] = useState(true);
@@ -209,7 +216,7 @@ export function TargetEvidencePanel({
                     </td>
                     <td>{evidenceClassLabel(m.evidence_class)}</td>
                     <td className="fineprint">
-                      {[m.species, m.target_construct, m.variant_mutation]
+                      {[m.species, m.variant_mutation]
                         .filter(Boolean)
                         .join(" · ") || "context not provided"}
                       {m.document_ref && (
@@ -271,6 +278,20 @@ export function TargetEvidencePanel({
                           note added with this row: {m.note}
                         </div>
                       )}
+                      {m.source_name === "user_supplement" &&
+                        m.source_record_id &&
+                        onWithdrawSupplement && (
+                          <TakeBackControl
+                            label="Take back this row"
+                            what="This row"
+                            pending={withdrawing}
+                            onWithdraw={(reason) =>
+                              onWithdrawSupplement(m.source_record_id as string, reason).catch(
+                                () => undefined,
+                              )
+                            }
+                          />
+                        )}
                     </td>
                   </tr>
                 ))}

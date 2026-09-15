@@ -2,8 +2,8 @@
 
 A measurement only stays scientifically usable if the context that makes it
 comparable travels with it. `ActivityRecord` therefore carries the assay
-format, species, construct/mutation, source validity flags and the
-conservative evidence class, in addition to the as-reported value.
+format, species, variant/mutation, source validity flags and the conservative
+evidence class, in addition to the as-reported value.
 
 Values stay as-reported (`standard_type`, unit, relation, and the raw text);
 cross-assay ranking and selectivity maths are intentionally absent — assay
@@ -40,8 +40,10 @@ class ActivityRecord(BaseModel):
     assay_description: str | None = None
     assay_format: str | None = None
     species: str | None = None
-    #: Protein construct used in the assay, verbatim from the source.
-    target_construct: str | None = None
+    #: No assay-construct field: no source adapter in this build can map one, so
+    #: declaring it here would promise a context the reader never receives
+    #: (ONLINE-07 D7). The unused `measurements.construct` column stays as
+    #: migrated; nothing writes it and no read surfaces it.
     variant_accession: str | None = None
     variant_mutation: str | None = None
     #: Normalized potency, only when the source supplies one.

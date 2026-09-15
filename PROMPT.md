@@ -11,9 +11,8 @@
 > literature rows with `user_curated` provenance (ONLINE-07).
 > Records: `docs/plans/2026-09-15-online-llm.md` §4 (ONLINE-00…05),
 > `docs/plans/2026-09-15-bindingdb-io-port.md` §6–§7 (ONLINE-06/07),
-> `benchmarks/` for every measurement, and
-> `docs/archive/2026-09-15-beta-acceptance.md` §1–§4 for exactly what is verified
-> versus still open.
+> `benchmarks/` for every measurement, and `docs/online-capability.md` §6 for the
+> gate that hosted acceptance must pass (checklist plus the invited-user script).
 >
 > **Two facts to keep straight.** The reference verdict is a **count under a stated
 > policy — not a biological or legal conclusion**: on live data TSLP has no
@@ -40,12 +39,12 @@
 > **Start here for the next turn:**
 > 1. Re-read `docs/online-capability.md` (the scope statement) and `docs/runbook.md`
 >    §H1–H9 (the hosted deployment contract).
-> 2. Run the acceptance script in `docs/archive/2026-09-15-beta-acceptance.md` §5 on a
->    real host and close §4's gates: TLS ingress and secret injection, a restore
->    rehearsal on that host, one real invited user, independent cross-reading of
->    retrieved chemistry, and latency/cost targets for the chosen host and model. Set
->    `SPAGO_LLM_USER_TOKEN_LIMIT` / `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT` to real values
->    first.
+> 2. Run the acceptance script in `docs/online-capability.md` §6 on a
+>    real host and close that section's gates: TLS ingress and secret injection, a
+>    restore rehearsal on that host, one real invited user, independent cross-reading
+>    of retrieved chemistry, and latency/cost targets for the chosen host and model.
+>    Set `SPAGO_LLM_USER_TOKEN_LIMIT` / `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT` to real
+>    values first.
 > 3. Carry the recorded source/job defects into ONLINE-04: a source refresh does not
 >    retract deleted or invalid mappings; an interrupted import has no recovery
 >    protocol; `target_construct` is declared but populated by no adapter; ChEMBL
@@ -833,7 +832,7 @@ one patent with its compound list, lazy depictions, evidence links, benchmarks, 
 and an explicit statement of what stayed stubbed).
 
 It is kept only as the shape of a good first slice. The current entry point is the
-handoff block at the top of this file, and the next work is ONLINE-04/ONLINE-05 in the
-beta acceptance record.
+handoff block at the top of this file, and the gate the next work has to satisfy is
+`docs/online-capability.md` §6 (checklist + invited-user script).
 
 The first release should feel small, coherent, and reliable rather than broad.

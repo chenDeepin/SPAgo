@@ -41,6 +41,10 @@ class SeedReport:
     mentions: int = 0
     evidence: int = 0
     measurements: int = 0
+    #: Defect D4: rows of this source that the loaded release no longer contains.
+    #: Retracted, not deleted — counted here so the change is visible.
+    retracted_mentions: int = 0
+    retracted_evidence: int = 0
     issues: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     dataset_version: str = "unknown"
@@ -50,6 +54,7 @@ class SeedReport:
             f"dataset={self.dataset_version} families={self.families} documents={self.documents} "
             f"compounds={self.compounds} mentions={self.mentions} evidence={self.evidence} "
             f"measurements={self.measurements} "
+            f"retracted={self.retracted_mentions}+{self.retracted_evidence} "
             f"issues={len(self.issues)} warnings={len(self.warnings)}"
         )
 
@@ -510,6 +515,113 @@ def ingest(
                     },
                 )
                 report.measurements += 1
+
+        documents = sorted({str(doc_id) for doc_id in doc_id_by_number.values()})
+
+        # Retraction bookkeeping needs migration 0015's columns. The forward-upgrade
+        # tests seed this corpus at a pre-0015 schema and then migrate, so the check is
+        # explicit rather than assuming head (AGENTS.md §26); at head it is always true.
+        retraction_columns = bool(
+            conn.execute(
+                text(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name = 'compound_mentions' AND column_name = 'retracted_at'"
+                )
+            ).first()
+        )
+        if retraction_columns and documents:
+            # A release that carries a row again makes it current instead of leaving an
+            # older retraction standing: same record, restored. Two set-based statements
+            # for the whole release, not one per row (defect D4).
+            restored = {
+                "source": result.envelope.source_name,
+                "version": result.envelope.dataset_version,
+                "docs": documents,
+            }
+            conn.execute(
+                text(
+                    """
+                    UPDATE compound_mentions
+                       SET retracted_at = NULL,
+                           retracted_reason = NULL,
+                           retracted_by_dataset_version = NULL
+                     WHERE source_name = :source
+                       AND dataset_version = :version
+                       AND retracted_at IS NOT NULL
+                       AND document_id = ANY(:docs)
+                    """
+                ),
+                restored,
+            )
+            conn.execute(
+                text(
+                    """
+                    UPDATE evidence_records
+                       SET retracted_at = NULL,
+                           retracted_reason = NULL,
+                           retracted_by_dataset_version = NULL
+                     WHERE dataset_version = :version
+                       AND retracted_at IS NOT NULL
+                       AND document_id = ANY(:docs)
+                       AND compound_mention_id IN (
+                           SELECT id FROM compound_mentions
+                            WHERE source_name = :source AND dataset_version = :version
+                       )
+                    """
+                ),
+                restored,
+            )
+
+        # --- refresh: rows this release no longer contains (defect D4) -------------
+        # A package carries the whole of its source's coverage for the documents it
+        # holds. So within those documents, a mention of this source that is still at
+        # an older dataset version was *not* written by this release: the release has
+        # dropped it. It is retracted with the version that dropped it, never deleted,
+        # and the count is reported instead of a row disappearing quietly.
+        if retraction_columns and documents:
+            reason = f"not in dataset_version {result.envelope.dataset_version}"
+            report.retracted_mentions = conn.execute(
+                text(
+                    """
+                    UPDATE compound_mentions
+                       SET retracted_at = now(),
+                           retracted_reason = :reason,
+                           retracted_by_dataset_version = :version
+                     WHERE source_name = :source
+                       AND dataset_version <> :version
+                       AND retracted_at IS NULL
+                       AND document_id = ANY(:docs)
+                    """
+                ),
+                {
+                    "source": result.envelope.source_name,
+                    "version": result.envelope.dataset_version,
+                    "reason": reason,
+                    "docs": documents,
+                },
+            ).rowcount
+            report.retracted_evidence = conn.execute(
+                text(
+                    """
+                    UPDATE evidence_records e
+                       SET retracted_at = now(),
+                           retracted_reason = :reason,
+                           retracted_by_dataset_version = :version
+                      FROM compound_mentions m
+                     WHERE m.id = e.compound_mention_id
+                       AND m.source_name = :source
+                       AND e.dataset_version <> :version
+                       AND e.retracted_at IS NULL
+                       AND e.document_id = ANY(:docs)
+                    """
+                ),
+                {
+                    "source": result.envelope.source_name,
+                    "version": result.envelope.dataset_version,
+                    "reason": reason,
+                    "docs": documents,
+                },
+            ).rowcount
 
     return report
 

@@ -49,6 +49,9 @@ export function CandidateTable({
   onClearSelection,
   onSelectCandidate,
 }: CandidateTableProps) {
+  // Rows kept visible although the filter excludes them (a saved or deep-linked
+  // item): they are shown and labelled, never counted into `total` (D2).
+  const pinnedCount = page.items.filter((row) => row.outside_filter).length;
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: page.items.length,
@@ -168,6 +171,15 @@ export function CandidateTable({
                   <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                     from {row.source_name} · {row.source_record_id}
                   </div>
+                  {row.outside_filter && (
+                    <div
+                      className="scope-note"
+                      data-outside-filter="true"
+                      style={{ fontSize: 11, marginTop: 2 }}
+                    >
+                      outside the current filter — shown because it is saved or selected
+                    </div>
+                  )}
                 </div>
                 <div style={{ flex: `0 0 ${COL_ACTIVITY}px`, padding: "0 12px" }}>
                   <span className={`badge badge-activity-${row.activity_class}`}>
@@ -215,6 +227,11 @@ export function CandidateTable({
           {page.total === 0
             ? "0 candidates"
             : `${page.offset + 1}–${page.offset + page.items.length} of ${page.total}`}
+          {/* Pinned rows are outside the filter by definition, so they are not
+              part of "of N". Saying so keeps the two numbers from contradicting:
+              a saved item is visible, and it is marked as an outsider (D2). */}
+          {pinnedCount > 0 &&
+            ` · ${pinnedCount} outside the current filter (shown, not counted)`}
         </span>
         <span className="fineprint">
           Showing {page.default_filter}. Potency classes are computed against{" "}

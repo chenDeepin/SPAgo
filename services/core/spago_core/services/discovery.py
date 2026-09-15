@@ -28,7 +28,7 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Collection, Iterable, Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -406,7 +406,17 @@ class TargetDiscoveryService:
             warnings=warnings,
             latency_ms=_now_ms() - started_monotonic,
         )
-        return self._SourceOutcome(retrieval, result.records, normalized, modality)
+        return self._SourceOutcome(
+            retrieval,
+            result.records,
+            normalized,
+            modality,
+            # BindingDB labels its records with a source-local key
+            # (`bindingdb:<accession>`). The retrieval was for this target's
+            # accession, so those measurements belong to the investigated target
+            # rather than to a second, pseudo-target row (migration 0015).
+            primary_target_keys={f"bindingdb:{accession}"},
+        )
 
     def _run_pubchem(self, target: ResolvedTarget) -> "TargetDiscoveryService._SourceOutcome":
         started_monotonic = _now_ms()
@@ -672,7 +682,7 @@ class TargetDiscoveryService:
                                               dataset_version, retrieved_at,
                                               evidence_class, raw_value,
                                               assay_description, assay_format, species,
-                                              construct, variant_accession,
+                                              variant_accession,
                                               variant_mutation, pchembl_value,
                                               potential_duplicate, validity_comment,
                                               document_ref, source_url,
@@ -686,7 +696,7 @@ class TargetDiscoveryService:
                             :dataset_version, :retrieved_at,
                             :evidence_class, :raw_value,
                             :assay_description, :assay_format, :species,
-                            :construct, :variant_accession,
+                            :variant_accession,
                             :variant_mutation, :pchembl_value,
                             :potential_duplicate, :validity_comment,
                             :document_ref, :source_url,
@@ -708,7 +718,6 @@ class TargetDiscoveryService:
                         assay_description = EXCLUDED.assay_description,
                         assay_format = EXCLUDED.assay_format,
                         species = EXCLUDED.species,
-                        construct = EXCLUDED.construct,
                         variant_accession = EXCLUDED.variant_accession,
                         variant_mutation = EXCLUDED.variant_mutation,
                         pchembl_value = EXCLUDED.pchembl_value,
@@ -749,7 +758,6 @@ class TargetDiscoveryService:
                     "assay_description": record.assay_description,
                     "assay_format": record.assay_format,
                     "species": record.species,
-                    "construct": record.target_construct,
                     "variant_accession": record.variant_accession,
                     "variant_mutation": record.variant_mutation,
                     "pchembl_value": record.pchembl_value,
@@ -808,7 +816,11 @@ class TargetDiscoveryService:
                       SET evidence_class = EXCLUDED.evidence_class,
                           modality = EXCLUDED.modality,
                           retrieval_id = EXCLUDED.retrieval_id,
-                          retrieved_at = EXCLUDED.retrieved_at
+                          retrieved_at = EXCLUDED.retrieved_at,
+                          -- A row a refresh retracted and a later retrieval
+                          -- brings back is current again (migration 0015).
+                          retracted_at = NULL,
+                          retracted_reason = NULL
                     """
                 ),
                 {
@@ -881,6 +893,31 @@ class TargetDiscoveryService:
                 "dataset_version": target.dataset_version or "external:open-databases",
                 "retrieved_at": datetime.now(timezone.utc),
                 "target_type": target_type,
+            },
+        )
+        # The retrieval went through this object, so its measurements belong to
+        # the investigation that asked for it — recorded explicitly instead of
+        # re-derived by joining every measurement of a candidate compound
+        # (migration 0015, AGENTS.md §9).
+        conn.execute(
+            text(
+                """
+                INSERT INTO target_relations (target_id, related_target_id, relation,
+                                              source_name, source_key, note)
+                VALUES (:target_id, :related_target_id, 'interaction_record_of',
+                        'chembl', :source_key, :note)
+                ON CONFLICT (target_id, related_target_id, relation) DO NOTHING
+                """
+            ),
+            {
+                "target_id": target.id,
+                "related_target_id": row_id,
+                "source_key": key,
+                "note": (
+                    f"{key} describes an interaction/complex record retrieved while "
+                    f"investigating {target.target_key}; its measurements stay labelled "
+                    "with that object, not with the investigated protein."
+                ),
             },
         )
         return row_id
@@ -1136,6 +1173,8 @@ def list_candidates(
     include_all_modalities: bool = False,
     offset: int = 0,
     limit: int = 100,
+    pin_compound_id: Optional[uuid.UUID] = None,
+    pin_compound_ids: Optional[Collection[uuid.UUID]] = None,
     policy=None,
 ) -> tuple[int, list[CandidateRecord]]:
     """Candidate compounds for a target, with patent-linkage status.
@@ -1144,11 +1183,16 @@ def list_candidates(
     oligonucleotides and biologics are excluded *by the returned filter* and
     their count is reported separately by the caller, never silently dropped.
 
+    `pin_compound_ids` (or the single `pin_compound_id`) adds those compounds as
+    labelled rows (`outside_filter=True`) when the filters exclude them, without
+    changing the filter, the counts or the total (defect D2). Every item a reader
+    saved has to stay visible under whatever filter they return with.
+
     When `policy` is given, each row also carries the compound's own potency
     class and as-reported label under that policy, plus the sources and the
     source-declared publication numbers behind it (ONLINE-06).
     """
-    clauses = ["tc.target_id = :tid"]
+    clauses = ["tc.target_id = :tid", "tc.retracted_at IS NULL"]
     params: dict = {"tid": target_id, "limit": limit, "offset": offset}
     if not include_all_modalities:
         clauses.append(
@@ -1163,6 +1207,26 @@ def list_candidates(
         params["evidence_class"] = evidence_class
 
     where = " AND ".join(clauses)
+    columns = """
+                       c.id AS compound_id, c.canonical_smiles, c.inchikey,
+                       c.molecular_formula, c.molecular_weight, c.modality,
+                       c.modality_rule, c.modality_source,
+                       min(tc.source_name) AS source_name,
+                       min(tc.source_record_id) AS source_record_id,
+                       max(tc.evidence_class) AS evidence_class,
+                       (SELECT count(*) FROM current_compound_mentions cm
+                         WHERE cm.compound_id = c.id) AS patent_occurrences,
+                       (SELECT count(*) FROM investigation_measurements mm
+                         WHERE mm.compound_id = c.id AND mm.investigation_target_id = :tid
+                         ) AS measurements
+                FROM target_candidates tc
+                JOIN compounds c ON c.id = tc.compound_id
+    """
+    grouping = """
+                GROUP BY c.id, c.canonical_smiles, c.inchikey, c.molecular_formula,
+                         c.molecular_weight, c.modality, c.modality_rule, c.modality_source
+                ORDER BY (c.molecular_weight IS NULL), c.molecular_weight, c.inchikey
+    """
     with engine.connect() as conn:
         total = conn.execute(
             text(
@@ -1175,36 +1239,37 @@ def list_candidates(
             params,
         ).scalar_one()
         rows = conn.execute(
-            text(
-                f"""
-                SELECT c.id AS compound_id, c.canonical_smiles, c.inchikey,
-                       c.molecular_formula, c.molecular_weight, c.modality,
-                       c.modality_rule, c.modality_source,
-                       min(tc.source_name) AS source_name,
-                       min(tc.source_record_id) AS source_record_id,
-                       max(tc.evidence_class) AS evidence_class,
-                       (SELECT count(*) FROM compound_mentions cm
-                         WHERE cm.compound_id = c.id) AS patent_occurrences,
-                       (SELECT count(*) FROM measurements mm
-                         WHERE mm.compound_id = c.id AND mm.assay_id IN (
-                            SELECT a.id FROM assays a WHERE a.target_id = :tid
-                         )) AS measurements
-                FROM target_candidates tc
-                JOIN compounds c ON c.id = tc.compound_id
-                WHERE {where}
-                GROUP BY c.id, c.canonical_smiles, c.inchikey, c.molecular_formula,
-                         c.molecular_weight, c.modality, c.modality_rule, c.modality_source
-                ORDER BY (c.molecular_weight IS NULL), c.molecular_weight, c.inchikey
-                LIMIT :limit OFFSET :offset
-                """
-            ),
+            text(f"SELECT {columns} WHERE {where} {grouping} LIMIT :limit OFFSET :offset"),
             params,
         ).mappings().all()
+        # Saved or deep-linked compounds must stay visible even when the current
+        # filter excludes them (a peptide under the small-molecule scope, say).
+        # They are fetched by id and returned as their own labelled rows — the
+        # filter, its counts and the page total are untouched, so the reader sees
+        # explicitly marked outsiders instead of a scope that changed under their
+        # feet (defect D2).
+        wanted = {cid for cid in (pin_compound_ids or ()) if cid is not None}
+        if pin_compound_id is not None:
+            wanted.add(pin_compound_id)
+        pinned_ids: set[uuid.UUID] = set()
+        missing = wanted - {row["compound_id"] for row in rows}
+        if missing:
+            pinned = conn.execute(
+                text(
+                    f"SELECT {columns} "
+                    " WHERE tc.target_id = :tid AND tc.retracted_at IS NULL"
+                    "   AND tc.compound_id = ANY(:cids) "
+                    f" {grouping}"
+                ),
+                {"tid": target_id, "cids": sorted(missing)},
+            ).mappings().all()
+            pinned_ids = {row["compound_id"] for row in pinned}
+            rows = list(rows) + list(pinned)
         labels = conn.execute(
             text(
                 """
                 SELECT cm.compound_id, d.publication_number, cm.patent_label
-                FROM compound_mentions cm
+                FROM current_compound_mentions cm
                 JOIN patent_documents d ON d.id = cm.document_id
                 WHERE cm.compound_id IN (
                     SELECT tc.compound_id FROM target_candidates tc WHERE tc.target_id = :tid
@@ -1257,6 +1322,7 @@ def list_candidates(
                 potency_label=summary.label if summary else None,
                 sources=list(summary.sources) if summary else [],
                 source_declared_patents=list(summary.patents) if summary else [],
+                outside_filter=row["compound_id"] in pinned_ids,
             )
         )
     return int(total), items
@@ -1301,14 +1367,12 @@ def list_target_measurements(
     Each row also carries `activity_class` / `activity_class_rule`: what that one
     report implies under `threshold_nm` (ONLINE-06). It is computed here, never
     stored, so the class always matches the threshold the caller displayed.
+
+    Scope comes from `investigation_measurements`: this target plus the
+    interaction/complex targets this investigation retrieved through, and never a
+    measurement of the same compound against an unrelated target (migration 0015).
     """
-    clauses = [
-        # Scope by candidate membership so measurements against a related
-        # interaction target are included, each labelled with its own target.
-        """m.compound_id IN (
-               SELECT tc.compound_id FROM target_candidates tc WHERE tc.target_id = :tid
-           )"""
-    ]
+    clauses = ["m.investigation_target_id = :tid"]
     params: dict = {"tid": target_id, "limit": limit}
     if compound_id:
         clauses.append("m.compound_id = :compound_id")
@@ -1332,13 +1396,13 @@ def list_target_measurements(
                        -- reader as its own field instead of being presented as a source's
                        -- assay text (ONLINE-07, AGENTS.md §10).
                        m.assay_description AS note,
-                       m.species, m.construct, m.variant_accession, m.variant_mutation,
+                       m.species, m.variant_accession, m.variant_mutation,
                        m.pchembl_value, m.potential_duplicate, m.validity_comment,
                        m.document_ref, m.source_url, m.source_record_id, m.source_name,
                        m.extraction_method, m.provenance_state, m.dataset_version,
                        m.document_patent_number, m.document_doi, m.document_pmid,
                        m.retrieved_at
-                FROM measurements m
+                FROM investigation_measurements m
                 JOIN assays a ON a.id = m.assay_id
                 JOIN targets t ON t.id = a.target_id
                 JOIN compounds c ON c.id = m.compound_id
@@ -1370,7 +1434,6 @@ def list_target_measurements(
             "raw_value": r["raw_value"],
             "evidence_class": r["evidence_class"],
             "species": r["species"],
-            "construct": r["construct"],
             "variant_accession": r["variant_accession"],
             "variant_mutation": r["variant_mutation"],
             "pchembl_value": r["pchembl_value"],

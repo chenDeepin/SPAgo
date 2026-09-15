@@ -57,6 +57,19 @@ MAX_DOCUMENT_LOOKUPS = 8
 #: requesting the subset keeps the response small and the stored facts typed.
 DOCUMENT_FIELDS = "document_chembl_id,patent_id,doi,pubmed_id,year,doc_type"
 
+#: Only the fields `_to_record` maps. ChEMBL returns 47 keys per activity; the
+#: subset cuts the payload, and every field below was verified present in the
+#: projected response before this was adopted (2026-09-16, `CHEMBL3712931`,
+#: `limit=200`: 216,632 → 127,415 bytes, -41% per page). A field the product
+#: starts using must be added here or it will silently read as absent.
+ACTIVITY_FIELDS = (
+    "activity_id,canonical_smiles,standard_value,standard_type,standard_units,"
+    "standard_relation,assay_type,assay_chembl_id,assay_description,bao_label,"
+    "assay_variant_accession,assay_variant_mutation,molecule_chembl_id,"
+    "document_chembl_id,target_chembl_id,target_pref_name,target_organism,"
+    "pchembl_value,potential_duplicate,data_validity_comment,type,modality"
+)
+
 #: ChEMBL `target_type` strings → the normalized vocabulary. A
 #: protein–protein interaction stays distinct from the single protein it is
 #: built from (ONLINE-00 A).
@@ -399,6 +412,8 @@ class ChEMBLDiscoveryAdapter:
                         "target_chembl_id": target_chembl_id,
                         "limit": PAGE_LIMIT,
                         "offset": offset,
+                        # Projected to the mapped fields; see ACTIVITY_FIELDS.
+                        "only": ACTIVITY_FIELDS,
                     },
                 )
             except SourceUnavailableError as exc:

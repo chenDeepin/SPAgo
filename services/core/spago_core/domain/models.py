@@ -285,15 +285,16 @@ class TargetResolutionRecord(BaseModel):
 
 class AssayContext(BaseModel):
     """Everything that has to travel with a measurement for it to stay
-    comparable: format, species, construct, and source validity flags."""
+    comparable: format, species, variant and source validity flags."""
 
     assay_key: str
     assay_type: Optional[str] = None
     description: Optional[str] = None
     assay_format: Optional[str] = None
     species: Optional[str] = None
-    #: Protein construct used in the assay, verbatim from the source.
-    target_construct: Optional[str] = None
+    #: No construct field: no adapter can supply one in this build, so the
+    #: contract does not carry it (ONLINE-07 D7; `measurements.construct` is
+    #: migrated, written by nothing and read by nothing).
     variant_accession: Optional[str] = None
     variant_mutation: Optional[str] = None
     target_name: Optional[str] = None
@@ -333,6 +334,11 @@ class CandidateRecord(BaseModel):
     #: Publication numbers the *source* declares for this compound's records.
     #: Source-declared: not proof that SPAgo's corpus contains the compound.
     source_declared_patents: list[str] = Field(default_factory=list)
+    #: True when this row is in the page only because it was asked for by id
+    #: (a saved or selected compound) while the current filter excludes it — a
+    #: peptide under the small-molecule scope, for example. The row is labelled,
+    #: never counted as part of the filtered set (defect D2).
+    outside_filter: bool = False
 
 
 class ActiveCompound(BaseModel):
@@ -405,6 +411,9 @@ class ReferenceVerdict(BaseModel):
     #: source that could not supply a structure, the other is a person who added a
     #: claim without one.
     supplement_remarks: int = 0
+    #: ONLINE-08: hand-added rows the user took back, reported next to the counts
+    #: instead of an unexplained gap.
+    withdrawn_supplements: int = 0
     source_declared_patents: list[str] = Field(default_factory=list)
     truncated: bool = False
 
@@ -530,6 +539,9 @@ class SupplementRowOutcome(BaseModel):
     #: structure) or `rejected` (not stored, with the reason).
     status: Literal["measurement", "remark", "rejected"]
     name: str = ""
+    #: The id the API accepts for `…/supplements/{record_id}/withdraw`, so the
+    #: dialog can offer the action for the row it just stored (defect D3).
+    record_id: Optional[str] = None
     compound_id: Optional[uuid.UUID] = None
     inchikey: Optional[str] = None
     activity_class: Optional[ActivityClass] = None
@@ -554,6 +566,43 @@ class SupplementImport(BaseModel):
     rows: list[SupplementRowOutcome] = Field(default_factory=list)
 
 
+class WithdrawnSupplement(BaseModel):
+    """A hand-added row the user took back, kept readable (defect D3).
+
+    Both kinds are one shape here because a reader asks one question — what did I
+    take back, when, and why — and the answer must not depend on whether the row
+    carried a structure.
+    """
+
+    kind: Literal["measurement", "remark"]
+    #: The id the API accepts for a withdrawal (and for re-posting the row).
+    record_id: str
+    name: str = ""
+    note: Optional[str] = None
+    activity_type: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    relation: Optional[str] = None
+    retracted_at: datetime
+    retracted_reason: Optional[str] = None
+    #: True when the compound also left the investigation's candidate list.
+    candidate_retracted: bool = False
+
+
+class WithdrawalResult(BaseModel):
+    """Outcome of one withdrawal: what was taken back, and what stayed."""
+
+    #: "measurement" (a row with a structure) or "remark" (a row without one).
+    kind: Literal["measurement", "remark"]
+    #: Echoed back so a caller can act on the row it just took back, and so a
+    #: re-post of the same row is recognisable as a restore rather than a copy.
+    record_id: str
+    reason: str
+    compound_id: Optional[str] = None
+    #: True when the compound also left the investigation's candidate list.
+    candidate_retracted: bool = False
+
+
 class SupplementRemark(BaseModel):
     """A stored structure-less literature row (its own table, not a compound)."""
 
@@ -571,3 +620,7 @@ class SupplementRemark(BaseModel):
     patent_number: Optional[str] = None
     provenance_state: ProvenanceState = ProvenanceState.USER_CURATED
     created_at: datetime
+    #: Set when the user takes the row back. The row stays readable: what was
+    #: withdrawn, when and why is part of the record (migration 0015).
+    retracted_at: Optional[datetime] = None
+    retracted_reason: Optional[str] = None

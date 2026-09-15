@@ -202,14 +202,20 @@ def _rows(
     cap: int,
     compound_ids: Optional[Sequence[uuid.UUID]] = None,
 ) -> tuple[list[dict], bool]:
-    """Measurement rows in candidate scope, bounded, with their owning target."""
+    """Measurement rows in candidate scope, bounded, with their owning target.
+
+    Scope is `investigation_measurements`: the investigated target plus the
+    interaction/complex targets the retrieval went through, minus retracted rows.
+    A measurement of the same compound against an unrelated target is *not* in
+    this target's verdict, drawer or export (migration 0015).
+    """
     params: dict = {"cap": cap + 1}
     scope = ""
     if target_ids is not None:
         ids = list(target_ids)
         if not ids:
             return [], False
-        scope += " AND tc.target_id = ANY(:tids)"
+        scope += " AND m.investigation_target_id = ANY(:tids)"
         params["tids"] = ids
     if compound_ids is not None:
         ids = list(compound_ids)
@@ -222,7 +228,7 @@ def _rows(
             text(
                 f"""
                 SELECT DISTINCT
-                       tc.target_id,
+                       m.investigation_target_id AS target_id,
                        m.id AS measurement_id,
                        m.compound_id,
                        c.inchikey,
@@ -231,11 +237,10 @@ def _rows(
                        coalesce(m.evidence_class, 'unspecified') AS evidence_class,
                        m.source_name, m.potential_duplicate,
                        m.document_patent_number
-                FROM target_candidates tc
-                JOIN measurements m ON m.compound_id = tc.compound_id
+                FROM investigation_measurements m
                 JOIN compounds c ON c.id = m.compound_id
                 WHERE TRUE {scope}
-                ORDER BY tc.target_id, m.id
+                ORDER BY m.investigation_target_id, m.id
                 LIMIT :cap
                 """
             ),
@@ -322,6 +327,7 @@ def _reason(
     actives_outside_scope: int,
     truncated: bool,
     supplement_remarks: int = 0,
+    withdrawn_supplements: int = 0,
 ) -> str:
     """A deterministic sentence with the numbers behind the verdict."""
     threshold = policy.threshold_label
@@ -330,7 +336,7 @@ def _reason(
             f"{actives} of {compounds} in-scope compound(s) at or below {threshold}; "
             "the retrieved set can serve as a potency reference for this target."
         )
-        return base + _remark_suffix(supplement_remarks)
+        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
     if compounds == 0:
         base = "No stored measurement for this target."
         if records_without_structure:
@@ -338,39 +344,39 @@ def _reason(
                 f" {records_without_structure} source record(s) reported a value without a "
                 "public structure and are counted as rejections, not as measurements."
             )
-        return base + _remark_suffix(supplement_remarks)
+        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
     if actives_outside_scope:
         base = (
             f"Only {actives_outside_scope} compound(s) outside the modality scope are at or "
             f"below {threshold}; no in-scope compound is."
         )
-        return base + _remark_suffix(supplement_remarks)
+        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
     if measurements and measurements == not_applicable:
         base = (
             f"{compounds} compound(s) have {measurements} record(s) that are not potency "
             f"measurements (kinetic, percent or non-concentration units); none of them can "
             f"be compared with {threshold}."
         )
-        return base + _remark_suffix(supplement_remarks)
+        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
     if compounds < policy.min_compounds:
         base = (
             f"{compounds} in-scope compound(s) with {measurements} record(s): none at or "
             f"below {threshold}, and fewer than the {policy.min_compounds} compounds this "
             "policy treats as a usable set (sparse and weak)."
         )
-        return base + _remark_suffix(supplement_remarks)
+        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
     if weak:
         base = (
             f"{compounds} in-scope compound(s): none at or below {threshold} "
             f"({weak} measured above it, {unknown} undecided)."
         )
-        return base + _remark_suffix(supplement_remarks)
+        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
     if unknown:
         base = (
             f"{compounds} in-scope compound(s): no measurement decides {threshold} "
             f"({unknown} censored or undecided record(s))."
         )
-        return base + _remark_suffix(supplement_remarks)
+        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
     if truncated:
         return (
             f"None of the first {MAX_VERDICT_MEASUREMENTS} records decides {threshold}; "
@@ -378,22 +384,30 @@ def _reason(
         )
     return (
         f"{compounds} in-scope compound(s): no measurement at or below {threshold}."
-        + _remark_suffix(supplement_remarks)
+        + _remark_suffix(supplement_remarks, withdrawn_supplements)
     )
 
 
-def _remark_suffix(supplement_remarks: int) -> str:
-    """ONLINE-07: hand-added rows without a structure are part of the picture.
+def _remark_suffix(supplement_remarks: int, withdrawn: int = 0) -> str:
+    """ONLINE-07/08: hand-added rows without a structure are part of the picture.
 
     Counted in the verdict rather than left in a dialog, because a reader who sees
-    "no active" must also see that someone recorded a claim SPAgo cannot draw.
+    "no active" must also see that someone recorded a claim SPAgo cannot draw — and,
+    since a user may take a row back, how many hand-added rows are no longer counted
+    (migration 0015).
     """
-    if not supplement_remarks:
-        return ""
-    return (
-        f" {supplement_remarks} literature remark(s) added by hand also carry a value "
-        "without a public structure."
-    )
+    parts: list[str] = []
+    if supplement_remarks:
+        parts.append(
+            f"{supplement_remarks} literature remark(s) added by hand also carry a "
+            "value without a public structure."
+        )
+    if withdrawn:
+        parts.append(
+            f"{withdrawn} hand-added row(s) were withdrawn by the user and are not "
+            "counted."
+        )
+    return (" " + " ".join(parts)) if parts else ""
 
 
 def _records_without_structure_many(
@@ -441,6 +455,15 @@ def _supplement_remark_count(engine: Engine, target_ids: Sequence[uuid.UUID]) ->
     return count_supplement_remarks(engine, target_ids)
 
 
+def _withdrawn_supplement_count(
+    engine: Engine, target_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Hand-added rows the user withdrew, per target (ONLINE-08)."""
+    from spago_core.services.supplements import count_withdrawn_supplements
+
+    return count_withdrawn_supplements(engine, target_ids)
+
+
 def _verdict_for(
     *,
     target_id: uuid.UUID,
@@ -451,6 +474,7 @@ def _verdict_for(
     records_without_structure: int,
     truncated: bool,
     supplement_remarks: int = 0,
+    withdrawn_supplements: int = 0,
 ) -> ReferenceVerdict:
     in_scope = [row for row in rows if _in_scope(row, policy)]
     potency = [row for row in in_scope if row.activity_class is not ActivityClass.NOT_APPLICABLE]
@@ -494,6 +518,7 @@ def _verdict_for(
             actives_outside_scope=outside_scope_actives,
             truncated=truncated,
             supplement_remarks=supplement_remarks,
+            withdrawn_supplements=withdrawn_supplements,
         ),
         policy=policy,
         compounds=len(best),
@@ -514,6 +539,9 @@ def _verdict_for(
         #: ONLINE-07: hand-added rows without a structure are counted too, so a thin
         #: set is not read as "nothing was recorded for this target".
         supplement_remarks=supplement_remarks,
+        #: ONLINE-08: hand-added rows the user took back, reported rather than
+        #: silently absent from the counts.
+        withdrawn_supplements=withdrawn_supplements,
         source_declared_patents=sorted(
             {row.document_patent_number for row in in_scope if row.document_patent_number}
         ),
@@ -610,6 +638,9 @@ def reference_verdict(
             target.id, 0
         ),
         supplement_remarks=_supplement_remark_count(engine, [target.id]).get(target.id, 0),
+        withdrawn_supplements=_withdrawn_supplement_count(engine, [target.id]).get(
+            target.id, 0
+        ),
         truncated=truncated,
     )
 
@@ -630,6 +661,7 @@ def reference_verdicts(
         by_target.setdefault(row.target_id, []).append(row)
     without = _records_without_structure_many(engine, [t.id for t in targets])
     remarks = _supplement_remark_count(engine, [t.id for t in targets])
+    withdrawn = _withdrawn_supplement_count(engine, [t.id for t in targets])
     return {
         target.id: _verdict_for(
             target_id=target.id,
@@ -639,6 +671,7 @@ def reference_verdicts(
             policy=policy,
             records_without_structure=without.get(target.id, 0),
             supplement_remarks=remarks.get(target.id, 0),
+            withdrawn_supplements=withdrawn.get(target.id, 0),
             # A shared cap can truncate one target's rows; every verdict from a
             # truncated read says so instead of reporting partial counts as final.
             truncated=truncated,

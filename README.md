@@ -67,9 +67,9 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
 deployment, no invited user has completed the workflow, and the live model smoke covers
 **one** provider (DeepSeek `deepseek-flash`) rather than compatibility in general. Source
 refresh does not yet retract deleted or invalid mappings, and an interrupted import job
-has no recovery protocol. The verified/open register is
-[`docs/archive/2026-09-15-beta-acceptance.md`](docs/archive/2026-09-15-beta-acceptance.md)
-§4; round records are
+has no recovery protocol. The gate a deployment must pass — checklist and the
+invited-user script — is
+[`docs/online-capability.md`](docs/online-capability.md) §6; round records are
 [`docs/plans/2026-09-15-online-llm.md`](docs/plans/2026-09-15-online-llm.md) §4,
 [`docs/plans/2026-09-15-bindingdb-io-port.md`](docs/plans/2026-09-15-bindingdb-io-port.md)
 §6–§7 and [`docs/archive/2026-09-15-product-readiness.md`](docs/archive/2026-09-15-product-readiness.md).
@@ -212,7 +212,7 @@ implementation requires it.
 | M4 Chrome companion | thin MV3 bridge; Chrome-in-Chrome verification still open |
 | M5 Evidence-grounded AI | implemented offline and against one live provider |
 | ONLINE-00…07 | implemented locally; see **Status** above |
-| ONLINE-04 hosted deployment, ONLINE-05 invited-user acceptance | **open** — [beta acceptance §4](docs/archive/2026-09-15-beta-acceptance.md) |
+| ONLINE-04 hosted deployment, ONLINE-05 invited-user acceptance | **open** — gate and script: [capability §6](docs/online-capability.md) |
 | M6 PDF/OCSR fallback | intentionally not started (structured sources first) |
 
 Deliverables and exit criteria per milestone are in [`PROMPT.md`](PROMPT.md) §14.

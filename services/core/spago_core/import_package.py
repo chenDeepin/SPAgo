@@ -75,6 +75,26 @@ def import_package(engine, package_dir: Path) -> dict:
             """),
             {"id": job_id},
         )
+        # A `running` job whose process died would otherwise read as "in progress"
+        # forever (defect D5). This run declares it interrupted — the state the
+        # row is really in — and says who recovered it.
+        recovered = conn.execute(
+            text(
+                """
+                UPDATE import_jobs
+                   SET status = 'interrupted',
+                       finished_at = now(),
+                       error = 'interrupted: the process that owned this job stopped before '
+                               'finishing; recovered when import job ' || :job || ' started'
+                 WHERE status = 'running'
+                """
+            ),
+            {"job": str(job_id)},
+        ).rowcount
+    if recovered:
+        logger.warning(
+            "%s unfinished import job(s) marked interrupted before this run", recovered
+        )
 
     try:
         with engine.begin() as conn:
@@ -126,6 +146,9 @@ def import_package(engine, package_dir: Path) -> dict:
             "issues": len(report.issues),
             "warnings": report.warnings,
             "package_files": len(files),
+            # Defect D4: rows of this source the release no longer contains.
+            "retracted_mentions": report.retracted_mentions,
+            "retracted_evidence": report.retracted_evidence,
         }
         with engine.begin() as conn:
             conn.execute(
@@ -138,7 +161,12 @@ def import_package(engine, package_dir: Path) -> dict:
                 ),
                 {"s": json.dumps(summary), "id": job_id},
             )
-        return {"job_id": str(job_id), "status": "completed", "summary": summary}
+        return {
+            "job_id": str(job_id),
+            "status": "completed",
+            "recovered_jobs": recovered,
+            "summary": summary,
+        }
     except Exception as exc:
         with engine.begin() as conn:
             conn.execute(
@@ -154,14 +182,59 @@ def import_package(engine, package_dir: Path) -> dict:
         raise
 
 
+def list_jobs(engine, limit: int = 20) -> list[dict]:
+    """Recent import jobs, newest first — how an operator sees `interrupted`
+    rather than reading the table by hand (defect D5)."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT id, source_name, dataset_version, status, synthetic,
+                       created_at, started_at, finished_at, error, summary
+                  FROM import_jobs
+                 ORDER BY created_at DESC
+                 LIMIT :limit
+                """
+            ),
+            {"limit": limit},
+        ).mappings().all()
+    return [dict(row) for row in rows]
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     parser = argparse.ArgumentParser(
         description="Import a SPAgo source package (e.g. a SureChEMBL extract)."
     )
-    parser.add_argument("package_dir", type=Path, help="package directory to import")
+    parser.add_argument("package_dir", type=Path, nargs="?", help="package directory to import")
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="list recent import jobs (status, error, summary) and exit",
+    )
     args = parser.parse_args(argv)
 
+    if args.status:
+        engine = make_engine()
+        try:
+            jobs = list_jobs(engine)
+        finally:
+            engine.dispose()
+        if not jobs:
+            logger.info("no import job has run against this database")
+            return 0
+        for job in jobs:
+            line = (
+                f"{job['created_at']} {job['id']} {job['source_name']}@"
+                f"{job['dataset_version']} {job['status']}"
+            )
+            if job["error"]:
+                line += f" error={job['error']}"
+            logger.info(line)
+        return 0
+
+    if args.package_dir is None:
+        parser.error("a package directory is required unless --status is given")
     if not args.package_dir.is_dir():
         logger.error("package directory not found: %s", args.package_dir)
         return 2
@@ -175,6 +248,11 @@ def main(argv: list[str] | None = None) -> int:
         engine.dispose()
     logger.info("import completed: %s", json.dumps(outcome["summary"]))
     logger.info("import job %s recorded (status=completed)", outcome["job_id"])
+    if outcome.get("recovered_jobs"):
+        logger.warning(
+            "%s earlier job(s) marked interrupted; `--status` lists them",
+            outcome["recovered_jobs"],
+        )
     return 0
 
 

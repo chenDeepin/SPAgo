@@ -94,7 +94,7 @@ def get_family_overview(engine: Engine, family_id: uuid.UUID) -> FamilyOverview:
             text(
                 """
                 SELECT document_id, count(*) AS n
-                FROM compound_mentions
+                FROM current_compound_mentions
                 WHERE document_id IN (SELECT id FROM patent_documents WHERE family_id = :fid)
                 GROUP BY document_id
                 """
@@ -159,7 +159,7 @@ def list_family_compounds(
                 f"""
                 SELECT count(DISTINCT c.id)
                 FROM compounds c
-                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN current_compound_mentions m ON m.compound_id = c.id
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE d.family_id = :fid {scope}
                 """
@@ -172,7 +172,7 @@ def list_family_compounds(
                 f"""
                 SELECT c.*, min(m.created_at) AS first_seen
                 FROM compounds c
-                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN current_compound_mentions m ON m.compound_id = c.id
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE d.family_id = :fid {scope}
                 GROUP BY c.id
@@ -211,7 +211,7 @@ def list_compound_mentions(
                 f"""
                 SELECT m.id, m.compound_id, m.document_id, m.patent_label,
                        d.publication_number
-                FROM compound_mentions m
+                FROM current_compound_mentions m
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE m.compound_id = ANY(:ids) AND d.family_id = :fid {scope}
                 ORDER BY d.publication_number, m.patent_label
@@ -242,7 +242,7 @@ def get_compound(engine: Engine, compound_id: uuid.UUID) -> CompoundRow:
             text(
                 """
                 SELECT m.id, m.compound_id, m.document_id, m.patent_label, d.publication_number
-                FROM compound_mentions m
+                FROM current_compound_mentions m
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE m.compound_id = :id
                 ORDER BY d.publication_number, m.patent_label
@@ -270,7 +270,7 @@ def list_compound_evidence(engine: Engine, compound_id: uuid.UUID) -> list[Evide
             text(
                 """
                 SELECT e.*, d.publication_number
-                FROM evidence_records e
+                FROM current_evidence_records e
                 LEFT JOIN patent_documents d ON d.id = e.document_id
                 WHERE e.compound_id = :id
                 ORDER BY e.retrieved_at, e.id

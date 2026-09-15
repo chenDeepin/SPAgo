@@ -1552,3 +1552,33 @@ button {
   border-left: 2px solid var(--accent);
   padding-left: 6px;
 }
+
+/* Taking a hand-added row back (ONLINE-07 / defect D3): the reason field is part
+   of the action, so the control carries it instead of a bare confirm. */
+.take-back {
+  margin-top: 6px;
+  padding: 8px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--accent-bg);
+}
+
+.take-back-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* A row the user took back: still readable, visibly not current. */
+.withdrawn-row .mono,
+.withdrawn-row .fineprint {
+  text-decoration: line-through;
+  text-decoration-color: var(--border);
+}
+
+.withdrawn-reason {
+  color: var(--text-2);
+  font-size: 12px;
+}

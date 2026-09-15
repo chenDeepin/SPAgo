@@ -1378,6 +1378,7 @@ class ReferenceVerdictResponse(BaseModel):
     records_without_structure: int = 0
     #: ONLINE-07: hand-added rows that carry a value but no public structure.
     supplement_remarks: int = 0
+    withdrawn_supplements: int = 0
     source_declared_patents: list[str] = []
     truncated: bool = False
 
@@ -1410,6 +1411,7 @@ def _verdict_payload(verdict) -> ReferenceVerdictResponse:
         potential_duplicates=verdict.potential_duplicates,
         records_without_structure=verdict.records_without_structure,
         supplement_remarks=verdict.supplement_remarks,
+        withdrawn_supplements=verdict.withdrawn_supplements,
         source_declared_patents=verdict.source_declared_patents,
         truncated=verdict.truncated,
     )
@@ -1575,6 +1577,9 @@ class CandidateResponse(BaseModel):
     potency_label: Optional[str] = None
     sources: list[str] = []
     source_declared_patents: list[str] = []
+    #: True only for a row returned because it was asked for by id while the
+    #: active filter excludes it. Not part of `total`; the table labels it.
+    outside_filter: bool = False
 
 
 class CandidatePageResponse(BaseModel):
@@ -1599,12 +1604,24 @@ def list_target_candidates(
     offset: int = Query(0, ge=0),
     limit: int = Query(_DEFAULT_PAGE, ge=1),
     activity_threshold_nm: Optional[float] = Query(None, gt=0, le=1e9),
+    include_compound_id: Optional[list[uuid.UUID]] = Query(
+        None,
+        description=(
+            "Repeatable. Adds each given compound as a labelled `outside_filter` row when "
+            "the current filter excludes it, so every saved or deep-linked item stays "
+            "visible without the scope changing by itself (defect D2)."
+        ),
+    ),
 ):
     """Candidate compounds for a target.
 
     The default view is small molecules and unclassified entities. Peptides,
     oligonucleotides and biologics are excluded by an explicit, labelled filter
     whose counts are returned in `modality_breakdown` — never dropped silently.
+
+    `include_compound_id` (repeatable) adds those compounds as labelled
+    `outside_filter` rows when the filter excludes them, so a saved or deep-linked
+    item stays visible without changing the scope the reader is looking at.
 
     Each row carries the potency class of that compound under the requested
     policy, so the table and the verdict above it are computed by one rule.
@@ -1629,6 +1646,7 @@ def list_target_candidates(
         include_all_modalities=include_all_modalities,
         offset=offset,
         limit=limit,
+        pin_compound_ids=include_compound_id,
         policy=policy,
     )
     return CandidatePageResponse(
@@ -1701,7 +1719,6 @@ class MeasurementResponse(BaseModel):
     raw_value: Optional[str] = None
     evidence_class: str
     species: Optional[str] = None
-    target_construct: Optional[str] = None
     variant_accession: Optional[str] = None
     variant_mutation: Optional[str] = None
     pchembl_value: Optional[float] = None
@@ -1766,6 +1783,9 @@ class SupplementRowOutcomeResponse(BaseModel):
     index: int
     status: str
     name: str = ""
+    #: The id `…/supplements/{record_id}/withdraw` accepts, so the dialog can
+    #: offer the action for the row it just stored (defect D3).
+    record_id: Optional[str] = None
     compound_id: Optional[uuid.UUID] = None
     inchikey: Optional[str] = None
     activity_class: Optional[str] = None
@@ -1804,6 +1824,11 @@ class SupplementRemarkResponse(BaseModel):
     patent_number: Optional[str] = None
     provenance_state: str
     created_at: str
+    #: A withdrawn row stays readable: what a user took back, and why, is state
+    #: the reader must be able to see (migration 0015).
+    source_record_id: str
+    retracted_at: Optional[str] = None
+    retracted_reason: Optional[str] = None
 
 
 class SupplementRequest(BaseModel):
@@ -1860,6 +1885,7 @@ def add_target_supplements(
                 index=outcome.index,
                 status=outcome.status,
                 name=outcome.name,
+                record_id=outcome.record_id,
                 compound_id=outcome.compound_id,
                 inchikey=outcome.inchikey,
                 activity_class=(
@@ -1886,6 +1912,8 @@ def target_supplement_remarks(
 
     They are kept because a thin set must not be read as a negative result, and they
     are not compounds: no structure was published, so SPAgo will not invent one.
+    Withdrawn rows are returned with their reason rather than hidden: a row the user
+    took back is a fact about the investigation (migration 0015).
     """
     from spago_core.services import NotFoundError
     from spago_core.services.supplements import list_supplement_remarks
@@ -1898,6 +1926,7 @@ def target_supplement_remarks(
         SupplementRemarkResponse(
             id=remark.id,
             target_id=remark.target_id,
+            source_record_id=remark.source_record_id,
             name=remark.name,
             note=remark.note,
             activity_type=remark.activity_type,
@@ -1909,9 +1938,121 @@ def target_supplement_remarks(
             patent_number=remark.patent_number,
             provenance_state=remark.provenance_state.value,
             created_at=remark.created_at.isoformat(),
+            retracted_at=remark.retracted_at.isoformat() if remark.retracted_at else None,
+            retracted_reason=remark.retracted_reason,
         )
-        for remark in list_supplement_remarks(engine, target_id)
+        for remark in list_supplement_remarks(engine, target_id, include_withdrawn=True)
     ]
+
+
+class SupplementWithdrawalRequest(BaseModel):
+    """Why a hand-added row is being taken back. Required: a withdrawal without a
+    reason would be an unexplained disappearance (AGENTS.md §10)."""
+
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class SupplementWithdrawalResponse(BaseModel):
+    status: str
+    kind: str
+    #: The id the caller used, so a UI can drop the row it just took back.
+    record_id: str
+    compound_id: Optional[uuid.UUID] = None
+    candidate_retracted: bool = False
+    reason: str
+
+
+class WithdrawnSupplementResponse(BaseModel):
+    """A hand-added row the user took back: the audit trail behind
+    `withdrawn_supplements` in the verdict (defect D3)."""
+
+    kind: str
+    record_id: str
+    name: str = ""
+    note: Optional[str] = None
+    activity_type: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    relation: Optional[str] = None
+    retracted_at: str
+    retracted_reason: Optional[str] = None
+    candidate_retracted: bool = False
+
+
+@router.get(
+    "/targets/{target_id}/supplements/withdrawn",
+    response_model=list[WithdrawnSupplementResponse],
+)
+def target_withdrawn_supplements(
+    target_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+):
+    """Rows this user added by hand and later took back.
+
+    A withdrawal must not read as a row that never existed: the row, its note, its
+    value and the reason are returned so the dialog can show them (AGENTS.md §10).
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.supplements import list_withdrawn_supplements
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [
+        WithdrawnSupplementResponse(
+            kind=row.kind,
+            record_id=row.record_id,
+            name=row.name,
+            note=row.note,
+            activity_type=row.activity_type,
+            value=row.value,
+            unit=row.unit,
+            relation=row.relation,
+            retracted_at=row.retracted_at.isoformat(),
+            retracted_reason=row.retracted_reason,
+            candidate_retracted=row.candidate_retracted,
+        )
+        for row in list_withdrawn_supplements(engine, target_id)
+    ]
+
+
+@router.post(
+    "/targets/{target_id}/supplements/{record_id}/withdraw",
+    response_model=SupplementWithdrawalResponse,
+)
+def withdraw_target_supplement(
+    target_id: uuid.UUID,
+    record_id: str,
+    body: SupplementWithdrawalRequest,
+    request: Request,
+    engine=Depends(get_engine),
+):
+    """Take back a row this user added by hand (ONLINE-08).
+
+    Only `user_supplement` rows can be withdrawn. A retrieved row belongs to its
+    source; retracting one is a source-refresh action, not a user edit.
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.supplements import withdraw_supplement
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        result = withdraw_supplement(engine, target_id, record_id, body.reason)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return SupplementWithdrawalResponse(
+        status="withdrawn",
+        kind=result.kind,
+        record_id=result.record_id,
+        compound_id=uuid.UUID(result.compound_id) if result.compound_id else None,
+        candidate_retracted=result.candidate_retracted,
+        reason=result.reason,
+    )
 
 
 class CoverageMatrixRow(BaseModel):
