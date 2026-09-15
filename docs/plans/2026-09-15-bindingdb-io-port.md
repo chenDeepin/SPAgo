@@ -544,17 +544,33 @@ literature claim about TSLP.
 - **The two acceptance rows remain in the local dev database** (target `0cd78fd9-…`,
   1 measurement + 1 remark + 1 merged compound). They are labelled as acceptance rows
   in their own notes and names, so they cannot be mistaken for a finding; correcting
-  them is a re-post, and removing them is currently a database operation (next item).
-- **No delete/withdraw path for a hand-added row.** A user-curated row can only be
-  corrected by re-posting it (which updates the same `source_record_id`) or by a
-  database operation. Removal was left out of scope (AGENTS.md §37) rather than
-  guessed at; if it is wanted, it needs its own decision about whether a provenance
-  trail of the removal is kept.
+  them is a re-post, and taking them back is now the withdrawal path below (they were
+  left in place deliberately: the withdrawn-row display has to be exercised by
+  something).
+- **No delete/withdraw path for a hand-added row.**
+  **Closed 2026-09-16 (defect D3).** A row can be taken back with a required reason:
+  `retracted_at`/`retracted_reason` on the row, a `withdrawn_supplements` count in the
+  verdict, the withdrawn rows listed in the dialog with their reason, and re-posting
+  the same row restoring it. The decision the item asked for was taken in favour of a
+  **recorded retraction instead of a deletion** — a user-curated row that vanishes
+  silently would leave a count that changed with no trace (AGENTS.md §9/§10). Code:
+  `services/supplements.py`, `api/routes.py`, `SupplementDialog.tsx`,
+  `TakeBackControl.tsx`; tests: `TestWithdrawal`, `test_online07_supplements.py`.
 - **No bulk paste.** The plan sketched a paste-JSON textarea; the dialog uses
   per-row fields instead (deviation recorded in §7.5).
 - The dialog's loading, empty-remarks and refused-row states were driven in tests
   and in the browser pass only for the paths recorded in §7.3; the "target has no
   candidates at all" case was not re-driven.
+  **Closed 2026-09-16 (browser, served build, 1220×1000).** A target with no
+  retrievals at all (`DEMO-TARGET-1`, `/?t=cd46db5c-…`) renders three separate
+  honest statements rather than one ambiguous blank: the coverage strip says
+  "No retrieval has been run for this target yet." next to a *Query open sources*
+  button, the verdict strip says "No reference set — No stored measurement for this
+  target." with zeroed counts, and the candidate area carries the banner that names
+  the three different facts ("no records" / "source failed" / "not queried"). The
+  add-rows dialog opens in that state and states its `user_curated` provenance.
+  Screenshots (local, gitignored): `docs/plans/ui-round-verification/online06-zero-candidate-target-1220.png`
+  and `online07-zero-candidate-dialog-1220.png`.
 - Remark rows are counted in the verdict and listed in the dialog, but they are
   not part of any export (there is no compound to export) and do not appear in the
   candidate table — that is the intended contract, stated in
