@@ -1,6 +1,14 @@
 # Round plan — defect round: investigation scope, withdrawal, refresh integrity (2026-09-16)
 
-Status: **active**. Owner: coordinating agent. Baseline commit: `9848e5c`.
+> Archived 2026-09-16 (all defects D1–D10 implemented, tested and shipped; the
+> focused fixes D9/D10 landed in the backlog round's commit with
+> `benchmarks/online01-llm-eval-2026-09-16-sparse.md` and the demo deep link).
+> What was deferred there is delivered in
+> [the backlog round](2026-09-16-backlog-round.md) §5; the capability gate stays in
+> `docs/online-capability.md` §6.
+
+Status (at the time of writing): **active**. Owner: coordinating agent. Baseline
+commit: `9848e5c`.
 
 Inputs: the user's request (point three acceptance pointers at
 `docs/online-capability.md`; walk the product as a real external user with the browser;
@@ -161,4 +169,15 @@ fixture written as an instance method (D8, breaks on pytest 10).
 
 ## 6. Results
 
-_(filled in as steps land)_
+- **D1–D8 landed in `194e953`** with the tests named in §1b; the full backend suite
+  passed at that commit, and the frontend built clean.
+- **D9 (the citation contract) and D10 (the demo deep link) were found after that
+  commit** — D9 by the sparse-scope evaluation, D10 by cold-loading the demo deep link
+  in the browser — and are fixed in the commit that closed the backlog round, with
+  `benchmarks/online01-llm-eval-2026-09-16-sparse.md` as the before/after record.
+- The pointer change in §1 is in `194e953`; `docs/online-capability.md` §6 is now the
+  gate, and the archived beta-acceptance register is history.
+- Browser pass #2 (§2) is the behavioural evidence: both screenshots of the pass are
+  local (`docs/plans/ui-round-verification/`, gitignored by design).
+- Left open, deliberately: the hosted acceptance gates and the operator's latency/cost
+  targets — see `docs/online-capability.md` §6 and `docs/runbook.md` §H9.

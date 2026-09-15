@@ -47,6 +47,22 @@ measurable — they are **not** capacity claims for bulk datasets.
   potency-reference read path (verdict, class-carrying candidate page, coverage
   matrix) on the live TSLP investigation stored in the local stack, plus the
   bounded ChEMBL document-lookup cost that an investigation now pays.
+- `online00-chembl-projection-2026-09-16.md` (raw: `...json`) — what the ChEMBL
+  activity field projection buys: about −42 % transferred bytes per page with **no**
+  latency improvement (the projected pages were equal or slower). Produced by
+  `services/core/benchmarks/chembl_projection.py`; it is an upstream transfer
+  measurement, not application latency.
+- `cohort-coverage-2026-09-16.md` (raw: `...json`) — the acceptance cohort
+  (TSLP, CD40LG, IL-6 `P05231`, IL-6R `P08887`, EGFR) re-recorded on this build by
+  `scripts/cohort_coverage.py` through the shipped read paths: per-source status,
+  record counts, per-source `latency_ms` (0.7–50.9 s) and the potency verdict under
+  `potency-gate-v1`. Supersedes `online00-coverage-2026-09-15.md` for the cohort; both
+  are kept because the earlier one is the record the 2026-09-15 claims were made on.
+- `online08-structure-editor-2026-09-16.md` — the embedded Ketcher editor: what the
+  first open of the structure dialog transfers (20.3 MB raw / 4.95 MB gzip, the entry
+  bundle 0.33 MB), time from the click to a usable editor (0.83–0.86 s on loopback),
+  and the statement that the shipped container serves assets uncompressed. Comes from
+  the app's own access log plus CDP timing, not from bundle listings.
 - `online07-supplements-2026-09-15.md` (raw: `...json`) — the ONLINE-07 hand-added
   literature rows: the import write path (normalization + compound upsert + per-row
   outcome), the remark listing, and the verdict/candidate reads after an import.
@@ -74,3 +90,10 @@ citation-contract fix that the baseline itself identified), `...-run4.json`
 (6 per scope, after the per-source ref fix: 18/18 answered). These numbers describe
 model output acceptance, token cost and refusal classes; they are not comparable
 with the application latencies above.
+
+`online01-llm-eval-2026-09-16-sparse.md` (raw: `...-sparse.json`,
+`...-sparse-before-fix.json`) — the sparse scope: a target with **no** source
+retrievals. The before-fix run refused 0/2 (4 refusals) and exposed a citation gap
+that affected the whole target scope (defect D9: the prompt requires citing
+`reference:<id>`, which the validator did not allow); after the fix, 2/2 answered
+with text that does not read the empty set as a negative result.

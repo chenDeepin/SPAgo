@@ -15,9 +15,9 @@ Update this page whenever a capability or a source version changes. The
 | --- | --- |
 | Application | build from this checkout; `/healthz` reports `api_version` |
 | Database | PostgreSQL 15 + RDKit cartridge 4.2.0 |
-| Schema | migrations 0001–0014 (forward-only) |
+| Schema | migrations 0001–0015 (forward-only) |
 | UniProt | `rest.uniprot.org/uniprotkb/search` (REST, `uniprot-rest-uniprotkb`) |
-| ChEMBL | `www.ebi.ac.uk/chembl/api/data` (`chembl-web-services`), including the bounded `document.json` lookup that supplies patent/DOI/PMID |
+| ChEMBL | `www.ebi.ac.uk/chembl/api/data` (`chembl-web-services`), including the bounded `document.json` lookup that supplies patent/DOI/PMID, with the activity response projected to the mapped fields |
 | BindingDB | `bindingdb.org/rest/getLigandsByUniprot` (`bindingdb-rest`) |
 | PubChem | `pubchem.ncbi.nlm.nih.gov/rest/pug` (`pubchem-pug-rest`) |
 | SureChEMBL | via versioned extraction packages (`dataset_version` per package) |
@@ -25,6 +25,7 @@ Update this page whenever a capability or a source version changes. The
 | Plan schema | `search-plan-v1` |
 | Potency policy | `potency-gate-v1` (threshold and scope travel with every verdict and export) |
 | Prompt versions | `family-summary-v6`, `document-summary-v5`, `target-investigation-v8` (see `benchmarks/online01-llm-eval-2026-09-15.md`) |
+| Structure editor | Ketcher 3.18.0 (`ketcher-react` + `ketcher-standalone` + `ketcher-core`, all three pinned — see `THIRD_PARTY_NOTICES.md` § frontend) |
 
 Source retrieval is timestamped per investigation; the exact query identifiers,
 counts and outcomes are stored in `source_retrievals` and exportable via
@@ -102,8 +103,13 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 - **No claim of exhaustive or web-wide patent search.** Coverage is the loaded
   corpus plus the named open databases, each with its own recorded status.
 - **No inhibitor guarantee for any target.** The measured coverage is what it is:
-  see `benchmarks/online00-coverage-2026-09-15.md`. For human TSLP, 110 of 111
-  qualifying ChEMBL activities are peptides; IL-6R and CD40LG are thin.
+  see `benchmarks/cohort-coverage-2026-09-16.md` for the acceptance cohort
+  re-recorded on this build (and `benchmarks/online00-coverage-2026-09-15.md` for
+  the earlier run). For human TSLP, 110 of 111 qualifying ChEMBL activities are
+  peptides and one genuine small molecule remains; **IL-6R is the thin one** (one
+  in-scope compound whose only record is not a potency, and BindingDB failed for
+  it); IL-6 and CD40LG do reach the policy's minimum (`potency-gate-v1`: IL-6 124
+  of 144 in-scope compounds at or below 10 µM, CD40LG 6 of 10).
 - **A hand-added row is a person's statement, not evidence of record.** It is
   attributed to `user_curated` everywhere it appears (columns, exports, summaries)
   and never proves that the compound occurs in a document in SPAgo's corpus. The
@@ -129,6 +135,14 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 - **No legal conclusions.** Nothing here is legal advice, freedom-to-operate
   analysis, or a statement about claim scope.
 - **No full Markush analysis.** R-group handling is not implemented.
+- **The structure editor loads on demand and is large.** Ketcher (3.18.0) ships in
+  the structure-search dialog only: the first open fetches 20.3 MB uncompressed
+  (4.95 MB gzip) — the dialog chunk 7.8 MB, the Indigo engine a separate 11.8 MB
+  `.wasm` (fetched inside its worker), plus a 444 KB chunk and the worker script.
+  First paint is unaffected (entry bundle 320 KB raw / 93 KB gzip). Measured, not
+  estimated: `benchmarks/online08-structure-editor-2026-09-16.md` — including the
+  fact that the shipped container does **not** compress assets, so a slow connection
+  pays the uncompressed figure until the deployment's proxy compresses it.
 - **No full-document ingestion or OCSR.** Claims text and PDF chemistry are not
   in the pipeline; summaries say "claims were not assessed".
 - **No model credential or endpoint chosen by a user.** The endpoint comes from
@@ -153,7 +167,9 @@ past run, it does not replace this list.
       the chosen threshold recorded next to the acceptance coverage matrix.
 - [ ] `/api/v1/readyz` reports `ready` with no notes.
 - [ ] Backup taken and a restore verified per runbook §H7 (ownership counts match).
-- [ ] Coverage matrix re-recorded for the acceptance targets on the deployed build.
+- [ ] Coverage matrix re-recorded for the acceptance targets on the deployed build
+      (`scripts/cohort_coverage.py`; last local record:
+      `benchmarks/cohort-coverage-2026-09-16.md`).
 - [ ] Invited cohort listed; invitation links issued individually.
 - [ ] One real model provider smoke-tested from the deployed build (model id,
       endpoint fingerprint, per-scope call, token usage, latency, failure rate,
@@ -172,6 +188,8 @@ A scientist using only the browser must be able to complete, in one sitting:
 1. Open the invitation link, sign in.
 2. Resolve a requested target (TSLP, CD40L, IL-6, IL-6R, or another) and read
    the scope: what was resolved, what was excluded, which partners are related.
+   `IL-6` and `IL-6R` resolve **ambiguously** by gene symbol and need the
+   accession (`P05231`, `P08887`) — record which entry the run selected.
 3. Run a supported natural-language request (review the plan, then Run) **or**
    use manual search/structure search.
 4. Read the per-source coverage and distinguish small-molecule from
@@ -218,7 +236,11 @@ The deployment is one app image plus one database. To roll back:
   operator's own smoke run.
 - A summary's citations are validated against the exact snapshot sent, so a
   citation the model cannot express is refused rather than stored. The target
-  scope's per-source retrievals therefore carry `source:<name>` refs; the residual
+  scope's per-source retrievals therefore carry `source:<name>` refs, and the
+  potency verdict carries `reference:<target-id>` — a ref the shipped prompt
+  requires the model to use, which the validator did not allow until the sparse-scope
+  run exposed it (0/2 answered before, 2/2 after:
+  `benchmarks/online01-llm-eval-2026-09-16-sparse.md`). The residual
   class is a ref written *without* its namespace (`facce3fd-…` instead of
   `document:facce3fd-…`), which is refused — deliberately, since a bare UUID does
   not say whether it names a document, an evidence record or a candidate.

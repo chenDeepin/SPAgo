@@ -18,7 +18,16 @@ for (const key of required) {
   }
 }
 
-for (const jsFile of ["background.js", "content.js", "sidepanel.js", "detect.js"]) {
+// `verify-in-chrome.js` is a Node harness, not an extension file, but it ships
+// here and a parse error in it would only surface when someone runs the
+// browser check, so its syntax is checked with the rest.
+for (const jsFile of [
+  "background.js",
+  "content.js",
+  "sidepanel.js",
+  "detect.js",
+  "verify-in-chrome.js",
+]) {
   const src = fs.readFileSync(path.join(dir, jsFile), "utf8");
   try {
     new Function(src.replace(/^chrome\./gm, "globalThis.__stub.")); // syntax-only check stub

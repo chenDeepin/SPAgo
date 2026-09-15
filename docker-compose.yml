@@ -56,7 +56,7 @@ services:
       # Hosted access (ONLINE-03, ADR-0002). The default keeps the local
       # single-user product: no sign-in, existing rows stay unattached. Setting
       # "required" makes every workspace request need a session — read
-      # docs/runbook.md §H1–H9 (HTTPS, private database, real secrets) first.
+      # docs/runbook.md §H1–H10 (HTTPS, private database, real secrets) first.
       SPAGO_AUTH_MODE: ${SPAGO_AUTH_MODE:-disabled}
       SPAGO_COOKIE_SECURE: ${SPAGO_COOKIE_SECURE:-false}
       SPAGO_SESSION_TTL_HOURS: ${SPAGO_SESSION_TTL_HOURS:-12}

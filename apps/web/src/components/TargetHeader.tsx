@@ -28,6 +28,11 @@ export function coverageChipId(sourceName: string): string {
   return `coverage-source-${sourceName}`;
 }
 
+/** DOM id of the potency reference verdict strip. A `reference:<target-id>`
+ * citation (ONLINE-06) points here: the verdict is what that citation supports,
+ * so the click scrolls to the strip and flashes it rather than switching tabs. */
+export const REFERENCE_VERDICT_ID = "target-reference-verdict";
+
 const EVIDENCE_LABEL: Record<string, string> = {
   measured_direct_binding: "measured binding",
   interaction_disruption: "interaction disruption",

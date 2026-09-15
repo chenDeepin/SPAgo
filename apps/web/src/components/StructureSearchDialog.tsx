@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { CompoundRow } from "../api/types";
 import { Modal } from "./Modal";
+// Import order matters: this installs the `require` that ketcher-core's Raphael
+// access needs, and ESM evaluates dependencies before this module's body.
+import "./ketcher-require-shim";
+import { StructureEditor } from "./StructureEditor";
 
 interface StructureSearchDialogProps {
   familyId: string;
@@ -40,15 +44,12 @@ function formatBoundaryOk(value: string): boolean {
 
 /** Structure search dialog (design contract 8).
  *
- * Query input is a SMILES draft: editing/pasting only changes the draft —
- * nothing executes until "Run search" (explicit user action). Scope is fixed
- * to the current family. Closing the dialog aborts a running request; a late
+ * Query input is a SMILES draft: the embedded editor writes into it when the
+ * drawing changes, and the box can be typed or pasted into directly. The box is
+ * what the search reads, so the two never disagree about what will be sent.
+ * Nothing executes until "Run search" (explicit user action). Scope is fixed to
+ * the current family. Closing the dialog aborts a running request; a late
  * response is discarded and never reaches the results view.
- *
- * Note: the embedded Ketcher editor was planned here, but ketcher 2.28 and
- * 3.14 both crash at mount inside the Vite production build (packaging-level
- * incompatibility, recorded in docs/plans). SMILES paste is the M2 input;
- * Ketcher embedding returns once bundling is resolved.
  */
 export function StructureSearchDialog({
   familyId,
@@ -133,6 +134,16 @@ export function StructureSearchDialog({
     <Modal title="Structure search" onClose={onClose}>
       <div className="structsearch-body">
         <div className="structsearch-side" style={{ flex: "1 1 100%" }}>
+          {/* The editor is the drawing input and writes its SMILES into the box
+              below; neither action executes anything — a search still requires the
+              explicit action at the bottom (AGENTS.md §14/§15). */}
+          <StructureEditor
+            initialSmiles={smiles}
+            onChange={(next) => {
+              setSmiles(next);
+              setError(null);
+            }}
+          />
           <label className="input-label" htmlFor="struct-smiles">
             Structure (SMILES)
           </label>
@@ -149,8 +160,9 @@ export function StructureSearchDialog({
             spellCheck={false}
           />
           <p className="hint-note">
-            The embedded structure editor (Ketcher) is deferred — paste a SMILES string for now.
-            Editing does not start a search; chemical validity is checked when the search runs.
+            Draw in the editor — each change writes its SMILES into the box above — or type/paste a
+            SMILES string directly. The box is the query that runs; editing it does not start a
+            search, and chemical validity is checked when the search runs.
           </p>
 
           <div className="input-label">Search mode</div>

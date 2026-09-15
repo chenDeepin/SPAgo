@@ -1,5 +1,7 @@
 # Documentation consolidation + leak surface — 2026-09-16
 
+> Archived 2026-09-16 (execution record in §4).
+
 Status: **done** (2026-09-16; execution record in §4).
 
 Scope: `AGENTS.md`, `README.md`, `PROMPT.md`, `docs/`, `.gitignore`. No product code,
@@ -80,7 +82,7 @@ record (verified with `py_compile`).
 | Condensed (1,040 → 839 lines) | `PROMPT.md` | Handoff block rewritten with correct pointers; §4/§10/§14/§16/§17/§19/§20 condensed; §16/§17 defer to AGENTS §27–29 / §20–21; milestone list now carries per-slice state |
 | Moved to `docs/archive/` | `2026-09-14-rename-to-spago.md`, `2026-09-15-apache-2-license.md`, `2026-09-14-llm-interface.md`, `2026-09-14-ui-review-next-round.md`, `2026-09-15-llm-live-smoke.md`, `2026-09-15-llm-eval-and-demo-open.md`, `2026-09-15-product-readiness.md`, `2026-09-14-imagegen-prompts.md` | Each got an archive banner with its follow-up pointer; sibling links stay valid, links to active plans became `../plans/…` |
 | Restored (text only) | `docs/archive/2026-09-15-beta-acceptance.md` | Recovered from `61f0686^`, with a header explaining that the screenshots stay out of Git and that the test counts are stale |
-| New | `docs/plans/2026-09-16-docs-consolidation.md` | This file |
+| New | `docs/archive/2026-09-16-docs-consolidation.md` | This file (archived 2026-09-16, with the round it records) |
 | Hardened | `.gitignore` | See 4.3 |
 | Reference fixes | `docs/architecture/overview.md` (status block + 2 links), `docs/online-capability.md`, `docs/design/2026-09-14-ui-direction.md` (3 links), `docs/plans/2026-09-15-online-llm.md` (5 links), `docs/plans/2026-09-15-bindingdb-io-port.md`, `benchmarks/online01-llm-eval-2026-09-15.md`, `benchmarks/paging-beyond-cap-2026-09-15.md`, `services/core/spago_core/config.py`, `services/core/spago_core/services/ai.py`, `services/core/tests/test_llm_adapter.py`, `services/core/tests/test_online04_usage.py` | All now point at the archived location |
 

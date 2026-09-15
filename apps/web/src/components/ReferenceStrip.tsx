@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import type { ReferenceVerdict } from "../api/types";
+import { REFERENCE_VERDICT_ID } from "./TargetHeader";
 
 interface ReferenceStripProps {
   verdict: ReferenceVerdict | null;
   loading: boolean;
   error: string | null;
+  /** True while a `reference:<target-id>` citation is flashing this strip. */
+  focused?: boolean;
   /** Explicit user-stated threshold in µM, or null for the deployment policy. */
   thresholdOverrideMicromolar: number | null;
   onApplyThreshold: (micromolar: number | null) => void;
@@ -43,6 +46,7 @@ export function ReferenceStrip({
   verdict,
   loading,
   error,
+  focused = false,
   thresholdOverrideMicromolar,
   onApplyThreshold,
   onSelectCompound,
@@ -98,7 +102,11 @@ export function ReferenceStrip({
   const changed = draftValid && parsed !== appliedMicromolar;
 
   return (
-    <div className="reference-strip" aria-label="Potency reference verdict">
+    <div
+      className={`reference-strip${focused ? " reference-strip-focused" : ""}`}
+      id={REFERENCE_VERDICT_ID}
+      aria-label="Potency reference verdict"
+    >
       <div className="reference-line">
         <span
           className={`reference-verdict ${verdict.qualifies ? "reference-yes" : "reference-no"}`}

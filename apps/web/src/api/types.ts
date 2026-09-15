@@ -201,12 +201,23 @@ export interface CitationRef {
   fact_ref: string;
   /** The citation kinds the server can emit. `source` is a per-source retrieval
    * outcome in a target analysis (`source:<name>`); clicking it focuses the
-   * matching coverage chip rather than a molecule or an excerpt. */
-  kind: "family" | "document" | "target" | "candidate" | "measurement" | "source" | "evidence";
+   * matching coverage chip rather than a molecule or an excerpt. `reference` is
+   * the ONLINE-06 potency verdict (`reference:<target-id>`), which the target
+   * prompt asks the model to cite for potency statements. */
+  kind:
+    | "family"
+    | "document"
+    | "target"
+    | "candidate"
+    | "measurement"
+    | "source"
+    | "reference"
+    | "evidence";
   label?: string;
   evidence_id?: string;
   inchikey?: string;
   measurement_id?: string;
+  target_id?: string;
   /** Set on `source` citations: the coverage chip to focus. */
   source_name?: string;
 }

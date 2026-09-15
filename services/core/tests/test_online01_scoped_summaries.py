@@ -323,6 +323,78 @@ class TestTargetScope:
         with pytest.raises(NotFoundError):
             ai.summarize_target(online_engine, uuid.uuid4())
 
+    def test_the_potency_verdict_ref_is_citable_and_reaches_the_reader(
+        self, online_engine, target_id
+    ):
+        """The `reference:<id>` fact the prompt tells the model to cite (defect D9).
+
+        The target prompt says "cite `reference:<id>` for any statement about
+        potency or about the set being usable or not", and the snapshot carries
+        that node. `allowed_refs` enumerated a fixed list of keys instead of
+        walking the snapshot, so the ref was never allowed: a summary that obeyed
+        its instructions was refused. The recorded sparse-scope run refused 4 of
+        4 attempts this way
+        (`benchmarks/online01-llm-eval-2026-09-16-sparse.md`) — a target with no
+        retrievals has one legal citation, the target root, and any appeal to the
+        verdict was fatal.
+
+        The citation mapping had the same hole, so even an accepted `reference:`
+        citation was silently dropped from the citation list — the reader lost the
+        support link for the only number the summary may repeat.
+        """
+        snapshot = ai.summarize_target(online_engine, target_id)["input_snapshot"]
+        verdict_ref = snapshot["reference"]["ref"]
+        assert verdict_ref == f"reference:{target_id}"
+        assert verdict_ref in ai.allowed_refs(snapshot)
+
+        class FakeResult:
+            finish_reason = "stop"
+            tool_calls = False
+            usage = None
+            model = "recorded"
+
+            def __init__(self, content):
+                self.content = content
+
+        content = json.dumps(
+            {
+                "paragraphs": [
+                    {
+                        "text": "One of the in-scope compounds is at or below the threshold.",
+                        "fact_refs": [verdict_ref],
+                    }
+                ],
+                "limitations": [],
+            }
+        )
+        output = ai._validate_llm_output(FakeResult(content), snapshot)
+        assert output.paragraphs[0].fact_refs == [verdict_ref]
+
+        citations = ai._build_citations(output, snapshot)
+        assert [c["fact_ref"] for c in citations] == [verdict_ref], (
+            "an accepted verdict citation must reach the citation list, not be "
+            "dropped on the way to the reader"
+        )
+        citation = citations[0]
+        assert citation["kind"] == "reference"
+        assert citation["target_id"] == str(target_id)
+        assert citation["label"]
+        # The reader has to be able to tell which policy produced the number.
+        assert snapshot["reference"]["policy_version"] in citation["label"]
+
+        # A verdict ref for another target is still refused: the walk widened the
+        # allowed set to the snapshot, not to any `reference:` string.
+        other = json.dumps(
+            {
+                "paragraphs": [
+                    {"text": "Another target's verdict.", "fact_refs": [f"reference:{uuid.uuid4()}"]}
+                ],
+                "limitations": [],
+            }
+        )
+        with pytest.raises(ai.LLMUpstreamError):
+            ai._validate_llm_output(FakeResult(other), snapshot)
+
     def test_every_retrieval_is_citable_by_its_own_ref(self, online_engine, target_id):
         """Per-source status is quoted from the retrieval, not the target root.
 

@@ -206,10 +206,10 @@ implementation requires it.
 | Milestone | State |
 | --- | --- |
 | M0 Foundation and benchmarks | implemented; [`docs/archive/2026-09-14-m0-foundation.md`](docs/archive/2026-09-14-m0-foundation.md) |
-| M1 Patent chemistry viewer | implemented (Ketcher editor still deferred — see the record) |
+| M1 Patent chemistry viewer | implemented, with the embedded Ketcher editor (cost and behaviour: `benchmarks/online08-structure-editor-2026-09-16.md`) |
 | M2 Structure search | implemented (exact / substructure / similarity, cartridge-indexed) |
 | M3 Bioactivity and SAR | implemented for open sources; see the online capability statement |
-| M4 Chrome companion | thin MV3 bridge; Chrome-in-Chrome verification still open |
+| M4 Chrome companion | thin MV3 bridge; unpacked load, detection, handoff and side-panel render verified in a real browser (`apps/chrome-extension/verify-in-chrome.js`); toolbar click not covered |
 | M5 Evidence-grounded AI | implemented offline and against one live provider |
 | ONLINE-00…07 | implemented locally; see **Status** above |
 | ONLINE-04 hosted deployment, ONLINE-05 invited-user acceptance | **open** — gate and script: [capability §6](docs/online-capability.md) |

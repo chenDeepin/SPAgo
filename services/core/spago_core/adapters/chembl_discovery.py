@@ -58,10 +58,13 @@ MAX_DOCUMENT_LOOKUPS = 8
 DOCUMENT_FIELDS = "document_chembl_id,patent_id,doi,pubmed_id,year,doc_type"
 
 #: Only the fields `_to_record` maps. ChEMBL returns 47 keys per activity; the
-#: subset cuts the payload, and every field below was verified present in the
-#: projected response before this was adopted (2026-09-16, `CHEMBL3712931`,
-#: `limit=200`: 216,632 → 127,415 bytes, -41% per page). A field the product
-#: starts using must be added here or it will silently read as absent.
+#: subset cuts the transferred bytes by about 42 % (measured 2026-09-16, two
+#: targets, `limit=200`: 216,632 → 127,415 and 297,821 → 169,798 bytes per page —
+#: `benchmarks/online00-chembl-projection-2026-09-16.md`). It does **not** reduce
+#: upstream latency: in the same record the projected pages were equal or slower,
+#: so the saving is egress, not speed. Every field below was verified present in
+#: the projected response; a field the product starts using must be added here or
+#: it will silently read as absent.
 ACTIVITY_FIELDS = (
     "activity_id,canonical_smiles,standard_value,standard_type,standard_units,"
     "standard_relation,assay_type,assay_chembl_id,assay_description,bao_label,"

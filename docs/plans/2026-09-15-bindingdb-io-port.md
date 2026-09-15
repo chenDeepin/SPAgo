@@ -401,6 +401,13 @@ reported rather than dropped.
   `benchmarks/online06-reference-2026-09-15.md`). Narrowing the projection to the
   fields the adapter reads is a measurable optimization candidate; it was not done
   and no saving is claimed (§20).
+  **Closed 2026-09-16 (defect D6 + this measurement):** the projection now ships,
+  and it was measured rather than assumed —
+  `benchmarks/online00-chembl-projection-2026-09-16.md` records a **−42 % transfer**
+  (216,632 → 127,415 and 297,821 → 169,798 bytes per page) with **no latency
+  improvement**: the projected pages were equal or slower in the same interleaved
+  samples. "Dominant upstream cost" was true of bandwidth, not of waiting time —
+  the page count is what an investigation waits on.
 - Wave 2 record: see §7 (implemented).
 
 ### 6.6 Deviations from the plan

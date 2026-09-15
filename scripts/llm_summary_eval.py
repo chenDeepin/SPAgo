@@ -285,10 +285,17 @@ def main() -> int:
     _log(f"planned provider calls: {len(plan) * args.samples} request(s), "
          f"at most {len(plan) * args.samples * ai_svc.MAX_LLM_ATTEMPTS} call(s)")
     for scope, _sid, label, snapshot in plan:
+        # A target with no stored retrievals is a different case from a thin one,
+        # and its record says so: the summary is then generated from an empty
+        # input, which is the case `docs/online-capability.md` §5 promises never
+        # reads as a negative result (measured 2026-09-16,
+        # `benchmarks/online01-llm-eval-2026-09-16-sparse.md`).
+        empty_scope = scope == "target" and not snapshot.get("sources")
         _log(
             f"  {scope:8s} {label:16s} input_bytes={_snapshot_bytes(snapshot)} "
             f"allowed_refs={len(ai_svc.allowed_refs(snapshot))} prompt_version="
             f"{ai_svc.PROMPT_VERSION_BY_SCOPE[scope]}"
+            + (" [no stored retrievals: empty-scope path]" if empty_scope else "")
         )
     if args.dry_run:
         _log("dry run: no provider call made.")

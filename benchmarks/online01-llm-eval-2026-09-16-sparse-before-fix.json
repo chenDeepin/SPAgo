@@ -1,0 +1,195 @@
+{
+  "recorded_at": "2026-09-15T18:47:48+00:00",
+  "model": "deepseek-flash",
+  "endpoint_fingerprint": "12b8deaccc34b327",
+  "thinking_disabled": true,
+  "json_mode": true,
+  "max_output_tokens": 4096,
+  "max_attempts": 2,
+  "prompt_versions": {
+    "target": "target-investigation-v8"
+  },
+  "samples_per_scope": 2,
+  "scopes": {
+    "target": {
+      "scope_id": "cd46db5c-ec72-5231-a7d2-b30e63a92974",
+      "label": "DEMO-TARGET-1",
+      "input_bytes": 1902,
+      "allowed_refs": 1,
+      "input_snapshot": {
+        "target": {
+          "ref": "target:cd46db5c-ec72-5231-a7d2-b30e63a92974",
+          "id": "cd46db5c-ec72-5231-a7d2-b30e63a92974",
+          "target_key": "DEMO-TARGET-1",
+          "name": "Demo cyclooxygenase (synthetic)",
+          "organism": null,
+          "uniprot_accession": null,
+          "gene_symbol": null,
+          "target_type": null,
+          "scope_kind": null,
+          "components": [],
+          "structural_annotations": []
+        },
+        "sources": [],
+        "modality_breakdown": {},
+        "reference": {
+          "ref": "reference:cd46db5c-ec72-5231-a7d2-b30e63a92974",
+          "qualifies": false,
+          "reason": "No stored measurement for this target.",
+          "policy_version": "potency-gate-v1",
+          "threshold_nM": 10000.0,
+          "threshold_label": "10 µM",
+          "min_compounds": 10,
+          "modality_scope": "small molecules and unclassified entities",
+          "compounds": 0,
+          "compounds_active": 0,
+          "compounds_weak": 0,
+          "compounds_unknown": 0,
+          "compounds_not_applicable": 0,
+          "active_compounds_outside_scope": 0,
+          "measurements": 0,
+          "class_counts": {},
+          "endpoint_counts": {},
+          "evidence_class_counts": {},
+          "potential_duplicates": 0,
+          "records_without_structure": 0,
+          "supplement_remarks": 0,
+          "source_declared_patents": [],
+          "best_active": null,
+          "note": "Deterministic count, not a biological conclusion: it says which stored records are at or below the stated threshold, and it never implies that no other inhibitor exists."
+        },
+        "candidate_total": 0,
+        "candidates": [],
+        "candidates_shown": 0,
+        "patent_linked_candidates": 0,
+        "measurements": [],
+        "measurement_total": 0,
+        "evidence_class_counts": {},
+        "measurements_listed": 0,
+        "coverage": [],
+        "dataset_version": "demo-fixture-v1",
+        "source_name": "bioactivity_simplified_fixture",
+        "default_candidate_filter": "small molecules and unclassified entities",
+        "coverage_note": "Missing records do not demonstrate that no inhibitors exist; the per-source status above is the entire basis of this summary.",
+        "input_note": "Bounded fact selection: whole items only; omitted items are reported in coverage.",
+        "summary_scope": "target"
+      }
+    }
+  },
+  "runs": [
+    {
+      "scope": "target",
+      "scope_label": "DEMO-TARGET-1",
+      "input_hash": "41658a5905e468ab116752764343423763ba13a8418b88b218179b816f1a98c1",
+      "input_bytes": 1902,
+      "allowed_refs": 1,
+      "wall_ms": 8772,
+      "requests": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "rejected",
+          "detail": "LLMOutputRejectedError: Model cited fact references outside the allowed input set.",
+          "latency_ms": 4419,
+          "finish_reason": "stop",
+          "tool_calls": false,
+          "usage": {
+            "prompt_tokens": 1288,
+            "completion_tokens": 1007,
+            "total_tokens": 2295
+          },
+          "content_chars": 4010,
+          "content_sha256": "32d192e6fb57526c",
+          "content": "{\"paragraphs\":[{\"text\":\"This is a bounded, synthetic demonstration record for target 'Demo cyclooxygenase (synthetic)' (target_key DEMO-TARGET-1, id cd46db5c-ec72-5231-a7d2-b30e63a92974) under dataset version demo-fixture-v1. No target classification fields (organism, type, components, gene symbol, UniProt accession or structural annotations) are populated in the supplied facts.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"No source entries were supplied: the coverage list is empty and the sources list is empty, so no per-source retrieval status (queried, empty, failed or not queried) can be reported for any database. The input note states this is a bounded fact selection of whole items only, with omitted items to be reported in coverage.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Stored data volume for this target is zero: measurement_total 0 with 0 measurements listed, candidate_total 0 with 0 candidates shown, evidence_class_counts empty, modality_breakdown empty, and 0 patent-linked candidates. The scope is small molecules and unclassified entities per the default candidate filter.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Under the deterministic potency policy potency-gate-v1 (reference:cd46db5c-ec72-5231-a7d2-b30e63a92974), the threshold is 10 µM (threshold_nM 10000.0) and the minimum compound count is 10. The count reports 0 compounds, 0 compounds active, 0 weak, 0 not applicable, 0 unknown, 0 measurements and 0 active compounds outside scope; best_active is null and qualifies is false.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The reference record's stated reason for not qualifying is 'No stored measurement for this target.' This is a deterministic count of what the stored records support under the printed policy, not a biological conclusion, and it does not imply that no other inhibitor exists.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Supplementary fields are zero or empty: 0 records without structure, 0 potential duplicates, 0 supplement remarks, and source_declared_patents is an empty list. The reference class_counts, endpoint_counts and evidence_class_counts are all empty, so no assay-type or activity-class distribution can be described.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Because measurements and candidates are both empty, there are no measured binding values, interaction-disruption results, functional-effect readouts or screening (including percent-inhibition) data to report, and no small-molecule or peptide/biologic modality entries to separate.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"No candidate can be linked to patent text from these facts, and the empty source_declared_patents list is not evidence that any compound is unclaimed in any document.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]}],\"limitations\":[\"No sources were provided (empty sources and coverage lists), so per-source retrieval status, exclusions and warnings cannot be reported and no database was confirmed as queried.\",\"The input is a bounded whole-item selection; omitted items are not represented, and the dataset is a synthetic demo fixture (demo-fixture-v1), not a complete literature or patent corpus.\",\"Zero measurements and zero candidates mean no potency, activity class, assay type or modality conclusion can be drawn for this target; missing records are a coverage statement, not evidence that inhibitors do not exist.\",\"Some target metadata (organism, target type, components, gene symbol, UniProt accession, structural annotations) is unpopulated, so the target identity beyond name/key is unverified.\",\"The reference count (0 compounds at or below the 10 µM threshold, minimum 10 compounds, qualifies false) describes only stored records under potency-gate-v1 and must not be read as a statement about the wider literature.\"]}"
+        },
+        {
+          "attempt": 2,
+          "outcome": "rejected",
+          "detail": "LLMOutputRejectedError: Model cited fact references outside the allowed input set.",
+          "latency_ms": 4353,
+          "finish_reason": "stop",
+          "tool_calls": false,
+          "usage": {
+            "prompt_tokens": 1288,
+            "completion_tokens": 964,
+            "total_tokens": 2252
+          },
+          "content_chars": 3772,
+          "content_sha256": "b882824f3077484c",
+          "content": "{\"paragraphs\":[{\"text\":\"This is a bounded target-scope investigation of Demo cyclooxygenase (synthetic) (target key DEMO-TARGET-1), run under the bioactivity_simplified_fixture source on dataset version demo-fixture-v1. The input is a bounded fact selection containing whole items only; omitted items are reported in coverage.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The source list is empty: no source was queried, so there is no per-source retrieval status to report for any database (including any status of failure, empty return, or not queried).\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"No target metadata beyond the name and key was supplied: gene symbol, organism, target type, scope kind, UniProt accession and structural annotations are all absent from the input.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Record counts in the input are zero throughout: measurement_total 0, measurements_listed 0, candidate_total 0, candidates_shown 0, patent_linked_candidates 0; the evidence_class_counts and modality_breakdown maps are empty.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The reference fact (policy potency-gate-v1, threshold 10 µM = 10000.0 nM) reports compounds 0, measurements 0, compounds_active 0, compounds_weak 0, compounds_unknown 0, compounds_not_applicable 0, active_compounds_outside_scope 0, records_without_structure 0, potential_duplicates 0 and supplement_remarks 0, with best_active null; it does not qualify, with reason 'No stored measurement for this target'.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Because the reference count stands at 0 compounds against a min_compounds requirement of 10 within the modality scope 'small molecules and unclassified entities' (the default candidate filter), no potency-classified set is usable from the stored records under this policy; this is a deterministic count, not a biological conclusion.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"There are no measurements to classify by evidence class, so measured direct binding, interaction-disruption, functional and screening readouts cannot be distinguished here; equally, no small-molecule versus peptide or biologic modality breakdown can be given.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"No candidate entries and no source_declared_patents values are present, so no patent linkage can be reported for this target; the absence of such values is not evidence about what any patent document does or does not claim.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Per the coverage note, the empty coverage list and the zero counts are the entire basis of this summary: missing records do not demonstrate that no inhibitors exist.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]}],\"limitations\":[\"No source was queried or listed (sources and coverage are empty), so no per-source search status can be reported and no source-level result can be corroborated.\",\"The input is a bounded fact selection: omitted items are reported only via coverage, and no omitted measurements or candidates are available here.\",\"All record counts for this target are zero, so no potency, evidence-class, modality or structural conclusions can be drawn from the stored records.\",\"Target annotation fields (gene symbol, organism, target type, UniProt accession, components, structural annotations) are absent, so the target entity itself is not characterized in these facts.\",\"The absence of measurements and of source_declared_patents is a coverage statement only and does not indicate that no inhibitors or patent claims exist.\"]}"
+        }
+      ],
+      "accepted": false,
+      "re_sample": false,
+      "stored_text": null,
+      "stored_usage": null,
+      "billed_usage": {
+        "prompt_tokens": 2576,
+        "completion_tokens": 1971,
+        "total_tokens": 4547,
+        "attempts": 2
+      },
+      "failure": {
+        "error": "LLMOutputRejectedError",
+        "detail": "Model cited fact references outside the allowed input set."
+      }
+    },
+    {
+      "scope": "target",
+      "scope_label": "DEMO-TARGET-1",
+      "input_hash": "41658a5905e468ab116752764343423763ba13a8418b88b218179b816f1a98c1",
+      "input_bytes": 1902,
+      "allowed_refs": 1,
+      "wall_ms": 8259,
+      "requests": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "rejected",
+          "detail": "LLMOutputRejectedError: Model cited fact references outside the allowed input set.",
+          "latency_ms": 4135,
+          "finish_reason": "stop",
+          "tool_calls": false,
+          "usage": {
+            "prompt_tokens": 1288,
+            "completion_tokens": 940,
+            "total_tokens": 2228
+          },
+          "content_chars": 3839,
+          "content_sha256": "235b5898c06b72fc",
+          "content": "{\"paragraphs\":[{\"text\":\"This summary covers the target 'Demo cyclooxygenase (synthetic)' (key DEMO-TARGET-1), a target-scope investigation in dataset version demo-fixture-v1. The target record carries no organism, gene symbol, UniProt accession, target type or components, so no target identity beyond the name and key can be asserted.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"No candidate records and no measurement records were returned for this target: candidate_total is 0, candidates_shown is 0, measurement_total is 0 and measurements_listed is 0. The candidate list and measurement list are therefore empty in this bounded extraction.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The sources array is empty and the coverage array is empty, so no per-source retrieval status is available in this input. The coverage note accompanying it states that missing records do not demonstrate that no inhibitors exist and that the per-source status is the entire basis of the summary.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The reference fact (reference:cd46db5c-ec72-5231-a7d2-b30e63a92974) applies policy potency-gate-v1 with an explicit threshold of 10 µM (10000.0 nM). Under that policy it reports 0 compounds, 0 measurements, 0 compounds active, 0 weak, 0 unknown, 0 not applicable, and qualifies = false; the stated reason is 'No stored measurement for this target'. The minimum compound requirement is 10 and 0 active compounds fall outside scope.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The reference note emphasizes this is a deterministic count, not a biological conclusion: it says which stored records are at or below the stated threshold and never implies that no other inhibitor exists. Because qualifies is false, the stored records do not support a potency-based compound set for this target.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"No modality breakdown is populated (modality_breakdown is empty), and no evidence-class counts are populated for candidates or measurements. The default candidate filter covering small molecules and unclassified entities is stated, but it selected nothing here.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Patent linking is also empty: patent_linked_candidates is 0 and source_declared_patents is an empty list. This is a coverage statement about the stored records, not a claim about patent occurrence one way or the other.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The input is a bounded fact selection over whole items only, with omitted items reported in coverage; the extraction notes 0 records without structure, 0 potential duplicates, 0 supplement remarks and 0 active compounds outside scope.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]}],\"limitations\":[\"No sources were listed and no coverage rows were returned, so per-source retrieval status, dataset-level counts and any source-specific exclusions or warnings cannot be reported.\",\"No candidate or measurement records were retrieved for this target, so no structures, assays, potency values or target engagement data can be described.\",\"The reference count is a deterministic statement about stored records under the 10 µM, potency-gate-v1 policy only; it is not a statement about the literature or about whether inhibitors of this target exist.\",\"Target metadata is largely absent (no organism, gene symbol, UniProt accession, target type or components), limiting cross-referencing of the target identity.\",\"The default candidate filter is limited to small molecules and unclassified entities, so peptide or biologic entities are out of that display scope even though the breakdown table is empty.\"]}"
+        },
+        {
+          "attempt": 2,
+          "outcome": "rejected",
+          "detail": "LLMOutputRejectedError: Model cited fact references outside the allowed input set.",
+          "latency_ms": 4123,
+          "finish_reason": "stop",
+          "tool_calls": false,
+          "usage": {
+            "prompt_tokens": 1288,
+            "completion_tokens": 984,
+            "total_tokens": 2272
+          },
+          "content_chars": 3596,
+          "content_sha256": "853f9c851eb5fc86",
+          "content": "{\"paragraphs\":[{\"text\":\"This is a synthetic demo target record, target key DEMO-TARGET-1, named \\\"Demo cyclooxygenase (synthetic)\\\"; no organism, target type, scope kind, gene symbol or UniProt accession is populated in the record.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The dataset is dataset_version demo-fixture-v1 and the summary_scope is \\\"target\\\", with default_candidate_filter covering small molecules and unclassified entities.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"No source entries were returned in the sources array and the coverage array is empty, so no per-source retrieval status is available for this run.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The bounded input reports measurement_total 0 with 0 measurements listed, 0 evidence_class_counts, and an empty modality_breakdown; there are no stored measurement records to summarize.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Candidate_total is 0 with 0 candidates shown, 0 patent_linked_candidates, and no source_declared_patents declared.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The reference fact (reference:cd46db5c-ec72-5231-a7d2-b30e63a92974, policy potency-gate-v1, threshold 10 µM / 10000.0 nM) does not qualify: it counts 0 compounds, 0 measurements, 0 active, 0 weak, 0 not applicable, 0 unknown, 0 active compounds outside scope, 0 records without structure and 0 potential duplicates, against a min_compounds requirement of 10.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The reference states its reason plainly: \\\"No stored measurement for this target.\\\" This is a deterministic statement about which stored records sit at or below the stated threshold, not a biological conclusion and not evidence that no other inhibitor exists.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Coverage_note and reference note both warn that missing records do not demonstrate that no inhibitors exist; the per-source status, which here is absent, is the entire basis of this summary.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\",\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"The input_note describes this as a bounded fact selection of whole items only, with omitted items to be reported in coverage; the source_name is bioactivity_simplified_fixture.\",\"fact_refs\":[\"target:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]},{\"text\":\"Because no measurements and no candidates were retrieved, no measured direct binding, interaction-disruption, functional effect, or screening readout can be described, and no potency or activity_class can be reported for any compound.\",\"fact_refs\":[\"reference:cd46db5c-ec72-5231-a7d2-b30e63a92974\"]}],\"limitations\":[\"The sources array and coverage array are empty; no per-source retrieval status (success, empty result, failure, or not queried) was provided, so no source-level statements can be made.\",\"Measurement and candidate totals are both 0 in this fixture, so there are no activity values, assay types, or modality breakdowns to report.\",\"Source-declared patent linkage is empty, and absence of a patent occurrence is not proof that a compound is unclaimed.\",\"The reference count (0 qualifying compounds at 10 µM, min_compounds 10) reflects only stored records; it is not evidence about what inhibitors exist in the literature.\",\"The input is explicitly a bounded whole-item selection, so any omitted items would only appear in coverage, which is empty here.\"]}"
+        }
+      ],
+      "accepted": false,
+      "re_sample": false,
+      "stored_text": null,
+      "stored_usage": null,
+      "billed_usage": {
+        "prompt_tokens": 2576,
+        "completion_tokens": 1924,
+        "total_tokens": 4500,
+        "attempts": 2
+      },
+      "failure": {
+        "error": "LLMOutputRejectedError",
+        "detail": "Model cited fact references outside the allowed input set."
+      }
+    }
+  ]
+}

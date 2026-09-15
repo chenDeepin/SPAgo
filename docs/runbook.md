@@ -380,7 +380,84 @@ Findings from the drill, now reflected above:
 | Session expired mid-use | 401 on the next request; the UI returns to the sign-in view. | Delete the session row. |
 | Container restart | Sessions survive (they are rows); in-flight model calls do not. | Restart the app container and reload. |
 
-## H9. Explicit limits of this beta
+## H9. Latency and cost budget, before the beta
+
+The last gate item in `docs/online-capability.md` §6 is "latency and cost targets for
+the chosen host and model **defined, then measured**". This section is the worksheet:
+the components that are already measured on this build, the two formulas, and the
+blank table the operator fills in with the numbers their host and their provider
+produce. Nothing here is a target until the operator writes one down; an unfilled row
+is an open gate item, not a pass.
+
+### What is already measured (this build)
+
+| Component | Measured value | Where it comes from |
+| --- | --- | --- |
+| Patent lookup (stored corpus) | p50 2.1 ms, p95 2.7 ms | `benchmarks/online-baseline-2026-09-15.md` |
+| Compounds page, evidence, depictions | p50 1.4–5.5 ms | same |
+| Target reads (stored investigation) | p50 4.3 ms candidates, 5.4 ms measurements (200) | same |
+| A live target investigation, five acceptance targets | 4.2 s (TSLP) · 4.5 s (IL-6R) · 6.4 s (CD40LG) · 20.0 s (IL-6) · 66.0 s (EGFR) — upstream request time, summed per source | `benchmarks/cohort-coverage-2026-09-16.json` |
+| One ChEMBL activity page (200 records) | ~1.7–3 s, per page, and the page count is set by `max_activities` | `benchmarks/online00-chembl-projection-2026-09-16.md` |
+| Scoped summary, model `deepseek-flash` | median call 3.6 s, 4,347 tokens for 2 calls (4,096-token output cap) | `benchmarks/online01-llm-eval-2026-09-16-sparse.md` |
+| Structure editor, first open | ~7.7 MB dialog chunk + ~11.8 MB `.wasm`, fetched once per session; application bundle ~320 KB | `benchmarks/online08-structure-editor-2026-09-16.md` |
+
+### Formula 1 — investigation wall time
+
+An investigation is **not** an interactive read: it fans out to the live sources and
+writes what it retrieves. Its wall time on the operator's host is
+
+```
+T_investigation ≈ T_resolve + T_bindingdb + T_chembl + T_pubchem + T_write
+```
+
+`T_resolve` is one UniProt lookup (sub-second when the accession resolves); the three
+source terms are upstream and dominate; `T_write` is tens of milliseconds at the
+cohort scale above. Each source term is a property of *that source's* load at that
+moment, not of SPAgo — the recorded range for the same five targets across two runs on
+two days was 0.7–50.9 s per source. Later reads of the same target are the stored-read
+numbers above (milliseconds), because the investigation is persisted.
+
+### Formula 2 — model cost and usage
+
+The shipped accounting (`services/core/spago_core/services/usage.py`) is the only
+cost formula this deployment has:
+
+```
+cost = deployment_tokens / 1_000_000 × SPAGO_LLM_PRICE_PER_MILLION_TOKENS
+```
+
+- `deployment_tokens` is measured: a request reserves an estimate before the call and
+  records the provider's real usage after it. An interrupted call keeps its
+  reservation, so the estimate errs upward, never downward.
+- With no price configured, the report says so and reports tokens only. Do not put a
+  price in this document — the operator's invoice is authoritative.
+- Both limits (`SPAGO_LLM_USER_TOKEN_LIMIT`, `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT`) must
+  be non-zero before invitations go out; a refusal is a 429 that names the limit and
+  the window. Check the spend with `curl -s <base>/api/v1/usage` (own window) and
+  `curl -s <base>/api/v1/usage/events` (admin, per-call rows) — measured, not estimated.
+- Summary scopes are cached separately, so a repeated summary of the same scope costs
+  one call. A rejected model answer is re-sampled once, and both attempts are billed
+  and counted.
+
+### The operator's worksheet (fill in before the beta, keep with the acceptance run)
+
+| Quantity | Target (operator) | Measured (operator) | How to measure |
+| --- | --- | --- | --- |
+| Patent lookup p95 | | | `benchmarks/run_benchmarks.py` against the deployed build |
+| Compounds page p95 at the real corpus size | | | same, or the browser's own timings on a family of realistic size |
+| A target investigation wall time, worst acceptance target | | | run `scripts/cohort_coverage.py <target> --investigate --yes` once and read `latency_ms` per source |
+| First open of the structure dialog on a slow connection | | | devtools network tab, throttle to the target connection profile |
+| Model calls per user session | | | count rows in `/api/v1/usage/events` for a rehearsal run |
+| Tokens per session, and per month for the invited cohort | | | sum `total_tokens` over the same window; multiply by the expected number of sessions |
+| Monthly spend | | | Formula 2 with the provider's price; compare with the deployment limit |
+| Summary latency p95 | | | `/api/v1/usage/events` timestamps, or the browser's network tab |
+
+Go/no-go: a target above the measured value is a decision to widen the host, lower
+`max_activities` (knowing it narrows coverage), or change the model — written down
+before the beta, not discovered during it. Record the filled table next to the
+acceptance run (`docs/online-capability.md` §6) so the numbers belong to a build.
+
+## H10. Explicit limits of this beta
 
 - Single app worker. Multi-worker safety for the in-flight model-call registry is
   not claimed; use one worker.

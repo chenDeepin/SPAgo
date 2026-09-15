@@ -16,6 +16,9 @@ interface TargetEvidencePanelProps {
   /** Focus a per-source coverage chip when the summary cites `source:<name>`.
    * Without it that citation would switch tabs and go nowhere. */
   onFocusSource?: (sourceName: string) => void;
+  /** Focus the potency verdict strip when the summary cites
+   * `reference:<target-id>` (ONLINE-06). Same rule as `source:`. */
+  onFocusReference?: () => void;
   /** Take back a row this user added by hand (ONLINE-07 / defect D3). A
    * retrieved row belongs to its source and is not withdrawable here. */
   onWithdrawSupplement?: (recordId: string, reason: string) => Promise<void>;
@@ -39,6 +42,7 @@ export function TargetEvidencePanel({
   error,
   includeAllModalities,
   onFocusSource,
+  onFocusReference,
   onWithdrawSupplement,
   withdrawing,
   onClose,
@@ -53,11 +57,16 @@ export function TargetEvidencePanel({
   }, [candidate.compound_id]);
 
   // A `source:<name>` citation is about the retrieval, not this candidate, so it
-  // focuses the coverage chip in the header. Everything else belongs to this
+  // focuses the coverage chip in the header; `reference:<target-id>` is about the
+  // verdict, so it focuses the potency strip. Everything else belongs to this
   // panel's evidence tab.
   const openCitation = (factRef: string) => {
     if (factRef.startsWith("source:") && onFocusSource) {
       onFocusSource(factRef.slice("source:".length));
+      return;
+    }
+    if (factRef.startsWith("reference:") && onFocusReference) {
+      onFocusReference();
       return;
     }
     setTab("evidence");

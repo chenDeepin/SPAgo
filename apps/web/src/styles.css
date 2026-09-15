@@ -1381,6 +1381,56 @@ button {
   gap: 4px;
 }
 
+/* --- ONLINE-08: embedded structure editor (Ketcher) -------------------------- */
+
+/* The editor is a query-drawing surface, not a results renderer (AGENTS.md §14).
+   Bounded height so the dialog keeps its own layout; the canvas scrolls/zooms
+   inside this box instead of resizing the modal. */
+.structure-editor {
+  position: relative;
+  height: 320px;
+  min-height: 320px;
+  margin-bottom: 10px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.structure-editor .Ketcher-root,
+.structure-editor > div {
+  height: 100%;
+}
+
+.structure-editor-loading,
+.structure-editor-error {
+  position: absolute;
+  inset: auto 8px 8px 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.structure-editor-loading {
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.structure-editor-error {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: var(--border-w) solid var(--danger);
+}
+
+/* A `reference:<target-id>` citation flashes the strip it supports: the click
+   must land on the fact, not just scroll near it. Mirrors
+   `.coverage-chip-focused` for `source:<name>` citations. */
+.reference-strip-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: var(--accent-bg);
+}
+
 .reference-strip-error {
   border-color: var(--danger);
   background: var(--danger-bg);

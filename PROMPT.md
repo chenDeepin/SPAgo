@@ -1,6 +1,7 @@
 # SPAgo — Initial Engineering Prompt
 
-> **Current handoff (2026-09-16; baseline `4c90e13`, the ONLINE-00…07 work).**
+> **Current handoff (2026-09-16; baseline `194e953`, the ONLINE-00…07 work plus the
+> defect and backlog rounds).**
 >
 > **Implemented and locally verified:** target-led open-database discovery
 > (UniProt + ChEMBL + BindingDB + PubChem, ONLINE-00), scoped evidence-grounded
@@ -14,47 +15,64 @@
 > `benchmarks/` for every measurement, and `docs/online-capability.md` §6 for the
 > gate that hosted acceptance must pass (checklist plus the invited-user script).
 >
+> **Closed in the 2026-09-16 rounds** (details: `docs/archive/2026-09-16-defect-round.md`
+> and `docs/archive/2026-09-16-backlog-round.md` §5):
+> - Investigation scope is per-target (`target_relations`), and rows are corrected or
+>   **withdrawn**, never deleted — a source refresh retracts what it no longer returns,
+>   and an interrupted import is marked `interrupted` instead of sitting in `running`.
+> - The ChEMBL `only=` projection is **measured**: −42 % bytes, **no** latency gain
+>   (`benchmarks/online00-chembl-projection-2026-09-16.md`). The page count, not the page
+>   size, is the upstream latency lever. `target_construct` was removed — no adapter
+>   could populate it.
+> - The citation defect that refused target summaries is fixed and re-measured on a
+>   **sparse** target (`benchmarks/online01-llm-eval-2026-09-16-sparse.md`: 0/2 before,
+>   2/2 after).
+> - The acceptance cohort is re-recorded on this build
+>   (`benchmarks/cohort-coverage-2026-09-16.md`): CD40LG **qualifies** (10 in-scope
+>   compounds, 6 ≤ 10 µM) and IL-6R stays thin with a BindingDB **source failure**.
+>   IL-6 / IL-6R resolve ambiguously by symbol and need `P05231` / `P08887`.
+> - The embedded **Ketcher editor** ships in the structure dialog; its cost is measured
+>   (`benchmarks/online08-structure-editor-2026-09-16.md`: 20.3 MB raw / 4.95 MB gzip on
+>   first open, 0.83–0.86 s to a usable editor on loopback, container serves assets
+>   uncompressed). A `changeEvent` no-op that kept drawings out of the SMILES box was
+>   found in the browser and fixed.
+> - The **MV3 companion** was loaded unpacked in a real browser and its handoff verified
+>   from the extension's own `storage.session` (`apps/chrome-extension/verify-in-chrome.js`);
+>   behind it: branded Chrome 137+ refuses `--load-extension`, so an unbranded
+>   Chromium / Chrome for Testing build is required. Toolbar click and side-panel surface
+>   are **not** covered. Latency/cost targets are the operator's to fill in:
+>   `docs/runbook.md` §H9.
+>
 > **Two facts to keep straight.** The reference verdict is a **count under a stated
 > policy — not a biological or legal conclusion**: on live data TSLP has no
 > small-molecule active in these sources, and no live row carries a source-declared
 > patent number yet (that rendering path is fixture-tested only). A hand-added row is
 > `user_curated` and cannot be deleted; a corrected row is re-submitted, which replaces
-> the earlier one.
+> the earlier one; taking a row back is a recorded retraction with a reason.
 >
 > **NOT done — do not mistake implementation for acceptance.** No **hosted** deployment
 > exists (ONLINE-04 acceptance is open) and no invited user has been through the
 > workflow (ONLINE-05 is open). One live model provider was smoke-tested (DeepSeek
-> `deepseek-flash`, one call per scope plus the browser AI panel, 85 % single-attempt
-> compliance) — one provider, not a compatibility claim
-> (`docs/archive/2026-09-15-llm-live-smoke.md`). ONLINE-01 has a repeatable evaluation
-> baseline (`benchmarks/online01-llm-eval-2026-09-15.md`: 45 recorded requests over four
-> runs, per-call compliance, refusal classes, token cost); the citation defect it found
-> is fixed and re-measured (`docs/archive/2026-09-15-llm-eval-and-demo-open.md` §7.1).
-> Still unproven: that the class does not recur for other targets and providers, and
-> content correctness — a valid schema and a valid citation are not scientific truth.
-> Host, provider, budget and cohort remain operator decisions; this work does not
-> authorize purchasing infrastructure, sending private datasets to a provider, or public
-> deployment.
+> `deepseek-flash`) — one provider, not a compatibility claim
+> (`docs/archive/2026-09-15-llm-live-smoke.md`). Summary evaluation covers one demo
+> family, one demo document, one live target and one empty-scope target; a **second
+> provider** is still untested. Content correctness remains unproven: a valid schema and
+> a valid citation are not scientific truth. Host, provider, budget and cohort remain
+> operator decisions; this work does not authorize purchasing infrastructure, sending
+> private datasets to a provider, or public deployment.
 >
 > **Start here for the next turn:**
 > 1. Re-read `docs/online-capability.md` (the scope statement) and `docs/runbook.md`
->    §H1–H9 (the hosted deployment contract).
+>    §H1–H10 (the hosted deployment contract, §H9 the budget worksheet).
 > 2. Run the acceptance script in `docs/online-capability.md` §6 on a
 >    real host and close that section's gates: TLS ingress and secret injection, a
 >    restore rehearsal on that host, one real invited user, independent cross-reading
->    of retrieved chemistry, and latency/cost targets for the chosen host and model.
->    Set `SPAGO_LLM_USER_TOKEN_LIMIT` / `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT` to real
->    values first.
-> 3. Carry the recorded source/job defects into ONLINE-04: a source refresh does not
->    retract deleted or invalid mappings; an interrupted import has no recovery
->    protocol; `target_construct` is declared but populated by no adapter; ChEMBL
->    activity pages are fetched without an `only=` projection (the dominant upstream
->    cost). Details: `docs/plans/2026-09-15-bindingdb-io-port.md` §6.5 and §7.4,
->    `docs/online-capability.md` §8.
-> 4. If summary quality is measured again, extend the evaluation set before quoting
->    numbers: the runner has one demo family, one demo document and one live target. A
->    sparse target (no retrievals) and a second provider would test the two claims the
->    current record explicitly cannot make. Runner and method:
+>    of retrieved chemistry, and latency/cost targets for the chosen host and model
+>    filled into §H9. Set `SPAGO_LLM_USER_TOKEN_LIMIT` /
+>    `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT` to real values first.
+> 3. Only operator-decision items remain in the capability gate (§6); the engineering
+>    half is closed. If summary quality is measured again, add a **second provider**
+>    before quoting numbers. Runner and method:
 >    `benchmarks/online01-llm-eval-2026-09-15.md`.
 >
 > Current source coverage is genuinely thin for some acceptance targets (human TSLP has
@@ -63,10 +81,18 @@
 > output stays inference; chemistry stays deterministic. Full-document extraction/M6 and
 > general chat remain deferred.
 >
-> History: the previous local milestone is committed at `41ef768`, and the earlier
-> review with its 217-test result is archived in
-> `docs/archive/2026-09-15-product-readiness.md` — do not mistake its uncommitted-state
-> notes or local-first priorities for this stage's status.
+> Current source coverage is genuinely thin for some acceptance targets (human TSLP has
+> one small-molecule candidate in these sources; IL-6R has one, and BindingDB does not
+> answer for it). Report that honestly rather than promising inhibitor coverage. Model
+> output stays inference; chemistry stays deterministic. Full-document extraction/M6 and
+> general chat remain deferred.
+>
+> History: the local milestone line is committed up to `194e953`, and today's two
+> closing rounds are archived in `docs/archive/2026-09-16-defect-round.md` and
+> `docs/archive/2026-09-16-backlog-round.md`. Earlier rounds (the local-first review
+> with its 217-test result, the UI review, the docs consolidation) are archived
+> under `docs/archive/` — do not mistake their uncommitted-state notes or
+> local-first priorities for this stage's status.
 >
 > The rest of this document remains the standing engineering contract.
 
@@ -686,8 +712,9 @@ Deliver: patent-number search, family detail, compound table, 2D structures, evi
 fields, structure detail drawer, save-to-project.
 Exit: a user can inspect a patent without downloading the PDF for the common path, move
 from compound to source evidence, and keep a large table responsive.
-**State: implemented; the embedded Ketcher editor is still deferred**
-(`docs/archive/2026-09-14-m1-m5-implementation.md`).
+**State: implemented**, including the embedded Ketcher editor (deferred in the UI
+review round, embedded 2026-09-16; cost and behaviour measured in
+`benchmarks/online08-structure-editor-2026-09-16.md`).
 
 ## Milestone 2 — Structure Search
 
@@ -695,7 +722,8 @@ Deliver: exact, substructure and similarity search with molecular filters on
 cartridge-indexed chemistry.
 Exit: structure queries combine with patent metadata filters, run server-side, and need
 no large client-side dataset.
-**State: implemented** (same record; drawing UI deferred with M1).
+**State: implemented**, with the editor's own drawing surface as the structure input
+(the dialog's SMILES box stays the query, and nothing runs until the explicit action).
 
 ## Milestone 3 — Bioactivity and SAR
 
@@ -712,7 +740,12 @@ Deliver: Manifest V3 extension, side panel, current-patent detection, handoff to
 existing SPAgo session.
 Exit: installation is optional, SPAgo works identically without it, no Espacenet
 automation or CAPTCHA bypass exists.
-**State: thin bridge implemented; Chrome-in-Chrome verification still open.**
+**State: thin bridge implemented and verified in a real browser** —
+`apps/chrome-extension/verify-in-chrome.js` loads the unpacked extension, opens a
+page under the content-script match pattern, and reads the handoff back out of the
+worker's `chrome.storage.session` and the rendered side-panel page. The headed
+toolbar click and the side-panel surface itself are not covered by that script, and
+are not claimed.
 
 ## Milestone 5 — Evidence-Grounded AI
 

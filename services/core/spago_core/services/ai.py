@@ -1004,22 +1004,33 @@ def allowed_refs(snapshot: dict) -> set[str]:
 
     Built from the snapshot actually sent, so a citation outside the supplied
     scope is rejected rather than stored (ONLINE-01).
+
+    The walk is generic over the snapshot on purpose (defect D9). This function
+    used to enumerate `family`, `document`, `target` and five item lists, which
+    silently omitted the `reference` node — the ONLINE-06 potency verdict — while
+    the target prompt tells the model to "cite `reference:<id>` for any statement
+    about potency or about the set being usable or not". A summary that obeyed
+    its instructions was refused as citing an unknown ref; the recorded sparse-
+    scope run refused 4 of 4 attempts that way
+    (`benchmarks/online01-llm-eval-2026-09-16-sparse.md`). The rule is now the one
+    the prompt states: any `ref` / `family_ref` inside the input is a fact the
+    model may cite. Nothing else can drift out of a second list.
     """
     refs: set[str] = set()
-    for key in ("family", "document", "target"):
-        node = snapshot.get(key)
-        if isinstance(node, dict) and node.get("ref"):
-            refs.add(node["ref"])
-            if node.get("family_ref"):
-                refs.add(node["family_ref"])
-    for kind in ("measurements", "evidence", "candidates", "sources", "coverage"):
-        # Items without a ref are skipped, not an error: the family and document
-        # snapshots carry a coverage row that is attributed with the scope root.
-        refs.update(
-            item["ref"]
-            for item in snapshot.get(kind) or []
-            if isinstance(item, dict) and item.get("ref")
-        )
+
+    def visit(node: object) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in ("ref", "family_ref"):
+                    if isinstance(value, str) and value:
+                        refs.add(value)
+                else:
+                    visit(value)
+        elif isinstance(node, list):
+            for item in node:
+                visit(item)
+
+    visit(snapshot)
     return refs
 
 
@@ -1810,6 +1821,22 @@ def _build_citations(output: LlmSummaryOutput | None, snapshot: dict) -> list[di
             "label": (
                 f"{target['target_key']}"
                 + (f" · {target['uniprot_accession']}" if target.get("uniprot_accession") else "")
+            ),
+        }
+    reference = snapshot.get("reference")
+    if isinstance(reference, dict) and reference.get("ref"):
+        # The ONLINE-06 potency verdict (defect D9). The target prompt tells the
+        # model to cite `reference:<id>` for potency statements; without this
+        # mapping the ref was accepted by the validator and then dropped here, so
+        # the reader lost the support link for the one number the summary is
+        # allowed to repeat.
+        by_ref[reference["ref"]] = {
+            "kind": "reference",
+            "target_id": snapshot.get("target", {}).get("id"),
+            "label": (
+                f"{reference.get('compounds_active')} of {reference.get('compounds')} "
+                f"in-scope compound(s) at or below {reference.get('threshold_label')} "
+                f"· {reference.get('policy_version')}"
             ),
         }
     for candidate in snapshot.get("candidates") or []:

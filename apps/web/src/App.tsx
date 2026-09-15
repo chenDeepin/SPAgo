@@ -23,7 +23,7 @@ import { SaveToProjectDialog } from "./components/SaveToProjectDialog";
 import { StructureDrawer } from "./components/StructureDrawer";
 import { TargetEvidencePanel } from "./components/TargetEvidencePanel";
 import { ReferenceStrip } from "./components/ReferenceStrip";
-import { TargetHeader, coverageChipId } from "./components/TargetHeader";
+import { TargetHeader, coverageChipId, REFERENCE_VERDICT_ID } from "./components/TargetHeader";
 import type { StructureSearchSummary } from "./components/StructureSearchDialog";
 const StructureSearchDialog = lazy(() => import("./components/StructureSearchDialog").then((m) => ({ default: m.StructureSearchDialog })));
 import { SearchBar } from "./components/SearchBar";
@@ -53,6 +53,23 @@ const PLAIN_PAGE_SIZE = 100;
  * instead (ONLINE-01 browser finding). */
 const DEMO_SAMPLE_ID = "DEMO-PATENT-A";
 
+/** True when a query can be opened as a *record* rather than interpreted.
+ *
+ * A publication number qualifies by shape. The synthetic sample id qualifies by
+ * identity: the demo control and the hints open it, and the app writes
+ * `?q=DEMO-PATENT-A` into the URL when they do. Classifying that URL as free
+ * text made a reload of the demo deep link answer "No protein record matched
+ * DEMO-PATENT-A" — the app could not restore the state it had just produced
+ * (defect D10, AGENTS.md §19). Only this one identifier is added; arbitrary
+ * free text still goes to the reviewed plan, and the server remains
+ * authoritative about whether the record exists (a miss renders the 404 state).
+ */
+function isRecordQuery(value: string): boolean {
+  return (
+    looksLikePublicationNumber(value) || value.trim().toUpperCase() === DEMO_SAMPLE_ID
+  );
+}
+
 /** A paging failure belongs to the request it came from: a stale error must
  * never surface on a newer query/family/document. */
 interface PagingError {
@@ -66,7 +83,7 @@ export function App() {
   // A restored URL is classified by the same deterministic rule used on submit,
   // so reloading a target investigation does not replay it as a patent lookup.
   const [submittedQuery, setSubmittedQuery] = useState<string | null>(
-    urlState.q && looksLikePublicationNumber(urlState.q) ? urlState.q : null,
+    urlState.q && isRecordQuery(urlState.q) ? urlState.q : null,
   );
   const [lastGoodQuery, setLastGoodQuery] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -106,7 +123,7 @@ export function App() {
   // server resolves the latter, and this state holds the *requested* string so
   // the input survives a reload. The resolved target id lives in the URL.
   const [targetQuery, setTargetQuery] = useState<string | null>(
-    urlState.q && !looksLikePublicationNumber(urlState.q) ? urlState.q : null,
+    urlState.q && !isRecordQuery(urlState.q) ? urlState.q : null,
   );
   // A non-identifier request is interpreted into a reviewable plan before
   // anything runs; the plan card owns the explicit Run action (ONLINE-02).
@@ -126,6 +143,8 @@ export function App() {
   // Per-source citation focus: the header chip is flashed briefly, because the
   // coverage strip is a status list, not a selectable view.
   const [focusedSource, setFocusedSource] = useState<string | null>(null);
+  // Same idea for the `reference:<target-id>` citation (ONLINE-06 verdict strip).
+  const [focusedReference, setFocusedReference] = useState(false);
 
   const updateUrl = useCallback((next: UrlState, mode: "push" | "replace" = "replace") => {
     setUrlState(next);
@@ -477,7 +496,7 @@ export function App() {
     // Deterministic identifier shape decides which *server* lookup runs; the
     // server remains authoritative about what exists. Free text is never
     // interpreted here (AGENTS.md §12).
-    if (looksLikePublicationNumber(value)) {
+    if (isRecordQuery(value)) {
       openPatent(value);
       return;
     }
@@ -560,6 +579,22 @@ export function App() {
     const timer = window.setTimeout(() => setFocusedSource(null), 2400);
     return () => window.clearTimeout(timer);
   }, [focusedSource]);
+
+  // Focus the verdict strip a `reference:<target-id>` citation refers to. Same
+  // rule as the coverage chip: a citation click must land on the fact it
+  // supports. Before this the click fell through to the evidence tab, so the one
+  // number the model is told to cite had no destination at all (defect D9).
+  const focusReferenceVerdict = useCallback(() => {
+    setFocusedReference(true);
+    const strip = document.getElementById(REFERENCE_VERDICT_ID);
+    strip?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  useEffect(() => {
+    if (!focusedReference) return;
+    const timer = window.setTimeout(() => setFocusedReference(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [focusedReference]);
 
   const toggleSelection = useCallback((compoundId: string, checked: boolean) => {
     cancelProjectNavigation();
@@ -971,6 +1006,7 @@ export function App() {
                   error={
                     referenceQuery.error ? (referenceQuery.error as Error).message : null
                   }
+                  focused={focusedReference}
                   thresholdOverrideMicromolar={thresholdOverride}
                   onApplyThreshold={(micromolar) => {
                     // A policy change is a new read of the stored rows, never a
@@ -1112,6 +1148,7 @@ export function App() {
               error={(measurementsQuery.error as Error | null)?.message ?? null}
               includeAllModalities={allModalities}
               onFocusSource={focusSourceChip}
+              onFocusReference={focusReferenceVerdict}
               withdrawing={withdrawSupplementMutation.isPending}
               onWithdrawSupplement={(recordId, reason) =>
                 withdrawSupplementMutation.mutateAsync({ recordId, reason }).then(() => undefined)

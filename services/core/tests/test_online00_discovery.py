@@ -200,11 +200,13 @@ class TestChEMBLDiscovery:
     def test_activity_requests_are_projected_to_the_mapped_fields(self):
         """Every activity request asks for the mapped subset (ONLINE-08 cost).
 
-        Measured on the live API 2026-09-16 for `CHEMBL3712931` at `limit=200`:
-        216,632 → 127,415 bytes (-41%) per page. The projection is only safe
-        because it names every field the mapper reads — which is what the second
-        half of this test pins down, so a new field cannot silently read as
-        absent.
+        Measured on the live API 2026-09-16 for two targets at `limit=200`:
+        216,632 → 127,415 and 297,821 → 169,798 bytes per page (about -42 %),
+        with no latency improvement — the projected pages were equal or slower
+        (`benchmarks/online00-chembl-projection-2026-09-16.md`). The projection
+        is only safe because it names every field the mapper reads — which is
+        what the second half of this test pins down, so a new field cannot
+        silently read as absent.
         """
         import inspect
 

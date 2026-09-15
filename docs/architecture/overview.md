@@ -40,7 +40,14 @@ PostgreSQL 15 + RDKit cartridge        DuckDB over Parquet
 
 No Redis, queue, search engine, or additional database exists
 (`AGENTS.md` §6). `apps/chrome-extension/` is a thin MV3 context bridge:
-URL-only publication-number detection → side panel → `?q=` deep link.
+URL-only publication-number detection → side panel → `?q=` deep link. It is checked
+twice: `apps/chrome-extension/check.js` (manifest, syntax, the URL detection contract)
+and `apps/chrome-extension/verify-in-chrome.js`, which loads the unpacked extension in
+an unbranded Chrome/Chromium build, opens a page under the match pattern, and reads the
+handoff back out of the worker's `chrome.storage.session` and the rendered side-panel
+page. Branded Google Chrome 137+ ignores `--load-extension`, so that script reports the
+browser refusal instead of a broken extension; the toolbar click and the side-panel
+surface need a headed browser and are not claimed.
 
 ## Implemented workload separation (PROMPT.md §11)
 
@@ -149,9 +156,10 @@ apps/web     (search → family → compounds → evidence/structure search)
 
 - Export is synchronous up to 5000 rows (documented cap); larger scopes need
   the future persisted background-job mechanism.
-- The embedded Ketcher editor is deferred (packaging incompatibility with the
-  Vite production build, recorded in the UI review round); SMILES paste is the
-  structure-search input.
+- The embedded Ketcher editor is loaded on demand in the structure-search dialog
+  (packaging fixes and the measured 20.3 MB first-open cost:
+  `benchmarks/online08-structure-editor-2026-09-16.md`); typing or pasting a SMILES
+  string stays equivalent, and the editor is not the renderer for result rows.
 - No PDF/OCSR (M6), no live ChEMBL/BindingDB calls in the demo seed, and no
   cross-family structure search (family-scoped by contract).
 - Pagination: default 100, hard cap 500, enforced server-side on every list

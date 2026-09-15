@@ -1,0 +1,242 @@
+{
+  "recorded_at": "2026-09-15T18:46:29+00:00",
+  "endpoint": "https://www.ebi.ac.uk/chembl/api/data/activity.json",
+  "limit": 200,
+  "only": "activity_id,canonical_smiles,standard_value,standard_type,standard_units,standard_relation,assay_type,assay_chembl_id,assay_description,bao_label,assay_variant_accession,assay_variant_mutation,molecule_chembl_id,document_chembl_id,target_chembl_id,target_pref_name,target_organism,pchembl_value,potential_duplicate,data_validity_comment,type,modality",
+  "targets": {
+    "CHEMBL3712931": {
+      "measurements": [
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "full",
+          "offset": 0,
+          "status": 200,
+          "bytes": 216632,
+          "records": 114,
+          "keys_per_record": 47,
+          "latency_ms": 1758
+        },
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "projected",
+          "offset": 0,
+          "status": 200,
+          "bytes": 127415,
+          "records": 114,
+          "keys_per_record": 25,
+          "latency_ms": 1219
+        },
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "full",
+          "offset": 0,
+          "status": 200,
+          "bytes": 216632,
+          "records": 114,
+          "keys_per_record": 47,
+          "latency_ms": 789
+        },
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "projected",
+          "offset": 0,
+          "status": 200,
+          "bytes": 127415,
+          "records": 114,
+          "keys_per_record": 25,
+          "latency_ms": 1390
+        },
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "full",
+          "offset": 200,
+          "status": 200,
+          "bytes": 192,
+          "records": 0,
+          "keys_per_record": 0,
+          "latency_ms": 223
+        },
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "projected",
+          "offset": 200,
+          "status": 200,
+          "bytes": 590,
+          "records": 0,
+          "keys_per_record": 0,
+          "latency_ms": 193
+        },
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "full",
+          "offset": 200,
+          "status": 200,
+          "bytes": 192,
+          "records": 0,
+          "keys_per_record": 0,
+          "latency_ms": 200
+        },
+        {
+          "target_chembl_id": "CHEMBL3712931",
+          "variant": "projected",
+          "offset": 200,
+          "status": 200,
+          "bytes": 590,
+          "records": 0,
+          "keys_per_record": 0,
+          "latency_ms": 196
+        }
+      ],
+      "summary": {
+        "measured": true,
+        "end_of_data_requests": 4,
+        "full": {
+          "requests": 2,
+          "bytes_median": 216632,
+          "bytes_min": 216632,
+          "bytes_max": 216632,
+          "records_median": 114,
+          "keys_per_record": 47,
+          "latency_ms_median": 1273,
+          "latency_ms_min": 789,
+          "latency_ms_max": 1758
+        },
+        "projected": {
+          "requests": 2,
+          "bytes_median": 127415,
+          "bytes_min": 127415,
+          "bytes_max": 127415,
+          "records_median": 114,
+          "keys_per_record": 25,
+          "latency_ms_median": 1304,
+          "latency_ms_min": 1219,
+          "latency_ms_max": 1390
+        },
+        "saving": {
+          "comparable": true,
+          "bytes_median_delta": 89217,
+          "bytes_percent": 41.2,
+          "keys_per_record_removed": 22,
+          "latency_ms_median_delta": -31
+        }
+      }
+    },
+    "CHEMBL203": {
+      "measurements": [
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "full",
+          "offset": 0,
+          "status": 200,
+          "bytes": 300904,
+          "records": 200,
+          "keys_per_record": 47,
+          "latency_ms": 1131
+        },
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "projected",
+          "offset": 0,
+          "status": 200,
+          "bytes": 169434,
+          "records": 200,
+          "keys_per_record": 25,
+          "latency_ms": 1802
+        },
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "full",
+          "offset": 0,
+          "status": 200,
+          "bytes": 300904,
+          "records": 200,
+          "keys_per_record": 47,
+          "latency_ms": 967
+        },
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "projected",
+          "offset": 0,
+          "status": 200,
+          "bytes": 169434,
+          "records": 200,
+          "keys_per_record": 25,
+          "latency_ms": 1700
+        },
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "full",
+          "offset": 200,
+          "status": 200,
+          "bytes": 294739,
+          "records": 200,
+          "keys_per_record": 47,
+          "latency_ms": 1051
+        },
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "projected",
+          "offset": 200,
+          "status": 200,
+          "bytes": 170162,
+          "records": 200,
+          "keys_per_record": 25,
+          "latency_ms": 2281
+        },
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "full",
+          "offset": 200,
+          "status": 200,
+          "bytes": 294739,
+          "records": 200,
+          "keys_per_record": 47,
+          "latency_ms": 1831
+        },
+        {
+          "target_chembl_id": "CHEMBL203",
+          "variant": "projected",
+          "offset": 200,
+          "status": 200,
+          "bytes": 170162,
+          "records": 200,
+          "keys_per_record": 25,
+          "latency_ms": 2894
+        }
+      ],
+      "summary": {
+        "measured": true,
+        "end_of_data_requests": 0,
+        "full": {
+          "requests": 4,
+          "bytes_median": 297821,
+          "bytes_min": 294739,
+          "bytes_max": 300904,
+          "records_median": 200,
+          "keys_per_record": 47,
+          "latency_ms_median": 1091,
+          "latency_ms_min": 967,
+          "latency_ms_max": 1831
+        },
+        "projected": {
+          "requests": 4,
+          "bytes_median": 169798,
+          "bytes_min": 169434,
+          "bytes_max": 170162,
+          "records_median": 200,
+          "keys_per_record": 25,
+          "latency_ms_median": 2041,
+          "latency_ms_min": 1700,
+          "latency_ms_max": 2894
+        },
+        "saving": {
+          "comparable": true,
+          "bytes_median_delta": 128023,
+          "bytes_percent": 43.0,
+          "keys_per_record_removed": 22,
+          "latency_ms_median_delta": -950
+        }
+      }
+    }
+  }
+}

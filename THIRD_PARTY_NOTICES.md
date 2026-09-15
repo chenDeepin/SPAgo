@@ -61,6 +61,21 @@ Declared in `apps/web/package.json`.
 | @tanstack/react-table | MIT | Result tables |
 | @tanstack/react-virtual | MIT | Virtualized lists |
 | events | MIT | EventEmitter polyfill |
+| ketcher-react | Apache-2.0 | Embedded structure editor component (structure-search dialog) |
+| ketcher-standalone | Apache-2.0 | Indigo WASM service provider for the editor |
+| ketcher-core | Apache-2.0 | Ketcher's shared model/serializer package |
+
+**Ketcher version pinning is load-bearing.** `ketcher-react` and
+`ketcher-standalone` declare their `ketcher-core` dependency as `"*"`, which
+resolves to whatever the registry's latest tag was when the lockfile was written —
+not to the matching release. With `ketcher-core` at 3.14.0 and the other two at
+3.18.0, the production build fails (`"StereoLabelStyleType" is not exported by
+ketcher-core`). All three are therefore pinned to the same version in
+`apps/web/package.json`. Ketcher ships its own Apache-2.0 `LICENSE`; the Indigo
+engine it embeds is also Apache-2.0 (EPAM). Upgrading Ketcher means re-checking
+this pin, the `dist/binaryWasm` entry's missing `types` condition (declared in
+`apps/web/src/upstream-types.d.ts`), and the bundle sizes recorded in
+`benchmarks/online08-structure-editor-2026-09-16.md`.
 
 **Build / types (dev):** Vite (MIT), `@vitejs/plugin-react` (MIT),
 TypeScript (Apache-2.0), `@types/react` / `@types/react-dom` (MIT).
@@ -187,7 +202,6 @@ Rules for every source above:
 
 | Component | Status |
 | --- | --- |
-| Ketcher (structure editor) | Deferred; re-check license before adding |
 | OIDC / SSO auth provider | Not adopted. Authentication is implemented in-house over PostgreSQL sessions (ADR-0002); adding an external identity provider is a decision for the operator, and no auth library is bundled today. |
 | Passkey/WebAuthn library | Not adopted for the same reason. |
 | Any new queue, vector store, search engine or cache | Not adopted; ADR/measurement required first (AGENTS.md §6). |
