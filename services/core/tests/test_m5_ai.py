@@ -118,6 +118,55 @@ class TestFamilySummary:
             ai.summarize_family(m5_engine, uuid.UUID(int=1))
 
 
+class TestSnapshotBudgetBoundary:
+    """LLM-05: an unrepresentable input fails before any provider call and is
+    never persisted as a successful analysis."""
+
+    def test_unrepresentable_family_fails_without_provider_call_or_cache_write(self, m5_engine):
+        from spago_core.domain import ProvenanceState
+
+        engine = m5_engine
+        family = uuid.uuid4()
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO patent_families
+                        (id, family_key, title, source_name, dataset_version, retrieved_at)
+                    VALUES (:id, :key, 'Oversized fixture (synthetic)', 'fixture',
+                            'budget-test-v1', now())
+                    """
+                ),
+                {"id": family, "key": "K" * (ai.MAX_BODY_BYTES + 512)},
+            )
+
+        calls = {"n": 0}
+
+        class _Provider:
+            name = "llm-openai-compatible"
+            model = "demo-model"
+            endpoint_fingerprint = "unused"
+            provenance_state = ProvenanceState.LLM_INFERRED
+
+            def generate(self, snapshot):  # pragma: no cover - must not be reached
+                calls["n"] += 1
+                raise AssertionError("provider must not be called for an unrepresentable input")
+
+        try:
+            with pytest.raises(ai.SnapshotBudgetError):
+                ai.summarize_family(engine, family, mode="llm", llm_provider=_Provider())
+            assert calls["n"] == 0
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT count(*) FROM ai_analyses WHERE family_id = :f"),
+                    {"f": family},
+                ).scalar_one()
+            assert rows == 0
+        finally:
+            with engine.begin() as conn:
+                conn.execute(text("DELETE FROM patent_families WHERE id = :id"), {"id": family})
+
+
 class TestSummaryApi:
     def _client(self, engine):
         from fastapi.testclient import TestClient

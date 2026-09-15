@@ -102,8 +102,9 @@ export const api = {
     documentId: string | null,
     signal?: AbortSignal,
     limit = 100,
+    offset = 0,
   ) => {
-    const params = new URLSearchParams({ limit: String(limit) });
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (documentId) params.set("document_id", documentId);
     return getJson<import("./types").CompoundPage>(
       `/api/v1/families/${familyId}/compounds?${params.toString()}`,

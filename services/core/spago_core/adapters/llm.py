@@ -6,6 +6,13 @@ and hard budgets. Credentials go only to the configured endpoint; no cookie
 or Authorization forwarding, no redirect following, no automatic retries
 (read timeout may already have been billed upstream).
 
+The declared budgets are attached to the outbound request (LLM-06): connect 5 s
+and a read bound equal to the total deadline, so a stalled endpoint cannot hang
+on a client default. The wall-clock deadline is checked before the call and
+between stream chunks, so an endpoint that keeps trickling bytes cannot exceed
+the deadline by more than one read window. Upstream rate limiting raises a
+429-mapped error carrying a validated Retry-After (LLM-07).
+
 base_url convention (verified against the CursorSwitch source, see plan §2):
 the configured URL carries the full API prefix (usually including the version
 segment); this adapter appends exactly `/chat/completions`.
@@ -14,8 +21,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit
 
 import httpx
@@ -26,6 +36,7 @@ from spago_core.services.ai import (
     LLMAuthError,
     LLMTimeoutError,
     LLMUpstreamError,
+    LLMUpstreamRateLimitError,
     MAX_OUTPUT_TOKENS,
 )
 
@@ -36,6 +47,32 @@ TOTAL_DEADLINE_S = 60.0
 MAX_RESPONSE_BYTES = 256 * 1024
 
 _LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1", "[::1]", "host.docker.internal"}
+
+
+def parse_retry_after(value: str | None, *, now: float | None = None) -> int | None:
+    """Validated Retry-After in whole seconds; None when absent or unusable.
+
+    Accepts delta-seconds or an HTTP-date (RFC 9110). An unparseable value
+    yields None rather than a guessed wait, so the API never advertises a
+    fabricated delay.
+    """
+    if value is None:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    if re.fullmatch(r"\d{1,9}", raw):
+        return int(raw)
+    try:
+        parsed = parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
+        return None
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    reference = datetime.fromtimestamp(now if now is not None else time.time(), tz=timezone.utc)
+    return max(0, int((parsed - reference).total_seconds()))
 
 
 def _is_private_or_loopback(host: str) -> bool:
@@ -170,6 +207,7 @@ class OpenAICompatibleSummaryProvider:
 
     def generate(self, snapshot: dict) -> ProviderOutput:
         started = time.monotonic()
+        deadline = started + self._deadline_s
         client = self._client or httpx.Client()
         owns_client = self._client is None
         headers = {"Content-Type": "application/json", "User-Agent": "SPAgo/0.1"}
@@ -186,11 +224,14 @@ class OpenAICompatibleSummaryProvider:
             "stream": False,
             "max_tokens": MAX_OUTPUT_TOKENS,
         }
+        # The declared budget travels with the request; the client default
+        # (5 s read) must not silently decide how long a model may think (LLM-06).
         request = client.build_request(
             "POST",
             self.endpoint.chat_url,
             json=body,
             headers=headers,
+            timeout=self.request_timeout,
         )
         try:
             # Never follow redirects: an auth header must not be replayed elsewhere.
@@ -204,10 +245,9 @@ class OpenAICompatibleSummaryProvider:
             if response.status_code == 401 or response.status_code == 403:
                 raise LLMAuthError("Model endpoint rejected authentication.")
             if response.status_code == 429:
-                retry_after = response.headers.get("Retry-After")
-                raise LLMUpstreamError(
-                    f"Model endpoint rate limited the request"
-                    + (f" (Retry-After: {retry_after}s)" if retry_after else "")
+                # Upstream throttling is not a generic upstream failure (LLM-07).
+                raise LLMUpstreamRateLimitError(
+                    parse_retry_after(response.headers.get("Retry-After"))
                 )
             if response.status_code == 400:
                 raise LLMUpstreamError(
@@ -217,17 +257,18 @@ class OpenAICompatibleSummaryProvider:
             if response.status_code >= 400:
                 raise LLMUpstreamError(f"Model endpoint returned HTTP {response.status_code}.")
 
-            # Bounded read: never buffer more than MAX_RESPONSE_BYTES.
+            # Bounded read: never buffer more than MAX_RESPONSE_BYTES, and never
+            # keep reading past the total deadline.
             chunks = []
             received = 0
             try:
                 for chunk in response.iter_bytes():
+                    if time.monotonic() > deadline:
+                        raise LLMTimeoutError("Model response exceeded the total deadline.")
                     received += len(chunk)
                     if received > MAX_RESPONSE_BYTES:
                         raise LLMUpstreamError("Model response exceeded the size limit.")
                     chunks.append(chunk)
-                    if time.monotonic() - started > self._deadline_s:
-                        raise LLMTimeoutError("Model response exceeded the total deadline.")
             except httpx.TimeoutException as exc:
                 raise LLMTimeoutError("Model response read timed out.") from exc
             raw = b"".join(chunks)

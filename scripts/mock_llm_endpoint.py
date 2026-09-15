@@ -10,6 +10,10 @@ Then configure:
     SPAGO_LLM_BASE_URL=http://127.0.0.1:8101/v1
     SPAGO_LLM_API_KEY=            (empty → no Authorization header)
     SPAGO_LLM_MODEL=mock-model
+Fault injection for error-state checks (set the model name accordingly):
+    mock-error → HTTP 500; mock-timeout → stalls past the deadline;
+    mock-rate-limit → HTTP 429 with Retry-After: 7;
+    mock-rate-limit-bad-header → HTTP 429 with an unusable Retry-After.
 This is test tooling, clearly not a real model: do not present its output as
 scientific evidence.
 """
@@ -72,12 +76,26 @@ class Handler(BaseHTTPRequestHandler):
             "",
         )
         # Optional fault injection for error-state verification:
-        # model name "mock-error" → 500; "mock-timeout" → sleep past deadlines.
+        # model name "mock-error" → 500; "mock-timeout" → sleeps past deadlines;
+        # "mock-rate-limit" → 429 with a Retry-After header (LLM-07);
+        # "mock-rate-limit-bad-header" → 429 with an unusable Retry-After.
         model = body.get("model", "mock-model")
         if model == "mock-error":
             self.send_response(500)
             self.end_headers()
             self.wfile.write(b'{"error": {"message": "mock internal error"}}')
+            return
+        if model == "mock-rate-limit":
+            self.send_response(429)
+            self.send_header("Retry-After", "7")
+            self.end_headers()
+            self.wfile.write(b'{"error": {"message": "mock rate limit"}}')
+            return
+        if model == "mock-rate-limit-bad-header":
+            self.send_response(429)
+            self.send_header("Retry-After", "later")
+            self.end_headers()
+            self.wfile.write(b'{"error": {"message": "mock rate limit"}}')
             return
         if model == "mock-timeout":
             time.sleep(90)

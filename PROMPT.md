@@ -1,23 +1,33 @@
 # SPAgo — Initial Engineering Prompt
 
-> **Handoff note (2026-09-14):** M0–M5 have local demo implementations with
-> incomplete acceptance (including deferred Ketcher, untested Chrome loading,
-> and offline-only summaries); M6 (PDF/OCSR) remains intentionally unbuilt. Records:
-> `docs/archive/2026-09-14-m0-foundation.md` and
-> `docs/archive/2026-09-14-m1-m5-implementation.md` (implemented / verified /
-> known gaps, including the deferred Ketcher embedding and the un-instantiated
-> Chrome extension), `docs/architecture/overview.md`,
-> `docs/adr/0001-m0-foundation-data-path.md`, and the README status section.
+> **Handoff note (2026-09-15, product-readiness review; `f3da90c` plus existing
+> uncommitted repairs):** Suitable for synthetic demos, not yet accepted as a
+> real-patent product. The preceding CORE repair round fixed the LLM input-budget,
+> request-timeout and upstream-rate-limit gaps (LLM-05–07), and ordinary
+> results now page by real server offset beyond the 500-row cap with retryable paging
+> errors (UI-07/08). Its 157-test/build/browser record remains in the repair plan;
+> current readiness evidence and remaining acceptance belong to the new plan below.
+> Records: `docs/plans/2026-09-14-ui-review-next-round.md` (results and remaining gaps),
+> `docs/plans/2026-09-14-llm-interface.md`, `benchmarks/paging-beyond-cap-2026-09-15.md`,
+> `docs/architecture/overview.md`, and `docs/archive/2026-09-14-m1-m5-implementation.md`.
 > The rest of this document remains the standing product/engineering contract.
 >
-> Current next-round proposal: `docs/plans/2026-09-14-llm-interface.md`.
-> Extend the existing summary provider with one OpenAI-compatible endpoint,
-> server-side configuration, bounded evidence input, and content-based caching.
-> Fix the identified summary citation/cache defects before enabling real LLM calls;
-> keep the offline API behavior compatible. No new agent runtime or proxy service.
-> The prior UI repair record remains in `docs/plans/2026-09-14-ui-review-next-round.md`;
-> the new plan records remaining pagination/error gaps. Planning is complete,
-> but LLM implementation and live verification have not been performed.
+> Not checked and not claimed: real model smoke (the observed deployment is offline), real
+> patent/activity sources (the shipped dataset is the synthetic `DEMO-*` fixture),
+> Ketcher embedding, and loading the MV3 extension in Chrome. M6 (PDF/OCSR) is
+> intentionally unbuilt. Runtime freshness checks and the prior deployment history
+> are recorded in the readiness and repair plans.
+>
+> Current execution scope: `docs/plans/2026-09-15-product-readiness.md`.
+> Target a local single-user viewer first: correct default DB network exposure and
+> filtered-export scope, connect a bounded real-source workflow, add reopening saved
+> projects with validated source versions, then prove install/backup/restore and G1.
+> The current structure-filter export can return the entire family; project persistence
+> does not yet include a reopening UI. Do not repeat the already closed repair items.
+> Real bioactivity and LLM claims need their own source/model acceptance; shared hosting
+> additionally needs project authorization. Ketcher and Chrome are optional next steps.
+> Keep synthetic data labeled as synthetic, LLM output as inference, and M6 deferred.
+> Preserve existing uncommitted work; commits and publication require authorization.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.
 

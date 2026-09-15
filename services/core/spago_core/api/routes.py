@@ -550,7 +550,12 @@ def family_summary(
     body: SummaryRequest | None = None,
 ):
     """Family summary. Without a body (legacy callers) this stays offline; an
-    explicit {"mode": "llm"} is required before any paid model call is made."""
+    explicit {"mode": "llm"} is required before any paid model call is made.
+
+    Error mapping (plan §5): 502 upstream/validation, 504 timeout, 503 not
+    configured, 409 identical content in flight, 429 busy or upstream rate
+    limited (Retry-After forwarded only when the endpoint provided a usable
+    value), 500 unrepresentable bounded input."""
     from spago_core.adapters.llm import LLMConfigProblem, OpenAICompatibleSummaryProvider, parse_endpoint
     from spago_core.services import ai as ai_svc
 
@@ -575,9 +580,18 @@ def family_summary(
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except ai_svc.LLMConfigError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.LLMUpstreamRateLimitError as exc:
+        # Upstream throttling is reported as 429, with Retry-After only when the
+        # endpoint supplied a usable value (LLM-07).
+        headers = (
+            {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail, headers=headers) from exc
     except ai_svc.LLMAuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except ai_svc.LLMTimeoutError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ai_svc.SnapshotBudgetError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except ai_svc.LLMUpstreamError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc

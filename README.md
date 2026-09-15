@@ -26,17 +26,37 @@ The project is designed for medicinal chemists, computational chemists, patent r
   link); detection contract covered by `apps/chrome-extension/check.js`;
 - **M5 Evidence-Grounded AI**: offline extractive provider with typed citations and honest
   `machine_extracted` labeling; optional real-model path — configure
-  `SPAGO_LLM_BASE_URL` / `SPAGO_LLM_API_KEY` / `SPAGO_LLM_MODEL` (any
-  OpenAI-compatible `/chat/completions` endpoint, incl. local Ollama) and the AI
+  `SPAGO_LLM_BASE_URL` / `SPAGO_LLM_API_KEY` / `SPAGO_LLM_MODEL` (the supported
+  Chat Completions subset; real-provider compatibility is not yet verified) and the AI
   tab offers LLM summaries with content-key caching, bounded fact input,
   citation validation, and `llm_inferred` labeling; deterministic query planner;
   AI as an inspector tab;
-- Prior implementation record reports 88 passing automated tests; benchmark baseline under `benchmarks/`. These results are not a fresh verification of every current workflow.
+- **Repair round (2026-09-15)**: ordinary results page by real server offset beyond the
+  500-row response cap (rows 501+ reachable, one request per page, Load more stops at the last
+  page) with retryable paging errors that keep loaded rows; the model-input budget, request
+  timeout and upstream-429 contract are fixed (429 + validated `Retry-After` instead of 502).
+  The preceding repair record reports 157 backend tests, a production build, and browser checks on an
+  isolated stack at 1440×900 / 1024×800 / 760×800 — see
+  [the repair plan](docs/plans/2026-09-14-ui-review-next-round.md) and
+  [the paging benchmark](benchmarks/paging-beyond-cap-2026-09-15.md).
 
 M6 (PDF/OCSR) is intentionally not started. Gaps (e.g. Ketcher embedding, Chrome-in-Chrome
-verification, live ChEMBL calls) are recorded in `docs/archive/2026-09-14-m1-m5-implementation.md`.
-The follow-up review and proposed acceptance work are in
-[the UI review plan](docs/plans/2026-09-14-ui-review-next-round.md).
+verification, live ChEMBL calls, real-model smoke) are recorded in
+`docs/archive/2026-09-14-m1-m5-implementation.md`.
+The current [product-readiness plan](docs/plans/2026-09-15-product-readiness.md)
+targets a local single-user viewer first. It is **not yet ready for real-patent use**:
+the data path is fixture-only, filtered “Current results” export can include the whole
+family, and saved projects have no reopening workflow in the UI. Default database
+network exposure, source-version persistence, and backup/restore acceptance also need work.
+Real bioactivity/LLM claims and shared hosting have separate acceptance gates;
+Ketcher and Chrome remain optional enhancements.
+The historical M0–M5 labels do not mean the real-patent workflow is accepted.
+
+The readiness review passed 60 selected local tests and frontend type checking, checked
+the running service and a 993×931 demo browser workflow, and confirmed that the served
+frontend asset and three key backend modules match the current local files. It did not
+rerun full database/real-source/real-model/recovery/performance acceptance. Details and
+the remaining work are in the readiness plan; the existing repair changes are still uncommitted.
 
 The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*` identifiers).
 It is not scientific data.
@@ -50,6 +70,33 @@ docker compose up -d --build
 
 For development without Docker rebuilds, see `services/core/README.md`
 (backend hot reload against the compose `db` service, Vite dev server on :5173).
+
+### Optional LLM summaries
+
+Set `SPAGO_LLM_BASE_URL`, `SPAGO_LLM_MODEL`, and, if required by the endpoint,
+`SPAGO_LLM_API_KEY` in a local `.env` using `.env.example`. The base URL includes
+the full API prefix (for example `https://provider.example/v1`); SPAgo appends
+only `/chat/completions`. These are placeholders, not a default external target.
+Run `docker compose up -d --build` again to apply the environment, then explicitly
+select LLM mode in the existing AI tab. Legacy summary calls remain offline.
+
+The initial protocol sends `model`, `messages`, `stream: false`, and `max_tokens`;
+it does not support every vendor API or model. `configured` means the local settings
+are present, not that a model call succeeded. Real-model smoke is still **not checked**;
+the input-budget, timeout, and upstream-429 gaps that were tracked in the LLM plan are
+fixed and covered by tests (upstream 429 answers 429 with a validated `Retry-After`
+instead of 502) — see [the LLM contract record](docs/plans/2026-09-14-llm-interface.md).
+
+For an explicitly configured host-local endpoint, use
+`http://host.docker.internal:<port>/v1`; Compose already maps that hostname on Linux.
+Container `localhost` addresses the app container itself. The endpoint must be
+reachable from the container; plain HTTP service DNS names are not currently
+accepted by the adapter's host check. Leave the key empty for an endpoint without
+authentication. The supported deployment uses one app worker: the two-call limit
+and duplicate-in-flight tracking are process-local. Keep the default app binding
+to `127.0.0.1`; a shared deployment with a provider key needs deployment-side
+authentication before explicitly opening the interface. Stop waiting only stops
+the browser from waiting; it does not acknowledge provider cancellation.
 
 ---
 

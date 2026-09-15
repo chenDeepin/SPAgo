@@ -26,6 +26,14 @@ evidence list ≈ 0.7 KB.
 These numbers are from a tiny synthetic fixture. They exist so regressions become
 measurable — they are **not** capacity claims for bulk datasets.
 
+## Later measurements
+
+- `paging-measurement-2026-09-14.md` — 150-row synthetic paging fixture (UI-03 round).
+- `paging-beyond-cap-2026-09-15.md` — 601-row synthetic fixture on an isolated stack:
+  offset paging beyond the 500-row response cap, paging payload/latency, depiction and
+  scroll cost while 601 rows are loaded (UI-07/UI-08 round). A different fixture from the
+  baseline above, so the payload figures are not directly comparable.
+
 ## Reproduce
 
 ```bash

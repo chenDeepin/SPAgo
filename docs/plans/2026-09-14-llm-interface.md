@@ -1,9 +1,15 @@
 # 简洁 LLM 接口计划
 
-日期：2026-09-14。基线：`6c33eea`。状态：下一轮执行提案，尚未实施。
+创建：2026-09-14，原计划基线：`6c33eea`。
+更新：2026-09-15（第二轮，核对基线 `f3da90c` + 本轮工作区改动）：**LLM-05–07 已修复并完成验收关闭**；
+760px LLM 场景与隔离 0005→0006 升级已补验；真实模型 smoke 仍 not checked。
+第一轮更新（2026-09-15，核对基线 `f3da90c`）保留为修复前记录：接口已实施并有本地 mock 验证，
+LLM-05–07 待修复。§1 保留实施前发现，§2–8 是目标契约；不能将目标预算当作已经证明的保证。
 分类：CORE（现有摘要闭环的真实模型接入）。目标：配置一个模型端点，在现有 AI 标签中生成可追溯的同族摘要；保持无模型配置时的离线使用路径。
 
-## 1. Q&A：当前事实与更新核对
+产品交付顺序现由 [产品可用性与首版计划](2026-09-15-product-readiness.md) 管理。LLM-05–07 已关闭，不重复实施；真实模型验收归 PROD-07，真实来源科学记录归 PROD-01/06。本轮产品检查重跑本文件相关 adapter/contract 等 60 项定向测试通过，当前运行 AI status 为 offline；未将已有 mock 记录升级为真实模型通过。
+
+## 1. Q&A：实施前事实（历史基线 `6c33eea`）
 
 | 问题 | 核对结果 |
 | --- | --- |
@@ -14,7 +20,7 @@
 | 配置放在哪里？ | 首期复用服务器环境配置；浏览器只显示脱敏状态，不保存密钥。当前没有管理员身份/配置权限层，增加可写密钥 UI 会扩大范围。 |
 | 第一版做自由聊天吗？ | 不做。只总结当前同族已选取的事实；自然语言查询、会话、工具执行独立后续规划，现有 ai/plan 的确定性行为保留。 |
 
-接模型前必须处理的既有问题（本轮源码发现，尚未修复）：
+接模型前发现的既有问题（历史记录；LLM-01–04 已有修复实现及下文所列验证，2026-09-15 未重跑全部集成场景）：
 
 - **LLM-01 / P1，引用误关联**：`_collect_family_facts` 以 `e.compound_id = c.id` 连接测量与证据。某化合物在专利中出现，并不能证明其某条活性测量来自该专利；重复 mention 还会放大结果。禁止把这些 join 产物直接送模型当测量证据。
 - **LLM-02 / P1，缓存与持久化不一致**：当前先生成再查重；analysis_id 只考虑 provider、family、一个版本及记录数量，数值/模型变化可能不换 ID。冲突时保留旧数据库行，却返回新 text 和旧 created_at；接收费接口后还会重复调用。
@@ -67,7 +73,7 @@ SPAGO_LLM_MODEL=your-model-id
 - 出站只发 `model`、`messages`、`stream: false`、`max_tokens`。首期支持接受这些字段并返回文本 choices 的 Chat Completions 子集；不声称覆盖 Responses-only、原生 Anthropic、所有 reasoning 模型。400 参数不兼容时直接说明，不自动改协议/删除预算限制重发。
 - 不默认注入 temperature、工具定义、response_format、自定义任意请求体。输出通过提示要求 JSON 并用 Pydantic 校验；不合法则失败，不用第二次 LLM“修复”请求。
 
-内部默认预算：连接 5 秒、单请求总 deadline 60 秒（结合 httpx 分阶段超时与有界读取；read timeout 本身不是总 deadline）；输入选取最多 50 个事实且序列化正文 ≤32 KiB，每条摘录 ≤1 KiB；输出上限 1500 tokens，HTTP 响应 ≤256 KiB。裁剪只移除完整条目并返回 included/omitted/truncated，不能切断 JSON、结构或测量值，也不能把字节上限说成精确 token 数。模型上下文太小时明确失败。
+目标预算：连接 5 秒、单请求总 deadline 60 秒（结合 httpx 分阶段超时与有界读取；read timeout 本身不是总 deadline）；当前 SQL 按测量/证据**各最多 50 条**选取，不是合计最多 50 条。最终输入 snapshot（含说明及遗漏统计）应 ≤32 KiB，每条摘录应 ≤1 KiB UTF-8；输出上限 1500 tokens，HTTP 响应 ≤256 KiB。修复验收必须分别测量 snapshot、完整 messages/request 的字节数，不把 snapshot 上限宣称为含系统提示词的 HTTP body 上限。裁剪只移除完整事实条目，摘录若缩短须保留 UTF-8 边界并显式报告；不能切断 JSON、结构或测量值，也不能把字节上限说成精确 token 数。模型上下文太小时明确失败。当前预算实现缺口见 LLM-05/06。
 
 首期单进程最多 2 个模型调用；同一内容键在执行时返回已在处理（409），其余超过并发上限返回 busy（429），无持久队列。用有界的在途键集合/锁，finally 清理。多 worker/副本不在此并发保证内，部署文档明确单 worker；真有扩容需求再引入数据库 job 协调。
 
@@ -118,28 +124,34 @@ AI 标签内保留一个“生成摘要”主操作：顶部显示“离线摘�
 | C：接口与原 AI 标签 | routes.py、api/types.ts、api/client.ts、EvidencePanel.tsx；引用回跳必要时触及 App.tsx | 旧无 body 调用仍离线；配置状态准确；显式 LLM 调用；空/错引用拒绝；关闭/换 family 不污染结果；可点击来源。无新增导航。 |
 | D：集成与记录 | 现有 tests、README、overview、设计指引、当前计划 | 前向迁移、离线回归、真实模型 smoke、浏览器及预算测量；完成后更新手册和缺口。 |
 
-真实 smoke 仅在部署者已配置并明确使用该端点时运行一次，使用最小合成事实，记录目标模型、耗时、usage（若返回）、缓存复用、错误/来源状态；密钥不进日志。没有凭据时此项记 not checked，不能用 mock 宣称 LLM 已连接。本轮计划阶段不读取真实 key，也不调用收费模型。
+真实 smoke 在 LLM-05–07 修复后，仅在部署者已配置并明确使用该端点时运行一次，使用最小合成事实，记录目标模型、耗时、usage（若返回）、缓存复用、错误/来源状态；密钥不进日志。没有目标配置/授权时此项记 not checked，不能用 mock 宣称 LLM 已连接。2026-09-15 文档检查未读取真实 key 或调用模型。
 
 浏览器验证既有工作台不受影响，覆盖 1440×900 和 760px：未配置、配置不完整、生成成功、错误、停止等待、切换同族、引用回跳；当前 checkout 服务和截图可追溯。测量有界输入字节、一次调用耗时、输出字节、cache hit 的外部调用数=0、并发上限，不承诺未测得的延迟改善。
 
-## 9. 本轮更新检查的剩余项
+## 9. 本轮更新检查的剩余项（2026-09-15 第二轮已关闭）
 
-- **UI-07 / P1（源码确认，未浏览器复现）**：普通列表 Load more 仍只是将 limit 加到 500，没有 offset；>500 个化合物时后续记录不可达。下一次 UI 修复应使用真正分页，不能将 150 条夹具通过视为覆盖此边界。独立于首期同族摘要接口，不从前端已加载行收集模型上下文。
-- **UI-08 / P2（源码确认）**：结构 Load more 的 catch 静默吞错；保留已加载行同时应显示可重试错误。不要复制此模式到 LLM 错误处理。
-- 旧 UI 计划的已修复记录保留为历史；本轮不是全量再次验收，缺口不因旧计划写“完成”而消失。
+- **UI-07 / P1 —— 已修复并验收**：普通列表改为服务端 offset 分页（`useInfiniteQuery`，每页 100，末页停用
+  Load more），601 条合成家族在浏览器与服务端均能到第 601 条；证据与限制见
+  [当前修复计划](2026-09-14-ui-review-next-round.md#2026-09-15-修复实施与验收记录第二轮ui-0708--llm-0507-关闭)
+  与 `benchmarks/paging-beyond-cap-2026-09-15.md`。模型上下文仍只来自服务端有界事实，不从前端已加载行收集。
+- **UI-08 / P2 —— 已修复并验收**：结构 Load more 有错误/重试与 AbortSignal，错误按 requestKey 归属，
+  失败保留已加载行；查看行/结构抽屉改为在当前展示范围解析，结构独有行可打开证据与结构抽屉。
+- 旧 UI 计划的已修复记录保留为历史；本轮为定向验收，不宣称历史记录之外的全量回归。
 
 ## 10. 明确后置
 
-NEXT：需要时增加原生 Anthropic/Responses 适配器或管理员配置弹窗；每次只增加被真实端点证明必要的协议差异。LATER：流式输出、多模型配置、模型发现、自由聊天、工具调用、自然语言 planner、费用面板。REJECT：自动模型回退、复制 Cursor 代理/账号逻辑、独立网关、第二运行时、为了一个摘要引入 LangChain/LiteLLM/向量库。
+当前 NEXT 是已有接口纠偏后的真实端点验收。LATER：原生 Anthropic/Responses 适配器、管理员配置弹窗、流式输出、多模型配置、模型发现、自由聊天、工具调用、自然语言 planner、费用面板；只有真实端点证明协议差异必要，或配置权限需求明确后，才另立范围。REJECT：自动模型回退、复制 Cursor 代理/账号逻辑、独立网关、第二运行时、为了一个摘要引入 LangChain/LiteLLM/向量库。
 
 完成标准：三项环境配置能跑通一个已验证模型；旧离线路径兼容；事实和引用校验、内容缓存、错误/等待状态可测试；Docker 用户无需额外服务。代码体积不是唯一标准，但任何新增层都必须服务上面的一条验收。
 
-## 实施验证记录（2026-09-14，步骤 A–D 完成）
+## 历史实施验证记录（2026-09-14，A–C 与 D 的本地验证；完整验收未完成）
+
+以下保留实施轮报告，不代表 2026-09-15 重跑结果。其中硬预算/超时/429 的完成表述经当前复查发现不完整，以文末 LLM-05–07 为准；真实 smoke、760px LLM 场景和 0005→0006 已有数据库升级仍需单独验收。
 
 环境：`docker compose up -d --build`（app+db healthy）；前端 Node 22 `tsc -b && vite build` 通过；
 后端 `rtk pytest`（services/core）：**125 通过、0 失败、0 跳过**（新增 `tests/test_llm_adapter.py` 23 项、
 `tests/test_llm_concurrency.py` 1 项；`tests/test_m5_ai.py` 更新为 typed citations/content-key 断言）。
-Shell 均经 `rtk`。基线 `6c33eea` 之后本仓库另有 1 次提交（UI 修复轮）。
+Shell 均经 `rtk`。本轮接口代码随后提交为 `f3da90c`；`6c33eea` 本身是前一 UI 修复提交。
 
 ### A：输入与缓存
 - LLM-01 修复：测量引用为 `measurement:{id}` 数据库记录引用，不再 join evidence_records；
@@ -188,9 +200,38 @@ Shell 均经 `rtk`。基线 `6c33eea` 之后本仓库另有 1 次提交（UI 修
   排入下一轮 UI 修复；本轮未触碰。
 - 多 worker/副本部署不在进程内并发保证内（单 worker 为当前部署前提，已在文档说明）。
 
-## 本轮检查记录
+## 历史计划阶段检查记录（实施前）
 
 - 在 `apps/web` 执行 `rtk proxy /home/chen/.nvm/versions/node/v22.22.0/bin/node node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit`：passed，无产物写入。
 - 在 `services/core` 执行 `rtk proxy .venv/bin/python -m pytest tests/test_chemistry.py tests/test_m5_ai.py::TestPlanner -q`：10 passed。此选择未调用创建/删除 scratch DB 的集成 fixture，未更改运行数据库。
 - `rtk git diff --check`：passed；Python 标准库检查 4 份本轮文档的代码围栏、行尾空白和本地链接目标：passed。
 - 只修改计划、设计指引与交接指针；没有实现 LLM adapter，没有修改产品代码或引入依赖，没有 live 模型调用。下一轮执行者须核对届时 HEAD 和迁移序号。
+
+## 2026-09-15 纠偏 Q&A 与验收
+
+本轮是文档与定向契约检查，不是完整代码/科学审计。远端 main 与本地 HEAD 均为 `f3da90c5ca8b57fac38a3bb2b31da031d42ac8c3`；开始时工作区干净。现有 `adapters/llm.py`、`0006_llm_interface.sql`、AI 状态/生成接口和引用 UI 已存在，不应重新执行“新建 LLM 接口”。
+
+| ID / 优先级 | 修复前证据与影响 | 修复与关闭依据（2026-09-15 第二轮，均已关闭） |
+| --- | --- | --- |
+| LLM-05 / P1 | `ai.py::bound_snapshot` 至少保留每类一条，无法再裁剪时仍返回超限对象；随后 `summarize_family` 再追加说明/统计。纯函数合成输入实测：33,119 B 原样返回且 truncated=false；32,768 B 经追加 input_note 后为 32,867 B。`scaffolds` 聚合没有 LIMIT，摘录用 1024 字符而非 UTF-8 字节裁剪。 | **已修复。** scaffold 聚合加 LIMIT 并保留 `scaffold_total`；摘录按 UTF-8 字节裁剪并标记 `excerpt_truncated`；新增 `finalize_snapshot()`：先裁剪摘录 → 写入 `input_note` 与各类 omitted 计数 → 对最终 body 复核 32 KiB，按最大可选列表整条移除；必需元数据超限抛 `SnapshotBudgetError`（500），既不调用 provider 也不写成功缓存。离线文本改按 `measurement_total` 描述，被裁剪不再说成不存在。`tests/test_llm_contract.py::TestSnapshotBudget`（中文/多版本/单条超大/无可删条目/临界值/说明追加）+ `test_m5_ai.py::TestSnapshotBudgetBoundary`（数据库级：provider 调用数=0、`ai_analyses` 无新行）。 |
+| LLM-06 / P1 | `request_timeout` 声明 read=60/write=10，但 `generate` 构建请求未使用该属性；`main.py` 创建默认 Client。MockTransport 捕获实际 request.extensions.timeout 为 connect/read/write/pool 全 5 秒；总 deadline 仅在读到 chunk 后检查，尚无严格墙钟上限证明。 | **已修复。** `timeout=self.request_timeout` 现真正附到 `build_request`；deadline 在调用前与每个 chunk 之间检查。`TestRequestTimeoutBudget` 断言请求携带 connect=5/read=deadline/write=10，并用 127.0.0.1 可控慢端点验证：首字节晚于 deadline 被切断（1.0 s 预算、实测 <4 s）、持续慢流按 deadline 切断、失败后客户端仍可再用（连接释放）。仍不宣称严格墙钟：最坏超出量为一个读窗口，已在该测试注释与本节说明。 |
+| LLM-07 / P2 | 上游 429 被包装成 `LLMUpstreamError`（status_code=502）；routes 按该值返回且未传 Retry-After header。本地 mock 429/Retry-After=7 得到 502，7 只出现在 detail 文本。与 §5 的上游 429 契约不符。 | **已修复。** 新增 `LLMUpstreamRateLimitError`（429）+ `parse_retry_after()`（delta-seconds 或 HTTP-date，无效/缺失不猜测）；路由仅在有效值时回传 `Retry-After`。adapter 与 API 双层断言 + 隔离栈端到端：上游 429 + `Retry-After: 7` → HTTP 429 且响应头 `retry-after: 7`；无效头 → 429 无头；上游 500 → 仍 502；零自动重试（`TestUpstreamRateLimit`、`TestSummaryApiRateLimitMapping`）。`scripts/mock_llm_endpoint.py` 增加 `mock-rate-limit` / `mock-rate-limit-bad-header` 故障模式。 |
+
+执行分类：上述为 CORE（已有摘要契约纠偏），先于真实模型 smoke；实现仍在现有 service/adapter/routes 中，不新增运行时、服务或配置面板。UI-07/08 及相关作用域回归同轮关闭，见 [当前修复计划](2026-09-14-ui-review-next-round.md#2026-09-15-修复实施与验收记录第二轮ui-0708--llm-0507-关闭)。
+
+本轮补验的历史缺口（2026-09-15 第二轮）：
+
+- **760px LLM 场景**：隔离栈 + mock 端点在 760×800 覆盖生成成功（chip 含 `cached`）、等待/Stop waiting
+  （回到空闲、无结果、文案说明不表示供应商停止计费）；1440×900 覆盖成功/错误/缓存复用/换家族重置。
+- **0005→0006 前向升级**：`tests/test_migration_0006_upgrade.py` 在独立 scratch 数据库上迁移并填充到 0005，
+  写入 0005 列形状的旧分析行，再升级到 0006：旧行文本/引用不变、新列为 NULL、不被当作缓存命中、
+  升级后新写入用内容键并命中缓存；未触碰任何运行数据库。
+- **仍未完成**：真实模型 smoke（无凭据；`not checked`）；真实专利/活性来源；多 worker 部署不在并发保证内。
+
+第一轮检查结果（保留为修复前记录）：
+
+- `services/core`：`rtk proxy .venv/bin/python -m pytest tests/test_llm_adapter.py tests/test_chemistry.py tests/test_m5_ai.py::TestPlanner -q`：**36 passed**，无 PostgreSQL fixture、无外网模型调用。
+- `apps/web`：`rtk proxy /home/chen/.nvm/versions/node/v22.22.0/bin/node node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit`：**passed**。未重跑生产 build。
+- 通过 `rtk proxy .venv/bin/python -` 内联执行合成 `bound_snapshot` 边界及 MockTransport 请求检查，观察值如上；未新增测试文件，未修改产品代码、数据库或真实配置。预算边界合成对象只证明函数契约缺口，不冒充真实数据/端点复现。
+- PostgreSQL 集成、浏览器、真实专利/活性来源、真实模型和性能：**not checked**。历史 125 项结果保留为历史，不替代本轮结果。
+- 文档检查：`rtk git diff --check` passed；Python 标准库核对本轮 7 份 Markdown 的 11 个本地链接/锚点、代码围栏及行尾空白 passed。

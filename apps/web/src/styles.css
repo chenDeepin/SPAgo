@@ -424,6 +424,14 @@ button {
   margin-left: auto;
 }
 
+/* Paging failure for the current result set: loaded rows stay, Load more retries. */
+.table-footer .paging-error {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* ---------- states ---------- */
 
 .empty-state {

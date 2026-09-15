@@ -2,11 +2,15 @@
 
 Facts and citations:
 - Facts are collected with explicit scopes and DISTINCT granularity, bounded
-  (max 50 items per kind, body ≤ 32 KiB), and addressed by typed fact refs
-  ("family:{id}", "measurement:{id}", "evidence:{id}"). A measurement is a
-  database record reference — it is never presented as patent-text evidence
-  (LLM-01), and global ingestion-issue counts never enter a family summary
-  (LLM-04).
+  (max 50 items per kind, scaffold list capped, excerpts ≤1 KiB UTF-8), and
+  addressed by typed fact refs ("family:{id}", "measurement:{id}",
+  "evidence:{id}"). A measurement is a database record reference — it is never
+  presented as patent-text evidence (LLM-01), and global ingestion-issue counts
+  never enter a family summary (LLM-04).
+- The final annotated snapshot is the artifact the budget applies to: the note
+  and omission counters are written into it before the size check, whole
+  optional items are dropped until it fits, and required metadata that cannot
+  fit fails the request before any provider call (LLM-05).
 - Caching is content-keyed: input_hash = SHA-256 over the canonical JSON of
   the input snapshot + family + mode/provider + model + sanitized endpoint
   fingerprint + prompt_version + output budget. The cache is checked before
@@ -35,9 +39,12 @@ from spago_core.domain import ProvenanceState
 PROMPT_VERSION = "family-summary-v2"
 MAX_FACT_ITEMS = 50  # per kind (measurements, evidence excerpts)
 MAX_BODY_BYTES = 32 * 1024
-MAX_EXCERPT_CHARS = 1024
+MAX_EXCERPT_BYTES = 1024  # UTF-8 bytes, not characters
+MAX_SCAFFOLDS = 20
 MAX_OUTPUT_TOKENS = 1500
 MAX_CONCURRENT_LLM_CALLS = 2
+
+INPUT_NOTE = "Bounded fact selection: whole items only; omitted items are reported in coverage."
 
 _NAMESPACE = uuid.UUID("9f0c3d1a-7e2b-4c8d-a1b2-3c4d5e6f7a8b")
 
@@ -81,6 +88,33 @@ class LLMUpstreamError(AIError):
     detail = "The model response failed validation."
 
 
+class LLMUpstreamRateLimitError(AIError):
+    """Upstream 429, kept distinct from a generic upstream failure (LLM-07) so
+    the API can answer 429 and forward a validated Retry-After header."""
+
+    status_code = 429
+    detail = "The model endpoint rate limited the request."
+
+    def __init__(self, retry_after: int | None = None) -> None:
+        self.retry_after = retry_after
+        super().__init__(
+            "The model endpoint rate limited the request."
+            + (
+                f" Retry-After: {retry_after}s."
+                if retry_after is not None
+                else " The endpoint did not provide a usable retry delay."
+            )
+        )
+
+
+class SnapshotBudgetError(AIError):
+    """Required family metadata alone exceeds the bounded input budget (LLM-05).
+    Raised before any provider call, so nothing is generated or cached."""
+
+    status_code = 500
+    detail = "Family facts exceed the bounded model-input budget and cannot be trimmed to fit."
+
+
 class LLMTimeoutError(AIError):
     status_code = 504
     detail = "The model endpoint did not answer in time."
@@ -117,6 +151,18 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
             {"fid": family_id},
         ).scalar_one()
 
+        scaffolds_total = conn.execute(
+            text(
+                """
+                SELECT count(DISTINCT c.scaffold)
+                FROM compounds c
+                JOIN compound_mentions m ON m.compound_id = c.id
+                JOIN patent_documents d ON d.id = m.document_id
+                WHERE d.family_id = :fid AND c.scaffold IS NOT NULL
+                """
+            ),
+            {"fid": family_id},
+        ).scalar_one()
         scaffolds = conn.execute(
             text(
                 """
@@ -126,9 +172,10 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                 JOIN patent_documents d ON d.id = m.document_id
                 WHERE d.family_id = :fid AND c.scaffold IS NOT NULL
                 GROUP BY c.scaffold ORDER BY n DESC, c.scaffold
+                LIMIT :limit
                 """
             ),
-            {"fid": family_id},
+            {"fid": family_id, "limit": MAX_SCAFFOLDS},
         ).all()
 
         measurement_total = conn.execute(
@@ -241,7 +288,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
             "source_type": r["source_type"],
             "section": r["section"],
             "page": r["page"],
-            "excerpt": (r["raw_excerpt"] or "")[:MAX_EXCERPT_CHARS] or None,
+            "excerpt": r["raw_excerpt"] or None,
         }
         for r in evidence_rows
     ]
@@ -263,6 +310,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
         "document_count": len(overview.documents),
         "compound_count": int(compound_count),
         "scaffolds": [{"scaffold": r[0], "compounds": int(r[1])} for r in scaffolds],
+        "scaffold_total": int(scaffolds_total),
         "measurements": measurements,
         "measurement_total": int(measurement_total),
         "evidence": evidence,
@@ -272,33 +320,109 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
     }
 
 
-def bound_snapshot(snapshot: dict) -> tuple[dict, dict]:
-    """Trim whole fact items (never mid-JSON, never mid-value) until the
-    serialized body fits the byte budget. Returns (snapshot, coverage delta)."""
-    delta = {"included": True, "omitted_measurements": 0, "omitted_evidence": 0, "truncated": False}
+def _truncate_utf8(value: str, max_bytes: int) -> tuple[str, bool]:
+    """Trim to a UTF-8 byte budget without splitting a character (LLM-05).
+    A 1024-character slice is not a 1024-byte bound for non-ASCII excerpts."""
+    raw = value.encode("utf-8")
+    if len(raw) <= max_bytes:
+        return value, False
+    return raw[:max_bytes].decode("utf-8", errors="ignore"), True
 
-    def size(s: dict) -> int:
-        return len(json.dumps(s, ensure_ascii=False, sort_keys=True).encode("utf-8"))
 
-    if size(snapshot) <= MAX_BODY_BYTES:
-        return snapshot, delta
+def _truncate_excerpts(snapshot: dict, delta: dict) -> None:
+    """Byte-bound every excerpt and mark the ones that were shortened, so a
+    trimmed excerpt is never silently presented as the whole source text."""
+    for item in snapshot.get("evidence") or []:
+        excerpt = item.get("excerpt")
+        if not excerpt:
+            continue
+        bounded, was_truncated = _truncate_utf8(excerpt, MAX_EXCERPT_BYTES)
+        if was_truncated:
+            item["excerpt"] = bounded
+            item["excerpt_truncated"] = True
+            delta["truncated_excerpts"] += 1
 
-    bounded = json.loads(json.dumps(snapshot, ensure_ascii=False))
-    while size(bounded) > MAX_BODY_BYTES and (
-        len(bounded["measurements"]) > 1 or len(bounded["evidence"]) > 1
+
+def _snapshot_bytes(snapshot: dict) -> int:
+    return len(json.dumps(snapshot, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+
+
+def _annotate_snapshot(snapshot: dict, delta: dict) -> None:
+    """Write the bounded-selection note and omission counters into the snapshot
+    itself, so the budget check covers exactly what would be sent."""
+    snapshot["input_note"] = INPUT_NOTE
+    for key, count in (
+        ("measurement_omitted", delta["omitted_measurements"]),
+        ("evidence_omitted", delta["omitted_evidence"]),
+        ("scaffold_omitted", delta["omitted_scaffolds"]),
+        ("excerpt_truncated", delta["truncated_excerpts"]),
     ):
-        # Remove whole items from the tail, alternating to keep both kinds.
-        if len(bounded["measurements"]) > 1:
-            bounded["measurements"].pop()
-            delta["omitted_measurements"] += 1
-        if size(bounded) <= MAX_BODY_BYTES:
-            break
-        if len(bounded["evidence"]) > 1:
-            bounded["evidence"].pop()
-            delta["omitted_evidence"] += 1
-    delta["truncated"] = delta["omitted_measurements"] > 0 or delta["omitted_evidence"] > 0
+        if count:
+            snapshot[key] = count
+        else:
+            snapshot.pop(key, None)
+
+
+def _drop_optional_item(snapshot: dict, delta: dict) -> bool:
+    """Remove one whole item (never mid-JSON, never mid-value) from the largest
+    optional list, so trimming stays balanced across kinds and normally sheds
+    the fewest possible items. False when nothing optional is left, which the
+    caller reports as an unrepresentable input."""
+    best: tuple[str, int, str] | None = None
+    for key, counter in (
+        ("measurements", "omitted_measurements"),
+        ("evidence", "omitted_evidence"),
+        ("scaffolds", "omitted_scaffolds"),
+    ):
+        items = snapshot.get(key) or []
+        if not items:
+            continue
+        size = len(json.dumps(items, ensure_ascii=False).encode("utf-8"))
+        if best is None or size > best[1]:
+            best = (key, size, counter)
+    if best is None:
+        return False
+    snapshot[best[0]].pop()
+    delta[best[2]] += 1
+    return True
+
+
+def finalize_snapshot(facts: dict) -> tuple[dict, dict]:
+    """Annotate, bound and re-verify the model input snapshot (LLM-05).
+
+    Excerpts are byte-bounded first, then the budget is checked on the
+    *annotated* body, so the note and the omission counters cannot push a
+    trimmed snapshot back over the limit. Only whole optional items are
+    dropped, and the reported counts travel inside the snapshot. Raises
+    SnapshotBudgetError when the required metadata alone cannot fit, so no
+    provider call and no success cache entry follow."""
+    snapshot = facts
+    scaffolds = snapshot.get("scaffolds") or []
+    delta = {
+        "included": True,
+        "omitted_measurements": 0,
+        "omitted_evidence": 0,
+        "omitted_scaffolds": max(0, int(snapshot.pop("scaffold_total", 0)) - len(scaffolds)),
+        "truncated_excerpts": 0,
+        "truncated": False,
+    }
+    _truncate_excerpts(snapshot, delta)
+    _annotate_snapshot(snapshot, delta)
+    while _snapshot_bytes(snapshot) > MAX_BODY_BYTES:
+        if not _drop_optional_item(snapshot, delta):
+            raise SnapshotBudgetError(
+                "Required family metadata alone exceeds the bounded model-input budget "
+                f"({MAX_BODY_BYTES} bytes)."
+            )
+        _annotate_snapshot(snapshot, delta)
+    delta["truncated"] = bool(
+        delta["omitted_measurements"]
+        or delta["omitted_evidence"]
+        or delta["omitted_scaffolds"]
+        or delta["truncated_excerpts"]
+    )
     delta["included"] = not delta["truncated"]
-    return bounded, delta
+    return snapshot, delta
 
 
 def allowed_refs(snapshot: dict) -> set[str]:
@@ -381,6 +505,11 @@ class OfflineExtractiveProvider(SummaryProvider):
                 f"{s['scaffold']} ({s['compounds']})" for s in snapshot["scaffolds"][:5]
             )
             lines.append(f"Murcko scaffolds present: {top}.")
+        if snapshot.get("scaffold_omitted"):
+            lines.append(
+                f"{snapshot['scaffold_omitted']} further distinct scaffold(s) were not included "
+                "in this bounded summary."
+            )
         total = snapshot["measurement_total"]
         if snapshot["measurements"]:
             omitted = total - len(snapshot["measurements"])
@@ -398,7 +527,9 @@ class OfflineExtractiveProvider(SummaryProvider):
                 )
         else:
             lines.append(
-                "No typed measurements exist for these compounds; absence of a "
+                f"{total} typed measurement(s) exist but were omitted from this bounded summary."
+                if total
+                else "No typed measurements exist for these compounds; absence of a "
                 "measurement is not evidence of inactivity."
             )
         if snapshot.get("evidence_omitted"):
@@ -471,14 +602,7 @@ def summarize_family(
     )
 
     facts = _collect_family_facts(engine, family_id)
-    snapshot, coverage_delta = bound_snapshot(facts)
-    snapshot["input_note"] = (
-        "Bounded fact selection: whole items only; omitted items are reported in coverage."
-    )
-    if coverage_delta["omitted_measurements"]:
-        snapshot["measurement_omitted"] = coverage_delta["omitted_measurements"]
-    if coverage_delta["omitted_evidence"]:
-        snapshot["evidence_omitted"] = coverage_delta["omitted_evidence"]
+    snapshot, _bounding = finalize_snapshot(facts)
     input_hash = compute_input_hash(
         snapshot,
         mode=mode,

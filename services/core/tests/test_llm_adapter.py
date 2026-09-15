@@ -164,12 +164,20 @@ class TestGenerate:
             provider.generate(SNAPSHOT)
 
     def test_rate_limit_surfaces_retry_after(self):
+        """LLM-07: upstream throttling is its own 429-mapped error carrying a
+        validated Retry-After, not a generic 502."""
+        from spago_core.services.ai import LLMUpstreamError, LLMUpstreamRateLimitError
+
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(429, headers={"Retry-After": "7"})
 
         provider = _provider_with_handler(handler)
-        with pytest.raises(LLMUpstreamError, match="Retry-After: 7"):
+        with pytest.raises(LLMUpstreamRateLimitError) as exc:
             provider.generate(SNAPSHOT)
+        assert exc.value.retry_after == 7
+        assert exc.value.status_code == 429
+        assert not issubclass(LLMUpstreamRateLimitError, LLMUpstreamError)
+        assert "Retry-After: 7s" in exc.value.detail
 
     def test_400_reports_protocol_mismatch(self):
         provider = _provider_with_handler(lambda r: httpx.Response(400, json={"error": "bad"}))

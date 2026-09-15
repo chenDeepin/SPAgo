@@ -11,6 +11,9 @@ interface CompoundTableProps {
   sarMode: boolean;
   onLoadMore?: () => void;
   loadingMore?: boolean;
+  /** Paging failure for the current result set: loaded rows are kept and the
+   * Load more control becomes the retry. */
+  loadMoreError?: string | null;
   onToggleSelection: (compoundId: string, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onClearSelection: () => void;
@@ -51,6 +54,7 @@ export function CompoundTable({
   sarMode,
   onLoadMore,
   loadingMore,
+  loadMoreError = null,
   onToggleSelection,
   onToggleSelectAll,
   onClearSelection,
@@ -286,8 +290,17 @@ export function CompoundTable({
         )}
         {onLoadMore && page.offset + page.items.length < page.total && (
           <button className="show-all-occ" onClick={onLoadMore} disabled={loadingMore}>
-            {loadingMore ? "Loading…" : `Load more (${page.total - page.offset - page.items.length} remaining)`}
+            {loadingMore
+              ? "Loading…"
+              : loadMoreError
+                ? `Retry load more (${page.total - page.offset - page.items.length} remaining)`
+                : `Load more (${page.total - page.offset - page.items.length} remaining)`}
           </button>
+        )}
+        {loadMoreError && (
+          <span className="paging-error" role="alert">
+            {loadMoreError}
+          </span>
         )}
         <span className="fineprint">
           All identifiers and structures are illustrative (demo dataset).
