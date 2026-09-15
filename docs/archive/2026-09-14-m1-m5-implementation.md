@@ -1,12 +1,12 @@
 # M1–M5 Implementation Record
 
-Date: 2026-09-14. Status: local demo implementation record; full milestone acceptance remains incomplete. Follow-up: [UI review and current repair round](../plans/2026-09-14-ui-review-next-round.md).
+Date: 2026-09-14. Status: local demo implementation record; full milestone acceptance remains incomplete. Follow-up: [UI review and current repair round](2026-09-14-ui-review-next-round.md).
 Parent plan: `2026-09-14-m0-foundation.md`. Contracts: root `PROMPT.md`, `docs/design/2026-09-14-ui-direction.md`.
 
 The entries below preserve the original implementation and verification report;
 they are not a fresh rerun or proof that deferred capabilities are complete.
 M4 Chrome loading and M2 drawing remain open. The subsequent optional LLM implementation
-and its remaining acceptance gaps are tracked in the [LLM record](../plans/2026-09-14-llm-interface.md).
+and its remaining acceptance gaps are tracked in the [LLM record](2026-09-14-llm-interface.md).
 M6 (PDF/OCSR) remains excluded per
 PROMPT.md §14 ("not MVP scope").
 

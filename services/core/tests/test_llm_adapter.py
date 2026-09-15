@@ -392,7 +392,7 @@ class TestOutputValidation:
 class TestRetryClassification:
     """Only a completed, billed answer whose content is unusable may be
     re-sampled (owner decision 2026-09-15; see
-    docs/plans/2026-09-15-llm-live-smoke.md §9). Everything else stays
+    docs/archive/2026-09-15-llm-live-smoke.md §9). Everything else stays
     single-attempt: an unknown charge must not be multiplied."""
 
     def test_unusable_content_of_a_completed_response_is_re_samplable(self):

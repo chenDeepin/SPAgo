@@ -1,85 +1,74 @@
 # SPAgo — Initial Engineering Prompt
 
-> **Current handoff (2026-09-15; baseline `41ef768`, uncommitted ONLINE work in
-> the working tree): online SPAgo with LLM enhancement — implemented, not yet
-> hosted.**
-> ONLINE-00…ONLINE-05 are implemented and locally verified: target-led open-database
-> discovery (UniProt + ChEMBL + BindingDB + PubChem), scoped evidence-grounded
-> summaries (family / document / target), validated natural-language plans,
-> invitation-only hosted sessions with per-owner data, usage quotas and a hosted
-> runbook. Read `docs/plans/2026-09-15-online-llm.md` §4 for the verification
-> record, and `docs/plans/ui-round-verification/online-beta-acceptance-2026-09-15.md`
-> for exactly what is verified versus still open.
+> **Current handoff (2026-09-16; baseline `4c90e13`, the ONLINE-00…07 work).**
 >
-> **ONLINE-06 (potency-reference verdict, ported from the author's `BindingDB_IO`
-> process) is implemented and browser-verified** on the local stack: deterministic
-> potency classes under a versioned policy, a screening-reference count per target
-> with its stated threshold and modality scope, and source-declared patent/DOI/PMID
-> per measurement. Records: `docs/plans/2026-09-15-bindingdb-io-port.md` §6
-> (files, commands, browser evidence, defects fixed, gaps) and
-> `benchmarks/online06-reference-2026-09-15.md`. The verdict is a **count under a
-> stated policy, not a biological or legal conclusion**; on live data TSLP has no
+> **Implemented and locally verified:** target-led open-database discovery
+> (UniProt + ChEMBL + BindingDB + PubChem, ONLINE-00), scoped evidence-grounded
+> summaries for family / document / target with an offline provider (ONLINE-01),
+> validated natural-language plans (ONLINE-02), invitation-only hosted sessions with
+> per-owner data and usage quotas (ONLINE-03), a deterministic potency class and
+> screening-reference verdict under a stated policy (ONLINE-06), and hand-added
+> literature rows with `user_curated` provenance (ONLINE-07).
+> Records: `docs/plans/2026-09-15-online-llm.md` §4 (ONLINE-00…05),
+> `docs/plans/2026-09-15-bindingdb-io-port.md` §6–§7 (ONLINE-06/07),
+> `benchmarks/` for every measurement, and
+> `docs/archive/2026-09-15-beta-acceptance.md` §1–§4 for exactly what is verified
+> versus still open.
+>
+> **Two facts to keep straight.** The reference verdict is a **count under a stated
+> policy — not a biological or legal conclusion**: on live data TSLP has no
 > small-molecule active in these sources, and no live row carries a source-declared
-> patent number yet (that rendering path is fixture-tested only).
+> patent number yet (that rendering path is fixture-tested only). A hand-added row is
+> `user_curated` and cannot be deleted; a corrected row is re-submitted, which replaces
+> the earlier one.
 >
-> **ONLINE-07 (hand-added literature rows, same port) is implemented and
-> browser-verified** on the local stack: `POST /targets/{id}/supplements` (bounded,
-> per-row outcomes), a mandatory per-row note, the same RDKit normalization and
-> InChIKey identity as a retrieved structure, `user_curated` provenance that nothing
-> promotes, a `target_supplement_remarks` table for rows whose structure is not
-> public, a remark count inside the reference verdict, and a candidate export that
-> derives its provenance states instead of claiming `database_curated`. Record:
-> `docs/plans/2026-09-15-bindingdb-io-port.md` §7 (files, commands, browser evidence,
-> open items) and `benchmarks/online07-supplements-2026-09-15.md`. Two clearly
-> labelled acceptance rows were stored in the local dev database by that pass
-> (target `0cd78fd9-…`); there is no delete path for a hand-added row yet.
->
-> **What is NOT done — do not mistake the implementation for acceptance:**
-> no **hosted** deployment exists (ONLINE-04 acceptance is open) and no invited
-> user has been through the workflow (ONLINE-05 is open). One live model provider
-> has been smoke-tested from the dev stack: DeepSeek `deepseek-flash` reached for
-> family, document and target scopes and through the browser AI panel, recorded in
-> `docs/plans/2026-09-15-llm-live-smoke.md`; that is one provider, not a
-> compatibility claim. ONLINE-01 has a repeatable evaluation baseline
-> (`benchmarks/online01-llm-eval-2026-09-15.md`: 45 recorded requests over four
-> runs, per-call compliance, refusal classes, token cost) and the per-source
-> citation defect it found is fixed and re-measured — run 4 answered 18/18
-> requests with the target scope clean and citing its three `source:` refs, and the
-> new citation chip was checked in the browser
-> (`docs/plans/2026-09-15-llm-eval-and-demo-open.md` §7.1). What remains unproven
-> is the class *not* recurring for other targets and providers, and content
-> correctness: schema validity is not scientific truth.
+> **NOT done — do not mistake implementation for acceptance.** No **hosted** deployment
+> exists (ONLINE-04 acceptance is open) and no invited user has been through the
+> workflow (ONLINE-05 is open). One live model provider was smoke-tested (DeepSeek
+> `deepseek-flash`, one call per scope plus the browser AI panel, 85 % single-attempt
+> compliance) — one provider, not a compatibility claim
+> (`docs/archive/2026-09-15-llm-live-smoke.md`). ONLINE-01 has a repeatable evaluation
+> baseline (`benchmarks/online01-llm-eval-2026-09-15.md`: 45 recorded requests over four
+> runs, per-call compliance, refusal classes, token cost); the citation defect it found
+> is fixed and re-measured (`docs/archive/2026-09-15-llm-eval-and-demo-open.md` §7.1).
+> Still unproven: that the class does not recur for other targets and providers, and
+> content correctness — a valid schema and a valid citation are not scientific truth.
 > Host, provider, budget and cohort remain operator decisions; this work does not
-> authorize purchasing infrastructure, sending private datasets to a provider, or
-> public deployment.
+> authorize purchasing infrastructure, sending private datasets to a provider, or public
+> deployment.
 >
 > **Start here for the next turn:**
-> 1. Re-read `docs/online-capability.md` (the scope statement) and
->    `docs/runbook.md` §H1–H9 (the hosted deployment contract).
-> 2. Carry the recorded live smoke into the hosted acceptance: same model id and
->    endpoint fingerprint, per-scope call, token usage, latency, failure rate,
->    cache behaviour. Quotas (`SPAGO_LLM_USER_TOKEN_LIMIT`
->    / `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT`) must be set to real values first.
-> 3. Run the acceptance script in the beta record, including a restore against
->    the real host and independent cross-reading of retrieved chemistry.
-> 4. Carry the source/job defects listed in plan §4.6 into ONLINE-04.
-> 5. If summary quality is measured again, extend the evaluation set before the
->    numbers: the runner has one demo family, one demo document and one live
->    target; a sparse target (`DEMO-TARGET-1`, no retrievals) and a second
->    provider would test the two claims the current record explicitly cannot
->    make. The runner and the record's method section are in
+> 1. Re-read `docs/online-capability.md` (the scope statement) and `docs/runbook.md`
+>    §H1–H9 (the hosted deployment contract).
+> 2. Run the acceptance script in `docs/archive/2026-09-15-beta-acceptance.md` §5 on a
+>    real host and close §4's gates: TLS ingress and secret injection, a restore
+>    rehearsal on that host, one real invited user, independent cross-reading of
+>    retrieved chemistry, and latency/cost targets for the chosen host and model. Set
+>    `SPAGO_LLM_USER_TOKEN_LIMIT` / `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT` to real values
+>    first.
+> 3. Carry the recorded source/job defects into ONLINE-04: a source refresh does not
+>    retract deleted or invalid mappings; an interrupted import has no recovery
+>    protocol; `target_construct` is declared but populated by no adapter; ChEMBL
+>    activity pages are fetched without an `only=` projection (the dominant upstream
+>    cost). Details: `docs/plans/2026-09-15-bindingdb-io-port.md` §6.5 and §7.4,
+>    `docs/online-capability.md` §8.
+> 4. If summary quality is measured again, extend the evaluation set before quoting
+>    numbers: the runner has one demo family, one demo document and one live target. A
+>    sparse target (no retrievals) and a second provider would test the two claims the
+>    current record explicitly cannot make. Runner and method:
 >    `benchmarks/online01-llm-eval-2026-09-15.md`.
 >
-> Current source coverage is genuinely thin for some acceptance targets (human
-> TSLP has one small-molecule candidate in these sources; IL-6R has one and
-> BindingDB does not answer for it). Report that honestly rather than promising
-> inhibitor coverage. Model output stays inference; chemistry stays deterministic.
-> Full-document extraction/M6 and general chat remain deferred.
+> Current source coverage is genuinely thin for some acceptance targets (human TSLP has
+> one small-molecule candidate in these sources; IL-6R has one, and BindingDB does not
+> answer for it). Report that honestly rather than promising inhibitor coverage. Model
+> output stays inference; chemistry stays deterministic. Full-document extraction/M6 and
+> general chat remain deferred.
 >
-> The previous local milestone is committed at `41ef768`. Historical review,
-> verification and unresolved defects remain in
-> `docs/plans/2026-09-15-product-readiness.md`; do not mistake its earlier
-> uncommitted-state notes or local-first priorities for this stage's status.
+> History: the previous local milestone is committed at `41ef768`, and the earlier
+> review with its 217-test result is archived in
+> `docs/archive/2026-09-15-product-readiness.md` — do not mistake its uncommitted-state
+> notes or local-first priorities for this stage's status.
+>
 > The rest of this document remains the standing engineering contract.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.
@@ -291,36 +280,18 @@ SPAgo must remain fully usable without it.
 
 # 4. Architecture Principle: Modular Monolith First
 
-Build a modular monolith.
+Build a modular monolith; do not introduce microservices unless measured production
+requirements justify them. The initial deployment is one `spago-app` (frontend, API,
+source adapters, chemistry services, query layer, LLM/evidence layer) plus
+`postgres-rdkit` (project data, normalized chemistry, searchable structures,
+annotations, evidence, measurements).
 
-Do not introduce microservices unless measured production requirements justify them.
-
-Initial deployment should contain only:
-
-```text
-spago-app
-    frontend
-    API
-    source adapters
-    chemistry services
-    query layer
-    LLM/evidence layer
-
-postgres-rdkit
-    project data
-    normalized chemistry
-    searchable structures
-    annotations
-    evidence
-```
-
-SureChEMBL bulk Parquet data should remain an external read-only analytical dataset where practical and be queried through DuckDB.
-
-Do not import the entire SureChEMBL collection into the transactional database merely for convenience.
-
-Only materialize/index data when required by interactive structure search, project persistence, caching, or measured performance needs.
-
-Do not add Redis, Kafka, RabbitMQ, Elasticsearch, Kubernetes, Celery, MinIO, or another database in the MVP unless a benchmark proves that the current architecture cannot satisfy the requirement.
+SureChEMBL bulk Parquet stays an external read-only analytical dataset queried through
+DuckDB. Do not import the entire collection into the transactional database for
+convenience; materialize or index data only when interactive structure search, project
+persistence, caching or measured performance requires it. Redis, Kafka, RabbitMQ,
+Elasticsearch, Kubernetes, Celery, MinIO and additional databases all require a written
+architecture decision and benchmark evidence first (AGENTS.md §6, §7).
 
 ---
 
@@ -564,41 +535,18 @@ user_curated
 
 # 10. Large-Data Rules
 
-Assume that searches can eventually involve hundreds of thousands or millions of compounds.
+Assume searches can eventually involve hundreds of thousands or millions of compounds,
+and never treat the browser as the database.
 
-The browser must never be treated as the database.
+Server-side filtering, sorting and pagination; virtualized visible rows; lazy molecule
+depiction and lazy evidence loading; cancellable and debounced queries; cached
+depictions and normalized structures; background processing for expensive document
+extraction. Default result page 50–100 rows, hard maximum 500 for ordinary row
+responses; never return an entire patent-chemistry dataset as one JSON array, and never
+render thousands of molecule SVGs at once — only structures entering or near the
+viewport.
 
-Rules:
-
-- server-side filtering;
-- server-side sorting;
-- server-side pagination or cursor-based retrieval;
-- virtualized visible rows;
-- lazy molecule depiction;
-- lazy evidence loading;
-- cancellable searches;
-- debounced structure/text queries;
-- cached depictions;
-- cached normalized structures;
-- background processing for expensive document extraction.
-
-Default result page:
-
-```text
-50–100 rows
-```
-
-Hard maximum for ordinary row API responses:
-
-```text
-500 rows
-```
-
-Do not return entire patent chemistry datasets as giant JSON arrays.
-
-Do not render thousands of molecule SVGs simultaneously.
-
-Only render structures entering or near the viewport.
+These limits are normative in AGENTS.md §13 and §21.
 
 ---
 
@@ -721,137 +669,66 @@ Prove this workflow first.
 
 # 14. Milestones
 
+Deliverables and exit criteria are kept as the acceptance target for each slice; state
+is what has actually been verified. Records are in `docs/archive/`.
+
 ## Milestone 0 — Foundation and Benchmarks
 
-Deliver:
-
-- monorepo;
-- frontend shell;
-- backend shell;
-- PostgreSQL + RDKit Docker image;
-- normalized domain model;
-- source adapter interfaces;
-- evidence model;
-- DuckDB SureChEMBL proof of concept;
-- benchmark harness;
-- small reproducible test dataset.
-
-Exit criteria:
-
-- one-command local startup;
-- health checks pass;
-- browser opens successfully;
-- test patent can be loaded;
-- sample compounds appear;
-- benchmark command produces a baseline report.
-
----
+Deliver: monorepo, frontend and backend shells, PostgreSQL + RDKit image, normalized
+domain model, adapter interfaces, evidence model, DuckDB SureChEMBL proof of concept,
+benchmark harness, small reproducible test dataset.
+Exit: one-command local startup, health checks pass, browser opens, a test patent loads,
+sample compounds appear, the benchmark command produces a baseline report.
+**State: implemented** (`docs/archive/2026-09-14-m0-foundation.md`).
 
 ## Milestone 1 — Patent Chemistry Viewer
 
-Deliver:
-
-- patent-number search;
-- patent-family detail;
-- compound table;
-- 2D structures;
-- evidence fields;
-- structure detail drawer;
-- save-to-project.
-
-Exit criteria:
-
-- user can inspect a patent without downloading the PDF for the common workflow;
-- user can move from compound to source evidence;
-- large result table remains responsive.
-
----
+Deliver: patent-number search, family detail, compound table, 2D structures, evidence
+fields, structure detail drawer, save-to-project.
+Exit: a user can inspect a patent without downloading the PDF for the common path, move
+from compound to source evidence, and keep a large table responsive.
+**State: implemented; the embedded Ketcher editor is still deferred**
+(`docs/archive/2026-09-14-m1-m5-implementation.md`).
 
 ## Milestone 2 — Structure Search
 
-Deliver:
-
-- Ketcher query input;
-- exact search;
-- substructure search;
-- similarity search;
-- molecular filters;
-- indexed chemistry storage.
-
-Exit criteria:
-
-- structure query can be combined with patent metadata filters;
-- chemical search occurs server-side;
-- no large client-side dataset is required.
-
----
+Deliver: exact, substructure and similarity search with molecular filters on
+cartridge-indexed chemistry.
+Exit: structure queries combine with patent metadata filters, run server-side, and need
+no large client-side dataset.
+**State: implemented** (same record; drawing UI deferred with M1).
 
 ## Milestone 3 — Bioactivity and SAR
 
-Deliver:
-
-- BindingDB adapter;
-- ChEMBL adapter;
-- activity normalization;
-- target mapping;
-- SAR-oriented table modes;
-- scaffold grouping.
-
-Exit criteria:
-
-- user can compare related compounds across patents and activity sources;
-- every external measurement retains provenance.
-
----
+Deliver: BindingDB and ChEMBL adapters, activity normalization, target mapping,
+SAR-oriented table modes, scaffold grouping.
+Exit: a user can compare related compounds across patents and activity sources, and every
+external measurement retains provenance.
+**State: implemented for open sources; direct/indirect distinction and per-target
+coverage live in the online capability statement.**
 
 ## Milestone 4 — Chrome Companion
 
-Deliver:
-
-- Manifest V3 extension;
-- side panel;
-- current-patent detection;
-- handoff to existing SPAgo session.
-
-Exit criteria:
-
-- installation is optional;
-- SPAgo works identically without the extension;
-- no Espacenet automation or CAPTCHA bypass exists.
-
----
+Deliver: Manifest V3 extension, side panel, current-patent detection, handoff to an
+existing SPAgo session.
+Exit: installation is optional, SPAgo works identically without it, no Espacenet
+automation or CAPTCHA bypass exists.
+**State: thin bridge implemented; Chrome-in-Chrome verification still open.**
 
 ## Milestone 5 — Evidence-Grounded AI
 
-Deliver:
-
-- query planner;
-- patent summary;
-- SAR summary;
-- family comparison;
-- evidence citations;
-- confidence states.
-
-Exit criteria:
-
-- factual AI answers expose evidence;
-- unsupported conclusions are visibly marked as inference.
-
----
+Deliver: query planner, patent summary, SAR summary, family comparison, evidence
+citations, confidence states.
+Exit: factual AI answers expose evidence, and unsupported conclusions are visibly marked
+as inference.
+**State: implemented offline and against one live provider; entailment evaluation
+open.**
 
 ## Milestone 6 — Document Extraction Fallback
 
-Only after the previous milestones are stable.
-
-Potential components:
-
-- patent PDF extraction;
-- table extraction;
-- OCSR;
-- compound-label association;
-- human review queue.
-
-This is not MVP scope.
+Patent PDF extraction, table extraction, OCSR, compound-label association, human review
+queue — only after the previous milestones are stable, and only when measured coverage
+gaps justify it. **Not MVP scope and not started.**
 
 ---
 
@@ -901,139 +778,62 @@ These remain internal dependencies inside the packaged application.
 
 # 16. Testing Requirements
 
-Every important data path requires tests.
+Every important data path requires tests, at minimum: unit, adapter contract, chemistry
+correctness, API, database integration, frontend interaction, end-to-end and performance
+regression (AGENTS.md §27).
 
-At minimum:
-
-```text
-unit
-adapter contract
-chemistry correctness
-API
-database integration
-frontend interaction
-end-to-end
-performance regression
-```
-
-Create a small set of sealed patent fixtures.
-
-They should cover:
-
-- one patent with many compounds;
-- one family with multiple jurisdictions;
-- duplicate chemical structures;
-- stereochemical differences;
-- compounds with bioactivity;
-- compounds without bioactivity;
-- incomplete external-source data.
-
-Never use only mocked chemistry in acceptance tests.
+Sealed patent fixtures must cover one patent with many compounds, one family with
+multiple jurisdictions, duplicate chemical structures, stereochemical differences,
+compounds with and without bioactivity, and incomplete external-source data. Never use
+only mocked chemistry in acceptance tests. Chemistry and source regression classes are
+fixed in AGENTS.md §28 and §29.
 
 ---
 
 # 17. Performance Regression Rules
 
-Build benchmark scripts before large feature development.
-
-Track:
-
-- patent lookup latency;
-- table query latency;
-- structure search latency;
-- molecule depiction latency;
-- memory use;
-- response size;
-- number of database queries;
-- initial page load;
-- scroll responsiveness.
-
-A feature that creates major performance regression is not complete even if functionally correct.
-
-Do not optimize blindly.
-
-Measure first, record the baseline, then optimize.
+Build benchmark scripts before large feature development, and track patent lookup, table
+query and structure search latency, molecule depiction, memory use, response size,
+database query count, initial page load and scroll responsiveness. A feature with a
+major performance regression is not complete even if it is functionally correct; measure
+first, record the baseline, then optimize. The milestone benchmark obligation and the
+safety limits are AGENTS.md §20 and §21.
 
 ---
 
 # 18. Compatibility Rules
 
-The application should avoid unnecessary platform coupling.
-
-Requirements:
-
-- recent Chrome first;
-- Chromium-compatible browsers when practical;
-- frontend does not depend on extension-only APIs;
-- extension communicates through stable HTTP/application contracts;
-- source adapters isolate external API/schema changes;
-- database migrations are versioned;
-- dataset versions are recorded;
-- exported projects use documented schemas.
-
-Chrome integration must remain replaceable by another browser integration later.
+Avoid unnecessary platform coupling: recent Chrome first and Chromium-compatible
+browsers where practical; the frontend does not depend on extension-only APIs; the
+extension communicates through stable HTTP/application contracts; source adapters
+isolate external API/schema changes; database migrations are versioned; dataset versions
+are recorded; exported projects use documented schemas. Chrome integration must remain
+replaceable by another browser integration later.
 
 ---
 
 # 19. What Not to Build Yet
 
-Explicitly out of scope for the first product:
-
-- full patent-office replacement;
-- legal opinion engine;
-- autonomous IP freedom-to-operate conclusion;
-- generalized scientific IDE;
-- ELN/LIMS;
-- synthesis planning;
-- docking/MD/FEP;
-- wet-lab orchestration;
-- full Markush search engine;
-- large-scale proprietary web crawler;
-- automated CAPTCHA solving;
-- autonomous Espacenet browser scraping;
-- full DataWarrior clone;
-- PDF OCSR as the primary data path.
+Out of scope for the first product: full patent-office replacement; legal opinion engine;
+autonomous freedom-to-operate conclusions; generalized scientific IDE; ELN/LIMS;
+synthesis planning; docking/MD/FEP; wet-lab orchestration; full Markush search engine;
+large-scale proprietary web crawler; automated CAPTCHA solving; autonomous Espacenet
+scraping; full DataWarrior clone; PDF OCSR as the primary data path. Classification of
+new scope follows AGENTS.md §37.
 
 ---
 
 # 20. First Engineering Task
 
-Do not start with the Chrome extension.
+Historical: M0 and the first vertical slice were built from this instruction list (inspect
+the repository, write the architecture documentation, define the domain model and adapter
+contracts, Docker development environment, minimal React and FastAPI applications,
+PostgreSQL + RDKit storage, a small SureChEMBL Parquet fixture queried through DuckDB,
+one patent with its compound list, lazy depictions, evidence links, benchmarks, tests,
+and an explicit statement of what stayed stubbed).
 
-Start with Milestone 0 and the first vertical slice.
-
-Perform these steps:
-
-1. Inspect the repository.
-2. Create or update the architecture documentation.
-3. Define the domain model.
-4. Define adapter contracts.
-5. Create Docker-based development environment.
-6. Create a minimal React application.
-7. Create a minimal FastAPI application.
-8. Create PostgreSQL + RDKit storage.
-9. Add a small SureChEMBL Parquet fixture.
-10. Query it through DuckDB.
-11. Render one patent and its compound list.
-12. Generate molecule depictions lazily.
-13. Add evidence links.
-14. Add benchmark scripts.
-15. Add automated tests.
-16. Document exactly what is implemented and what remains stubbed.
-
-Stop before expanding scope.
-
-Do not implement speculative infrastructure.
-
-At the end, report:
-
-```text
-Implemented
-Architecture decisions
-Tests
-Benchmarks
-Known limitations
-Next vertical slice
-```
+It is kept only as the shape of a good first slice. The current entry point is the
+handoff block at the top of this file, and the next work is ONLINE-04/ONLINE-05 in the
+beta acceptance record.
 
 The first release should feel small, coherent, and reliable rather than broad.

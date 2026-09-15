@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     #: subset stays the default. Live finding 2026-09-15: `deepseek-flash`
     #: reasons by default and spent the entire output budget on hidden
     #: reasoning, returning empty content. See
-    #: docs/plans/2026-09-15-llm-live-smoke.md.
+    #: docs/archive/2026-09-15-llm-live-smoke.md.
     llm_disable_thinking: bool = False
     #: Opt-in OpenAI-standard `response_format: {"type": "json_object"}`.
     #: Live finding 2026-09-15: without it the model occasionally dropped the

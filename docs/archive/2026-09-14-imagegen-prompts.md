@@ -1,5 +1,9 @@
 # SPAgo UI imagegen prompts
 
+> Archived 2026-09-16: historical record of how the two design drafts in
+> `docs/design/` were generated. Superseded as a reference by
+> `docs/design/2026-09-14-ui-direction.md`; the images stay tracked in `docs/design/`.
+
 Mode: built-in image_gen. Date: 2026-09-14. All scientific content is illustrative.
 
 ## Workspace

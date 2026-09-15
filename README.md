@@ -2,122 +2,87 @@
 
 **Small molecule patent analysis GO**
 
-SPAgo connects patent search, chemical structures, bioactivity, SAR, claims, and source evidence in one browser-first workflow.
+SPAgo connects patent search, chemical structures, bioactivity, SAR, claims and source
+evidence in one browser-first workflow. It is built for medicinal and computational
+chemists and patent researchers who today move repeatedly between patent websites,
+PDFs, chemistry tables, public databases and general-purpose LLMs.
 
-The project is designed for medicinal chemists, computational chemists, patent researchers, and drug-discovery teams who currently move repeatedly between patent websites, PDFs, chemistry tables, public databases, and general-purpose LLMs.
+**Where to read what:** the standing product contract (product decision,
+differentiation, domain and evidence model, data sources, query and UI model, milestone
+status) is [`PROMPT.md`](PROMPT.md); contributor rules are [`AGENTS.md`](AGENTS.md);
+what this build supports — and deliberately does not — is
+[`docs/online-capability.md`](docs/online-capability.md); deployment and operations are
+[`docs/runbook.md`](docs/runbook.md); recorded measurements are in
+[`benchmarks/README.md`](benchmarks/README.md).
 
-**License:** [Apache License 2.0](LICENSE) · Copyright 2026 chenDeepin · see also [`NOTICE`](NOTICE) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+**License:** [Apache License 2.0](LICENSE) · Copyright 2026 chenDeepin · see also
+[`NOTICE`](NOTICE) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ---
 
-# Current status: ONLINE-00…05 implemented locally; hosted acceptance still open
+## Status — 2026-09-16
 
-**Implemented and locally verified** (read
-[the plan's verification record](docs/plans/2026-09-15-online-llm.md) before
-trusting any of it):
+**Implemented and locally verified** (per-round records are linked at the end of this
+section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
 
-- **Target-led open-database investigation.** Resolve a target (UniProt), then
-  retrieve bounded candidates and measurements from ChEMBL, BindingDB and
-  PubChem, each with its own recorded outcome (`complete` / `partial` / `empty` /
-  `failed` / `not_queried`). Deterministic modality classification keeps small
-  molecules apart from peptides and biologics, and measurements carry an explicit
-  evidence class (measured binding, interaction disruption, functional effect,
-  screening).
-- **Scoped, cited summaries** for a patent family, one document, or a target
-  investigation, with separate prompt versions and cache keys per scope.
-- **Validated natural-language search**: a request becomes a typed plan against a
-  fixed operation allowlist, shown for review, executed only on explicit action.
-- **Hosted access**: invitation-only sessions, per-owner projects and analyses,
-  fail-closed anonymous access, model-usage quotas, readiness checks and a hosted
-  runbook.
+- **Target-led open-database investigation (ONLINE-00).** Resolve a target (UniProt),
+  then retrieve bounded candidates and measurements from ChEMBL, BindingDB and PubChem,
+  each with its recorded outcome (`complete` / `partial` / `empty` / `failed` /
+  `not_queried`). Deterministic modality classification keeps small molecules apart from
+  peptides and biologics, and every measurement carries an explicit evidence class
+  (measured binding, interaction disruption, functional effect, screening).
+- **Potency classes and a screening-reference verdict (ONLINE-06).** Deterministic
+  classes under one versioned threshold (`potency-gate-v1`), computed from stored rows on
+  read and exported together with the threshold that produced them, plus source-declared
+  patent / DOI / PMID per measurement. The verdict is a **count under a stated policy, not
+  a biological or legal conclusion**, and a thin set is never rendered as a negative
+  result.
+- **Hand-added literature rows (ONLINE-07).** `POST /targets/{id}/supplements` stores a
+  user's own literature or patent rows with a mandatory note, the same RDKit normalization
+  and InChIKey identity as a retrieved structure, `user_curated` provenance that nothing
+  promotes, and a separate remark table for rows whose structure is not public (never
+  counted as a measurement). There is no delete path yet; a corrected row is re-submitted.
+- **Scoped, cited summaries (ONLINE-01)** for a patent family, one document or a target,
+  with separate prompt versions and cache keys per scope, and an offline extractive
+  provider that needs no model.
+- **Validated natural-language search (ONLINE-02):** a request becomes a typed plan
+  against a fixed operation allowlist, shown for review and executed only on explicit
+  action.
+- **Hosted access (ONLINE-03):** invitation-only sessions, per-owner projects and
+  analyses, fail-closed anonymous access, model-usage quotas, readiness checks and a
+  hosted runbook.
+- **Patent chemistry, search and export (M0–M5, product readiness):** one-command local
+  startup, saved projects that reopen across sessions and restarts, exact /
+  substructure / similarity search on cartridge-indexed chemistry, typed
+  targets/assays/measurements with provenance, a thin MV3 Chrome context bridge, and
+  CSV/SDF export whose scope equals exactly the current filter (re-executed
+  server-side, including rows the browser never loaded).
+- **Real patent data path:** `scripts/extract_surechembl.py` extracts a patent-family
+  package from the official SureChEMBL bulk release (EMBL-EBI FTP, Parquet, CC BY 4.0)
+  over HTTP range reads, and `python -m spago_core.import_package <dir>` ingests it with a
+  durable import job and file checksums (verified with the real losartan and sildenafil
+  families).
 
-**Not done — do not mistake implementation for acceptance:** no hosted deployment
-exists, no invited user has completed the workflow, and the live model smoke
-covers **one** provider (DeepSeek `deepseek-flash`, recorded below) rather than
-compatibility in general. [Scope and coverage statement](docs/online-capability.md) ·
-[acceptance record](docs/plans/ui-round-verification/online-beta-acceptance-2026-09-15.md).
+**Not done — do not mistake implementation for acceptance.** There is no hosted
+deployment, no invited user has completed the workflow, and the live model smoke covers
+**one** provider (DeepSeek `deepseek-flash`) rather than compatibility in general. Source
+refresh does not yet retract deleted or invalid mappings, and an interrupted import job
+has no recovery protocol. The verified/open register is
+[`docs/archive/2026-09-15-beta-acceptance.md`](docs/archive/2026-09-15-beta-acceptance.md)
+§4; round records are
+[`docs/plans/2026-09-15-online-llm.md`](docs/plans/2026-09-15-online-llm.md) §4,
+[`docs/plans/2026-09-15-bindingdb-io-port.md`](docs/plans/2026-09-15-bindingdb-io-port.md)
+§6–§7 and [`docs/archive/2026-09-15-product-readiness.md`](docs/archive/2026-09-15-product-readiness.md).
 
-Local single-user usage is unchanged: `docker compose up -d --build` needs no
-accounts (`SPAGO_AUTH_MODE=disabled`), and existing data stays unattached.
+Live coverage is genuinely thin for some acceptance targets (human TSLP has one
+small-molecule candidate in these sources; IL-6R has one, and BindingDB does not answer
+for it). That is reported honestly rather than as promising inhibitor coverage:
+[`benchmarks/online00-coverage-2026-09-15.md`](benchmarks/online00-coverage-2026-09-15.md).
 
-# Previous status: M0–M5 local demo + first real-source path
+The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*`
+identifiers). It is not scientific data.
 
-- one-command local startup: `docker compose up -d --build` → `http://localhost:8000`;
-- **M0 Foundation**: FastAPI core + React workspace (search → family → compounds → evidence),
-  PostgreSQL 15 + RDKit cartridge, versioned migrations, idempotent seeding, DuckDB-over-Parquet
-  bulk layer, lazy cached RDKit depictions;
-- **M1 Patent Chemistry Viewer**: save-to-project (idempotent, server-derived source
-  versions, identity snapshots) with a **Projects → Open** flow that restores the
-  family and the saved selection across sessions and restarts; CSV/SDF export with
-  patent ids, labels, evidence references, source URLs and dataset version;
-  structure detail drawer; bulk selection;
-- **M2 Structure Search**: exact / substructure / similarity against cartridge-indexed chemistry,
-  molecule filters, stereo-preserving matching, explicit run + removable results chip
-  (embedded Ketcher editor is deferred — see the M1–M5 plan record);
-- **M3 Bioactivity / SAR**: typed targets/assays/measurements with provenance, Murcko scaffold
-  grouping, ChEMBL + BindingDB adapter contracts (sealed-fixture tested), activity column and
-  evidence-panel bioactivity with "no ranking across assays" semantics;
-- **M4 Chrome Companion**: thin MV3 context bridge (URL-only detection → side panel → `?q=` deep
-  link); detection contract covered by `apps/chrome-extension/check.js`;
-- **M5 Evidence-Grounded AI**: offline extractive provider with typed citations and honest
-  `machine_extracted` labeling; optional real-model path — configure
-  `SPAGO_LLM_BASE_URL` / `SPAGO_LLM_API_KEY` / `SPAGO_LLM_MODEL` (the supported
-  Chat Completions subset; one provider measured, see below) and the AI
-  tab offers LLM summaries with content-key caching, bounded fact input,
-  citation validation, and `llm_inferred` labeling; deterministic query planner;
-  AI as an inspector tab;
-- **Real-model smoke (2026-09-15)**: DeepSeek `deepseek-flash` reached through the
-  running API for family, document and target scopes, and exercised through the
-  browser AI panel in LLM mode (cache reuse confirmed, 85 % single-attempt
-  compliance over 13 typed calls, median 4.7–7.3 s) — see
-  [docs/plans/2026-09-15-llm-live-smoke.md](docs/plans/2026-09-15-llm-live-smoke.md).
-  One provider is not a compatibility claim: a rejected answer is re-sampled once
-  and otherwise fails as 502, and any other endpoint needs its own smoke run;
-- **Repair round (2026-09-15)**: server-offset paging beyond the 500-row cap with
-  retryable errors; the LLM input-budget / request-timeout / upstream-429 contract
-  is fixed; **export scope is correct** — a structure filter exports exactly the
-  matched set (re-executed server-side, including rows the browser never loaded),
-  mentions and evidence never leak across families, oversized scopes are rejected
-  in the counting phase, and the export menu names the exact scope;
-- **Real patent data path (product readiness)**: `scripts/extract_surechembl.py`
-  extracts real patent-family chemistry from the official SureChEMBL bulk release
-  (EMBL-EBI FTP, Parquet, CC BY 4.0) over HTTP range reads, and
-  `python -m spago_core.import_package <dir>` ingests it with a durable import job
-  and file checksums. Verified end-to-end with the real losartan and sildenafil
-  patent families on an isolated stack (browser checks at 1440×900 / 760×800);
-  `SPAGO_SEED_MODE=none` keeps the demo fixture out of real deployments, and the
-  UI labels data by its actual source. Operations (backup, restore, upgrade,
-  security boundaries) are documented in [docs/runbook.md](docs/runbook.md);
-  measurements in [benchmarks/README.md](benchmarks/README.md).
-- Checks: `scripts/run_checks.sh` requires a reachable scratch PostgreSQL/RDKit
-  database; `--no-pg` explicitly checks only a subset. See the current review
-  results in [the readiness plan](docs/plans/2026-09-15-product-readiness.md).
-
-**Next milestone: hosted SPAgo with LLM-assisted search and cited summaries.**
-The [online + LLM plan](docs/plans/2026-09-15-online-llm.md) prioritizes
-target-led small-molecule investigation for TSLP, CD40L and IL-6/IL-6R, using
-UniProt/ChEMBL/BindingDB/PubChem adapters and existing patent-source links, then
-live-model summaries, validated natural-language search, private workspaces and
-hosted operation with usage limits. Direct and indirect evidence stay distinct;
-actual target coverage remains to be measured. These are planned capabilities; hosted
-access and LLM search are not implemented yet.
-
-**Release status: local trial candidate; product acceptance remains open.**
-Source refresh does not yet retract deleted/invalid mappings, interrupted import
-jobs have no recovery protocol, and manual scientific source cross-reading and
-an external-user G1 trial remain outstanding. Earlier real-source walkthroughs
-do not close those gates.
-
-M6 (PDF/OCSR) is intentionally not started. Still open: real bioactivity import
-(PROD-06), a real-model smoke test (PROD-07), multi-user auth (PROD-08), Ketcher
-embedding, and Chrome-in-Chrome verification — recorded in
-[the product-readiness plan](docs/plans/2026-09-15-product-readiness.md). The
-real-data coverage claim is limited to the imported families; uncovered
-publication numbers return an explicit "not found in current dataset". No
-hosted release has been made. The local-readiness work is committed at `41ef768`.
-
-The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*` identifiers).
-It is not scientific data.
+---
 
 ## Quick start (local)
 
@@ -126,877 +91,145 @@ docker compose up -d --build
 # open http://localhost:8000 and search: DEMO-PATENT-A
 ```
 
-For development without Docker rebuilds, see `services/core/README.md`
-(backend hot reload against the compose `db` service, Vite dev server on :5173).
+For development without Docker rebuilds, see `services/core/README.md` (backend hot
+reload against the compose `db` service, Vite dev server on :5173).
+
+### Development checks
+
+`scripts/run_checks.sh` runs the full backend suite against a reachable scratch
+PostgreSQL with the RDKit cartridge, then the frontend typecheck and production build
+(`--no-pg` explicitly checks only the subset that needs no database). Recorded
+measurements and their method notes are indexed in
+[`benchmarks/README.md`](benchmarks/README.md).
 
 ### Loading real patent data
 
-The demo fixture is optional. Real patent-family chemistry comes from the
-official SureChEMBL bulk release (EMBL-EBI FTP, Parquet, CC BY 4.0): extract a
-family package with `scripts/extract_surechembl.py --release YYYY-MM-DD`
-inside the app container (HTTP range reads, fresh output directory, bounded
-family-package size), import it with
+The demo fixture is optional. Real patent-family chemistry comes from the official
+SureChEMBL bulk release: extract a family package with
+`scripts/extract_surechembl.py --release YYYY-MM-DD --patent <PUBLICATION>` inside the
+app container (HTTP range reads, fresh output directory, bounded package size), import it
+with
 `docker compose run --rm -v "$PWD/local:/import" app python -m spago_core.import_package /import/<package>`,
-and set `SPAGO_SEED_MODE=none` so the demo fixture is never mixed in. Verified
-with the real losartan (`US-5153197-A`) and sildenafil (`US-5250534-A`) patent
-families. Coverage is limited to what you imported; uncovered numbers return an
-explicit not-found. Full instructions, backup/restore, and upgrade steps are in
-[docs/runbook.md](docs/runbook.md).
+and set `SPAGO_SEED_MODE=none` so the demo fixture is never mixed in. Coverage is limited
+to what you imported; an uncovered publication number returns an explicit not-found.
+Backup, restore and upgrade steps are in [`docs/runbook.md`](docs/runbook.md).
 
 ### Optional LLM summaries
 
-Set `SPAGO_LLM_BASE_URL`, `SPAGO_LLM_MODEL`, and, if required by the endpoint,
-`SPAGO_LLM_API_KEY` in a local `.env` using `.env.example`. The base URL includes
-the full API prefix (for example `https://provider.example/v1`); SPAgo appends
-only `/chat/completions`. These are placeholders, not a default external target.
-Run `docker compose up -d --build` again to apply the environment, then explicitly
-select LLM mode in the existing AI tab. Legacy summary calls remain offline.
+Set `SPAGO_LLM_BASE_URL`, `SPAGO_LLM_MODEL` and, if the endpoint requires it,
+`SPAGO_LLM_API_KEY` in a local `.env` (see `.env.example`), then rebuild and select LLM
+mode in the existing AI tab. The base URL includes the full API prefix (for example
+`https://provider.example/v1`); SPAgo appends only `/chat/completions`. These are
+placeholders, not a default external target, and `configured` means the local settings
+are present — not that a model call succeeded.
 
-The protocol sends `model`, `messages`, `stream: false`, and `max_tokens`, plus
-two opt-in compatibility switches that are off unless the operator sets them:
-`SPAGO_LLM_DISABLE_THINKING=true` sends `thinking: {"type": "disabled"}` for
-models that reason by default and would otherwise spend the whole output budget
-before writing an answer, and `SPAGO_LLM_JSON_MODE=true` sends
-`response_format: {"type": "json_object"}` when a model occasionally returns
-malformed JSON. Strict endpoints reject unknown parameters, which is why neither
-is sent by default. It does not support every vendor API or model; `configured`
-means the local settings are present, not that a model call succeeded.
+The request sends `model`, `messages`, `stream: false` and `max_tokens`, plus two opt-in
+compatibility switches that stay off unless the operator sets them:
+`SPAGO_LLM_DISABLE_THINKING=true` sends `thinking: {"type": "disabled"}` for models that
+reason by default, and `SPAGO_LLM_JSON_MODE=true` sends
+`response_format: {"type": "json_object"}`. Strict endpoints reject unknown parameters,
+which is why neither is sent by default; the adapter does not support every vendor API.
+For a host-local endpoint use `http://host.docker.internal:<port>/v1` (Compose maps that
+hostname on Linux); container `localhost` addresses the app container itself.
 
-A real-model smoke has been recorded once against DeepSeek `deepseek-flash`
-(model, protocol, latency, token usage, cache reuse and the failures found are in
-[the live-smoke record](docs/plans/2026-09-15-llm-live-smoke.md)); that is one
-provider, not a compatibility claim, and measured single-attempt compliance was
-85 %. The input-budget, timeout, and upstream-429 gaps that were tracked in the
-LLM plan are fixed and covered by tests (upstream 429 answers 429 with a
-validated `Retry-After` instead of 502) — see
-[the LLM contract record](docs/plans/2026-09-14-llm-interface.md).
-
-For an explicitly configured host-local endpoint, use
-`http://host.docker.internal:<port>/v1`; Compose already maps that hostname on Linux.
-Container `localhost` addresses the app container itself. The endpoint must be
-reachable from the container; plain HTTP service DNS names are not currently
-accepted by the adapter's host check. Leave the key empty for an endpoint without
-authentication. The supported deployment uses one app worker: the two-call limit
-and duplicate-in-flight tracking are process-local. Keep the default app binding
-to `127.0.0.1`; a shared deployment with a provider key needs deployment-side
-authentication before explicitly opening the interface. Stop waiting only stops
-the browser from waiting; it does not acknowledge provider cancellation.
+The supported deployment uses **one app worker** — the two-call limit and
+duplicate-in-flight tracking are process-local — and keeps the default app binding to
+`127.0.0.1`; a shared deployment with a provider key needs deployment-side authentication
+first. "Stop waiting" stops the browser from waiting; it does not acknowledge provider
+cancellation. The recorded live smoke
+([`docs/archive/2026-09-15-llm-live-smoke.md`](docs/archive/2026-09-15-llm-live-smoke.md))
+is one provider at 85 % single-attempt compliance, not a compatibility claim.
 
 ---
 
-# Why SPAgo?
+## How it works
 
-A typical medicinal-chemistry patent workflow is fragmented:
+The product loop the implementation is built around:
 
 ```text
-Espacenet
-   ↓
-Patent PDF
-   ↓
-Find compounds manually
-   ↓
-Find assay tables manually
-   ↓
-Spreadsheet / DataWarrior
-   ↓
-BindingDB / ChEMBL
-   ↓
-LLM / notes
+Search → patent family → compounds → structure filtering → bioactivity/SAR
+      → claims + evidence → AI-assisted interpretation → saved project
 ```
 
-SPAgo aims to turn this into:
+- **Adapters isolate sources.** External APIs and datasets enter through
+  `external source → adapter → normalized domain model → service layer → API → UI`; UI
+  code never sees a SureChEMBL, OPS, ChEMBL, BindingDB or PubChem schema. Each adapter
+  reports source name and version, retrieval timestamp, errors and rate-limit state.
+- **Chemistry is deterministic.** RDKit (through the PostgreSQL cartridge) owns canonical
+  identity, fingerprints, substructure, similarity, scaffolds, descriptors and depictions.
+  LLM output never decides molecular equivalence, and a potency class is computed from
+  stored rows under a stated threshold — never written by a model.
+- **Evidence and provenance are typed.** Every scientific datum carries a state
+  (`source_fact`, `database_curated`, `machine_extracted`, `llm_inferred`, `user_curated`)
+  and, where possible, a locator back to its document; nothing silently promotes an
+  inference to a source fact.
+- **Two data layers, chosen per workload.** Parquet + DuckDB for bulk patent chemistry and
+  analytical filtering; PostgreSQL + RDKit for interactive structure search, projects,
+  measurements and evidence. The complete bulk dataset is not copied into PostgreSQL.
+- **Large data stays server-side.** Default API page 100, ordinary maximum 500, with
+  server-side filtering, sorting and cancellation, virtualized rendering and lazy
+  molecule depiction.
+
+The full contract — product decision, differentiation, domain and evidence model, data
+sources, query architecture, UI model, non-goals — is [`PROMPT.md`](PROMPT.md).
+
+---
+
+## Repository layout
 
 ```text
-Search
-   ↓
-Patent family
-   ↓
-Compounds
-   ↓
-Structure filtering
-   ↓
-Bioactivity / SAR
-   ↓
-Claims + evidence
-   ↓
-AI-assisted interpretation
+apps/web/                 React + TypeScript workspace (Vite)
+apps/chrome-extension/    optional MV3 context bridge (URL-only detection)
+services/core/            FastAPI service
+  spago_core/adapters/    external sources: SureChEMBL, EPO OPS, ChEMBL, BindingDB,
+                          PubChem, UniProt, LLM endpoint
+  spago_core/chemistry/   deterministic chemistry: RDKit engine, modality, activity classes
+  spago_core/services/    discovery, reference verdict, supplements, summaries, export,
+                          projects, planner, jobs
+  spago_core/api/         HTTP routes
+  tests/                  unit, chemistry, adapter contract, API, integration, evaluation
+migrations/               versioned SQL schema (forward-only)
+data/fixtures/            small sealed fixtures + synthetic demo data
+benchmarks/               recorded measurements and their method notes
+scripts/                  extraction, check runner, LLM evaluation, mock endpoint
+docs/                     architecture, ADRs, capability statement, runbook, plans, archive
+docker/                   database image init
 ```
 
-The goal is not simply to search patents faster.
-
-The goal is to make patent chemistry directly usable for drug-discovery decisions.
+Do not read this as permission to create empty packages; create a module only when
+implementation requires it.
 
 ---
 
-# Core Product Idea
+## Milestones
 
-SPAgo treats the following relationship as the fundamental unit:
+| Milestone | State |
+| --- | --- |
+| M0 Foundation and benchmarks | implemented; [`docs/archive/2026-09-14-m0-foundation.md`](docs/archive/2026-09-14-m0-foundation.md) |
+| M1 Patent chemistry viewer | implemented (Ketcher editor still deferred — see the record) |
+| M2 Structure search | implemented (exact / substructure / similarity, cartridge-indexed) |
+| M3 Bioactivity and SAR | implemented for open sources; see the online capability statement |
+| M4 Chrome companion | thin MV3 bridge; Chrome-in-Chrome verification still open |
+| M5 Evidence-grounded AI | implemented offline and against one live provider |
+| ONLINE-00…07 | implemented locally; see **Status** above |
+| ONLINE-04 hosted deployment, ONLINE-05 invited-user acceptance | **open** — [beta acceptance §4](docs/archive/2026-09-15-beta-acceptance.md) |
+| M6 PDF/OCSR fallback | intentionally not started (structured sources first) |
 
-```text
-PatentFamily
-    ↕
-PatentDocument
-    ↕
-Compound
-    ↕
-CompoundMention / Example
-    ↕
-Assay / Measurement
-    ↕
-Claim
-    ↕
-Evidence
-```
-
-This allows users to move between chemical structure, activity data, patent context, claims, and original evidence without rebuilding those relationships manually.
+Deliverables and exit criteria per milestone are in [`PROMPT.md`](PROMPT.md) §14.
 
 ---
 
-# How SPAgo Is Different
+## Boundaries
 
-Existing platforms already solve important pieces of the problem.
-
-SPAgo should reuse those capabilities rather than reproduce them.
-
-Its differentiation is the workflow connecting them.
-
-## 1. Evidence-linked chemistry
-
-A compound or activity value should link back to where it came from:
-
-```text
-WO-XXXXXXXX
-→ Example 153
-→ Table 12
-→ Compound 153
-→ CDK4 IC50 = 2.1 nM
-```
-
-Evidence is a first-class object, not an afterthought.
-
-## 2. Cross-patent chemical normalization
-
-Patent-local names such as:
-
-```text
-Compound 15
-Example 32
-Intermediate 7
-```
-
-are connected to normalized chemical identities while preserving their original patent context.
-
-## 3. Structure-native patent exploration
-
-Users can combine chemical and patent filters.
-
-Examples:
-
-```text
-target = CDK4
-publication year >= 2023
-assignee = selected companies
-substructure = selected scaffold
-CDK4 IC50 < 20 nM
-CDK4/CDK6 selectivity > 10
-```
-
-## 4. Cross-patent SAR
-
-SPAgo is intended to eventually answer questions such as:
-
-```text
-Which scaffold families dominate this target?
-
-What substitutions are associated with improved potency?
-
-Which modifications appear related to selectivity?
-
-Which family first disclosed this chemical space?
-
-Which compounds are supported by quantitative assays?
-
-Which molecules occur in claims versus examples only?
-```
-
-## 5. Evidence-grounded AI
-
-LLMs assist with:
-
-- query interpretation;
-- patent summaries;
-- SAR interpretation;
-- claim explanation;
-- family comparison;
-- evidence synthesis.
-
-LLMs do not replace deterministic chemistry or source data.
+SPAgo is not a patent-office replacement, an autonomous legal-advice or
+freedom-to-operate engine, a complete Markush platform, a generalized AIDD IDE, a
+docking/MD/FEP platform, a synthesis planner, an ELN or LIMS, a web crawler designed to
+defeat access restrictions, or a full DataWarrior replacement. It does not automate
+Espacenet navigation, pagination, clicks, CAPTCHAs or robot-detection bypass.
 
 ---
 
-# Product Philosophy
-
-SPAgo follows five principles.
-
-### One product, not many tools
-
-The user sees one coherent workspace.
-
-External libraries and data sources remain implementation details.
-
-### Preserve existing habits
-
-SPAgo can be used as a standalone Web App.
-
-An optional Chrome extension can complement Espacenet or other patent websites without replacing the user's normal browsing workflow.
-
-### Progressive disclosure
-
-Common workflows stay simple.
-
-Advanced filters and analysis appear only when requested.
-
-### Deterministic chemistry
-
-Structure identity, substructure search, fingerprints, similarity, and descriptors are handled by chemistry software rather than LLM inference.
-
-### Evidence before interpretation
-
-Scientific conclusions should remain traceable to source evidence.
-
----
-
-# User Experience
-
-The initial application should expose only four major concepts:
-
-```text
-Search
-Results / Molecules
-Evidence
-AI
-```
-
-A possible desktop layout:
-
-```text
-┌──────────────────────────────────────────────────────────┐
-│ Search | Structure | Target | Assignee | Date | Filters │
-├──────────────┬──────────────────────────┬────────────────┤
-│ Patent       │ Molecule / SAR Table     │ AI             │
-│ Families     │                          │                │
-│              │ Structure | Data | ...   │                │
-├──────────────┴──────────────────────────┴────────────────┤
-│ Evidence / Patent Source                                │
-└──────────────────────────────────────────────────────────┘
-```
-
-Advanced capabilities should not create permanent UI clutter.
-
----
-
-# Browser Integration
-
-SPAgo is Web-first.
-
-The complete product works without a browser extension.
-
-An optional Chrome Manifest V3 extension can provide:
-
-```text
-current patent page
-      ↓
-detect publication number
-      ↓
-SPAgo side panel
-      ↓
-open full workspace if needed
-```
-
-The extension remains intentionally thin.
-
-It does not scrape Espacenet automatically and does not attempt to bypass robot detection or CAPTCHAs.
-
----
-
-# Architecture
-
-SPAgo starts as a modular monolith.
-
-```text
-┌─────────────────────────────┐
-│ Browser                     │
-│                             │
-│ React / TypeScript          │
-│ Ketcher                     │
-│ virtualized chemical table  │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│ SPAgo Core             │
-│                             │
-│ FastAPI                     │
-│ query services              │
-│ chemistry services          │
-│ source adapters             │
-│ evidence services           │
-│ LLM orchestration           │
-└───────────┬─────────┬───────┘
-            │         │
-            ▼         ▼
-   PostgreSQL       DuckDB
-   + RDKit             │
-            │           ▼
-            │    SureChEMBL Parquet
-            │
-            ▼
-     Project / chemistry
-     / evidence state
-```
-
-External sources are accessed through adapters:
-
-```text
-SureChEMBL
-EPO OPS
-BindingDB
-ChEMBL
-```
-
-Additional sources may be added later without changing the UI's domain model.
-
----
-
-# Why Two Data Layers?
-
-Patent search can involve very large datasets.
-
-Trying to load everything into one application database creates unnecessary storage, update, and maintenance costs.
-
-SPAgo therefore separates workloads.
-
-## Bulk analytical layer
-
-SureChEMBL bulk data remain in Parquet where practical.
-
-DuckDB performs:
-
-- filtering;
-- projection;
-- joins;
-- aggregation;
-- initial candidate selection.
-
-## Interactive chemistry layer
-
-PostgreSQL + RDKit handles:
-
-- exact structures;
-- substructure search;
-- similarity;
-- fingerprints;
-- normalized project chemistry.
-
-## Application layer
-
-PostgreSQL stores:
-
-- projects;
-- annotations;
-- evidence;
-- source records;
-- saved compounds;
-- activity data;
-- analyses.
-
----
-
-# Large Dataset Strategy
-
-The browser never receives the entire result set.
-
-SPAgo uses:
-
-```text
-server-side filtering
-server-side sorting
-pagination / cursors
-virtualized rendering
-lazy molecule depiction
-cached structures
-lazy evidence retrieval
-```
-
-The table should remain responsive even when the underlying query represents very large result spaces.
-
-Default API pages should remain small.
-
-Molecule depictions should be generated or loaded only when they are needed.
-
----
-
-# Core Domain Model
-
-Initial domain objects:
-
-```text
-Project
-
-PatentFamily
-PatentDocument
-
-Compound
-CompoundIdentity
-CompoundMention
-CompoundExample
-
-Target
-
-Assay
-Measurement
-
-Claim
-
-Evidence
-
-SourceRecord
-
-UserAnnotation
-LLMAnalysis
-```
-
-Important:
-
-```text
-Compound
-```
-
-is a normalized chemical entity.
-
-```text
-CompoundMention
-```
-
-is a specific occurrence in a patent.
-
-These concepts must remain separate.
-
----
-
-# Evidence Model
-
-Every important scientific record should preserve provenance.
-
-Example:
-
-```text
-Evidence
-├── patent document
-├── section
-├── page
-├── paragraph
-├── table / figure
-├── example
-├── patent-local compound ID
-├── raw source excerpt
-├── source identifier
-├── extraction method
-└── confidence
-```
-
-Possible provenance states:
-
-```text
-SOURCE_FACT
-DATABASE_CURATED
-MACHINE_EXTRACTED
-LLM_INFERRED
-USER_CURATED
-```
-
----
-
-# Data Sources
-
-## SureChEMBL
-
-Primary broad source for patent-associated chemical structures.
-
-Use bulk datasets as the main scalable access path.
-
-## EPO OPS
-
-Patent bibliographic, family, legal-status, text, and document enrichment.
-
-Access through official APIs.
-
-## BindingDB
-
-Curated compound-target activity enrichment.
-
-Useful as a high-quality activity source, but not assumed to provide complete current patent coverage.
-
-## ChEMBL
-
-Compound, target, assay, activity, and external chemistry enrichment.
-
----
-
-# Chemistry Layer
-
-RDKit is the canonical backend chemistry engine.
-
-Responsibilities include:
-
-```text
-structure parsing
-normalization
-canonicalization
-fingerprints
-substructure
-similarity
-scaffolds
-descriptors
-2D depictions
-```
-
-Ketcher is used for interactive structure drawing.
-
-Ketcher should not become a mandatory external application; it is embedded in the Web App.
-
----
-
-# LLM Layer
-
-LLMs should operate above deterministic data systems.
-
-A typical request:
-
-```text
-"Find recent selective CDK4 inhibitor patents and compare
-the chemical changes associated with CDK4/CDK6 selectivity."
-```
-
-may be translated into:
-
-```text
-natural language
-      ↓
-query plan
-      ↓
-patent metadata search
-      +
-structure filtering
-      +
-activity retrieval
-      +
-family grouping
-      ↓
-evidence set
-      ↓
-LLM interpretation
-```
-
-The LLM interprets results.
-
-It does not invent the underlying scientific facts.
-
----
-
-# Installation
-
-The preferred user experience is hosted:
-
-```text
-Open SPAgo
-→ use it
-```
-
-For local deployment, the target is:
-
-```bash
-git clone <repository>
-cd spago
-docker compose up -d --build
-```
-
-Then open the local Web App.
-
-Users should not need to manually install or configure:
-
-```text
-Python
-Node.js
-PostgreSQL
-RDKit
-DuckDB
-Java
-DataWarrior
-```
-
----
-
-# Repository Layout
-
-Initial target structure:
-
-```text
-spago/
-├── AGENTS.md
-├── README.md
-├── docker-compose.yml
-├── .env.example
-│
-├── apps/
-│   ├── web/
-│   └── chrome-extension/
-│
-├── services/
-│   └── core/
-│
-├── packages/
-│   ├── domain/
-│   ├── api-client/
-│   ├── ui/
-│   └── chemistry-types/
-│
-├── backend/
-│   ├── api/
-│   ├── chemistry/
-│   ├── evidence/
-│   ├── queries/
-│   ├── projects/
-│   ├── llm/
-│   └── adapters/
-│       ├── surechembl/
-│       ├── epo_ops/
-│       ├── bindingdb/
-│       └── chembl/
-│
-├── data/
-│   ├── fixtures/
-│   └── README.md
-│
-├── migrations/
-│
-├── benchmarks/
-│
-├── tests/
-│   ├── chemistry/
-│   ├── adapters/
-│   ├── integration/
-│   ├── e2e/
-│   └── performance/
-│
-└── docs/
-    ├── architecture/
-    ├── adr/
-    ├── data-model/
-    └── roadmap/
-```
-
-Do not interpret this structure as permission to create empty packages.
-
-Create packages only when implementation requires them.
-
----
-
-# Development Roadmap
-
-## Milestone 0 — Foundation
-
-Build:
-
-- application skeleton;
-- Docker development environment;
-- PostgreSQL + RDKit;
-- domain model;
-- source adapter contracts;
-- evidence model;
-- SureChEMBL Parquet fixture;
-- DuckDB query proof;
-- benchmark harness.
-
-Success means the architecture is measurable and reproducible.
-
----
-
-## Milestone 1 — Patent Chemistry Viewer
-
-Build:
-
-- patent-number search;
-- family summary;
-- molecule table;
-- 2D depictions;
-- evidence panel;
-- project save.
-
-Success means a medicinal chemist can inspect patent chemistry without manually browsing the PDF for the common path.
-
----
-
-## Milestone 2 — Structure Search
-
-Build:
-
-- Ketcher;
-- exact structure search;
-- substructure search;
-- similarity search;
-- molecular filters.
-
-Success means chemical structure and patent metadata can be queried together.
-
----
-
-## Milestone 3 — Bioactivity / SAR
-
-Build:
-
-- BindingDB;
-- ChEMBL;
-- normalized activity data;
-- scaffold grouping;
-- SAR table.
-
-Success means users can compare compounds scientifically rather than only browse structures.
-
----
-
-## Milestone 4 — Chrome Companion
-
-Build:
-
-- Manifest V3 extension;
-- side panel;
-- patent-page context detection.
-
-Success means users can continue their existing Espacenet workflow while opening SPAgo alongside it.
-
----
-
-## Milestone 5 — Evidence-Grounded AI
-
-Build:
-
-- natural-language query planner;
-- patent summaries;
-- cross-family comparison;
-- SAR interpretation;
-- evidence citations.
-
-Success means AI accelerates reasoning without hiding the supporting data.
-
----
-
-## Milestone 6 — PDF Chemistry Fallback
-
-Potential future work:
-
-- PDF layout extraction;
-- table extraction;
-- OCSR;
-- image-compound association;
-- confidence scoring;
-- manual review.
-
-This should be added only after measuring gaps in structured-source coverage.
-
----
-
-# MVP User Journey
-
-The first complete user journey is deliberately narrow.
-
-```text
-Open SPAgo
-
-→ Enter patent publication number
-
-→ View patent family
-
-→ View extracted compounds
-
-→ Inspect 2D structures
-
-→ Draw a scaffold
-
-→ Run substructure filter
-
-→ Select compound
-
-→ Inspect source evidence
-
-→ View available bioactivity
-
-→ Save selected compound/family to project
-
-→ Ask AI for an evidence-grounded summary
-```
-
-If this workflow is not excellent, do not broaden the product.
-
----
-
-# Non-Goals for v1
-
-SPAgo v1 is not intended to be:
-
-- a patent-office replacement;
-- an autonomous legal-advice system;
-- a complete Markush platform;
-- a generalized AIDD IDE;
-- a docking platform;
-- an MD/FEP platform;
-- a synthesis planner;
-- an ELN;
-- a LIMS;
-- a web crawler designed to defeat access restrictions;
-- a full DataWarrior replacement.
-
----
-
-# Engineering Principle
-
-The product should become more powerful without becoming harder to use.
-
-New functionality should generally appear as:
-
-```text
-better data
-better relationships
-better evidence
-better queries
-better context
-```
-
-rather than:
-
-```text
-more panels
-more buttons
-more services
-more installation steps
-more user-facing tools
-```
-
----
-
-# North-Star Workflow
-
-SPAgo should eventually make the following interaction natural:
-
-> Find small-molecule patents relevant to a drug target, cluster the compounds by chemical scaffold, identify quantitative potency and selectivity data, compare related patent families, show where every important value originated, and explain the resulting medicinal-chemistry landscape.
-
-All while keeping the original patent evidence one click away.
-
-That is the product.
-
----
-
-# License
+## License
 
 SPAgo is licensed under the [Apache License, Version 2.0](LICENSE).
 
@@ -1007,12 +240,11 @@ Copyright 2026 chenDeepin
 - Project attribution: [`NOTICE`](NOTICE)
 - Included tools and data-source terms: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
 
-Commercial use, modification, and redistribution are permitted under Apache-2.0.
-Charging for support, hosting, or related services is allowed; the open-source
-grant itself remains royalty-free for recipients of the code.
+Commercial use, modification and redistribution are permitted under Apache-2.0;
+charging for support, hosting or related services is allowed, and the open-source grant
+itself remains royalty-free for recipients of the code.
 
-SPAgo may assist with patent organization and evidence-linked chemistry review.
-It does not provide legal advice or definitive freedom-to-operate conclusions.
-
-External datasets and APIs (for example SureChEMBL, EPO OPS, ChEMBL, BindingDB,
-PubChem, and LLM providers) remain under their own Terms of Use.
+SPAgo may assist with patent organization and evidence-linked chemistry review. It does
+not provide legal advice or definitive freedom-to-operate conclusions. External datasets
+and APIs (for example SureChEMBL, EPO OPS, ChEMBL, BindingDB, PubChem and LLM providers)
+remain under their own Terms of Use.

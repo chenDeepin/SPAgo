@@ -1,6 +1,6 @@
 # Paging measurement: ordinary results beyond the 500-row cap (2026-09-15)
 
-Scope: the UI-07/UI-08 repair round (`docs/plans/2026-09-14-ui-review-next-round.md`).
+Scope: the UI-07/UI-08 repair round (`docs/archive/2026-09-14-ui-review-next-round.md`).
 Captured against an **isolated** verification stack, not the developer stack.
 
 ## Environment

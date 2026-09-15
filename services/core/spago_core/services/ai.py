@@ -110,14 +110,14 @@ MAX_CONCURRENT_LLM_CALLS = 2
 #: Provider calls allowed for one summary request: at most one re-sample after a
 #: *content rejection of a completed response*, decided by the owner on
 #: 2026-09-15 to lift the measured 85 % single-attempt compliance
-#: (docs/plans/2026-09-15-llm-live-smoke.md §9). Every failure where the call may
+#: (docs/archive/2026-09-15-llm-live-smoke.md §9). Every failure where the call may
 #: not have been billed — timeout, throttle, auth, transport, protocol — stays
 #: single-attempt, so this bound cannot multiply an unknown charge.
 MAX_LLM_ATTEMPTS = 2
 #: Schema limits shared by the instructions and the pydantic model, so the model
 #: is told the same contract that validation enforces. Live finding 2026-09-15:
 #: without the stated cap, 3/3 DeepSeek calls returned 6–9 limitation strings
-#: and every summary was rejected (see docs/plans/2026-09-15-llm-live-smoke.md).
+#: and every summary was rejected (see docs/archive/2026-09-15-llm-live-smoke.md).
 MAX_PARAGRAPHS = 12
 MAX_LIMITATIONS = 5
 

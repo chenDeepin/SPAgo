@@ -278,7 +278,7 @@ class TestQuotaOnTheSummaryPath:
 class TestBoundedRetry:
     """One re-sample after a content rejection of a completed response.
 
-    Owner decision 2026-09-15 (docs/plans/2026-09-15-llm-live-smoke.md §9): both
+    Owner decision 2026-09-15 (docs/archive/2026-09-15-llm-live-smoke.md §9): both
     attempts were billed, so the settled row reports their sum and `attempts`;
     every failure that may not have been billed stays single-attempt.
     """

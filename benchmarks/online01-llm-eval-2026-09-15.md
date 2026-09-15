@@ -96,7 +96,7 @@ UUID that names no record is exactly the failure §12 exists to stop.
 - Not covered: other targets (a sparse target with failed sources is not
   measured), non-demo families, budget exhaustion, cancellation, and the app's
   presentation of the refused-request error state (checked earlier in
-  `docs/plans/2026-09-15-llm-live-smoke.md` §10).
+  `docs/archive/2026-09-15-llm-live-smoke.md` §10).
 
 ## After the citation-contract fix (run 3)
 

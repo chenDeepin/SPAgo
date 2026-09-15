@@ -1,12 +1,14 @@
 # SPAgo Architecture Overview
 
-Status: **implemented shape + first real-source path, with open product acceptance
-gaps**, reviewed at `66ce8d9` plus the uncommitted product-readiness corrections on
-2026-09-15. Current release scope is in
-[the product-readiness plan](../plans/2026-09-15-product-readiness.md); prior repair
-verification remains in `docs/plans/2026-09-14-ui-review-next-round.md`. History: the M0-only framing
-is preserved in `docs/archive/2026-09-14-m0-foundation.md`; decisions in
-`docs/adr/`. Source constraints: root `AGENTS.md`, `PROMPT.md`.
+Status: **implemented shape with the online path (ONLINE-00…07) locally verified and
+hosted acceptance still open**, reviewed against the current checkout at `4c90e13`.
+Scope statement: [`docs/online-capability.md`](../online-capability.md). Active
+direction: [`docs/plans/2026-09-15-online-llm.md`](../plans/2026-09-15-online-llm.md).
+The rounds this shape was built through are archived in `docs/archive/`: the M0-only
+framing in `2026-09-14-m0-foundation.md`, the M1–M5 implementation in
+`2026-09-14-m1-m5-implementation.md`, the readiness and repair rounds in
+`2026-09-15-product-readiness.md` and `2026-09-14-ui-review-next-round.md`. Decisions
+live in `docs/adr/`; source constraints in root `AGENTS.md` and `PROMPT.md`.
 
 ## Shape
 
@@ -135,8 +137,8 @@ apps/web     (search → family → compounds → evidence/structure search)
   5 s, read = total deadline 60 s) and the deadline is re-checked between response
   chunks; upstream throttling answers 429 with a validated `Retry-After`, distinct
   from other upstream failures (502). See
-  [the LLM contract record](../plans/2026-09-14-llm-interface.md) and
-  [the live-smoke record](../plans/2026-09-15-llm-live-smoke.md).
+  [the LLM contract record](../archive/2026-09-14-llm-interface.md) and
+  [the live-smoke record](../archive/2026-09-15-llm-live-smoke.md).
 - URL state: `?q=&doc=&c=`; new searches push history entries, selection
   replaces; Back/Forward restore via popstate.
 - Deployment shape: both published ports bind to loopback by default

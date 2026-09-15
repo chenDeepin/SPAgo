@@ -1,5 +1,9 @@
 # Live LLM smoke with a real provider (DeepSeek) — 2026-09-15
 
+> Archived 2026-09-16 (execution record, closed). Cited as evidence by
+> `docs/online-capability.md` and `docs/plans/2026-09-15-online-llm.md` §4; the
+> provider-compatibility findings in §9 stay binding.
+
 Status: **execution record.** Opens PROD-07 / ONLINE-01 item "one real model
 provider configured, with a live call per scope recorded". Baseline HEAD
 `41ef768` plus the uncommitted ONLINE-00…05 working tree.

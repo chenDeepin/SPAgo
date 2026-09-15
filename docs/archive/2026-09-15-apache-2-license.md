@@ -1,5 +1,8 @@
 # Apache-2.0 licensing for SPAgo
 
+> Archived 2026-09-16 (done; `LICENSE`, `NOTICE` and `THIRD_PARTY_NOTICES.md` are
+> tracked and current).
+
 Date: 2026-09-15  
 Status: **done** (files written; not committed unless requested)
 

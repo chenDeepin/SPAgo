@@ -166,9 +166,9 @@ The deployment is one app image plus one database. To roll back:
   measured for **one** provider (DeepSeek `deepseek-flash`, 2026-09-15:
   `benchmarks/online01-llm-eval-2026-09-15.md` — 45 recorded requests over four
   runs, per-call compliance and refusal classes; browser AI panel verified end to
-  end in LLM mode in [record](plans/2026-09-15-llm-live-smoke.md) and again for the
+  end in LLM mode in [record](archive/2026-09-15-llm-live-smoke.md) and again for the
   per-source citation chip in
-  [plan](plans/2026-09-15-llm-eval-and-demo-open.md) §7.1). Any other endpoint the
+  [record](archive/2026-09-15-llm-eval-and-demo-open.md) §7.1). Any other endpoint the
   operator chooses is unverified, and an answer rejected twice in a row (one content
   re-sample is allowed) still fails as 502. Hosted acceptance still requires the
   operator's own smoke run.

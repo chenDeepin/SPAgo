@@ -6,7 +6,7 @@ Status: next-stage plan, not implemented or deployed. User direction: focus the 
 ## 1. Q&A and product decision
 
 - **What does online mean here?** Planning assumption: a hosted browser application, initially invitation-only. Scientists open a URL, sign in, search, inspect evidence, generate an analysis, and save/reopen their own projects without installing the chemistry stack. Hosting vendor, domain and budget are not yet selected.
-- **What exists?** React/FastAPI/PostgreSQL+RDKit, versioned source-package ingestion, exact/substructure/similarity search, scoped export, saved projects, and an optional Chat Completions adapter for bounded family summaries. The previous review and its 217-test result are historical evidence in [the readiness record](2026-09-15-product-readiness.md); this planning turn does not rerun those tests.
+- **What exists?** React/FastAPI/PostgreSQL+RDKit, versioned source-package ingestion, exact/substructure/similarity search, scoped export, saved projects, and an optional Chat Completions adapter for bounded family summaries. The previous review and its 217-test result are historical evidence in [the readiness record](../archive/2026-09-15-product-readiness.md); this planning turn does not rerun those tests.
 - **What does not exist?** LLM natural-language search, live-provider acceptance, hosted authentication/project authorization, and a verified online release. The current planner parses publication identifiers only. Current summaries use stored family facts, not complete patent text; configuring a model does not add search interpretation or document retrieval.
 - **What is the intended first workflow?** Sign in → enter a target, publication number or natural-language request → resolve target/species and inspect the scope → retrieve open-database candidates and activity evidence → inspect chemistry, assay context and supported patent links → generate a cited analysis → save/reopen a private investigation → export.
 - **What data can be searched?** The loaded patent corpus plus bounded, explicit retrieval from supported open databases through adapters. ONLINE-00 adds target-led discovery and real activity; retrieval is not limited to compounds already present in a patent family. Each source reports coverage, retrieval time/version and complete/partial/failed status. No claim of exhaustive or web-wide patent search, or of inhibitor availability for every requested target.
@@ -134,17 +134,17 @@ A scientist using only the browser must finish: sign in → resolve a requested 
 
 ## 4. Implementation and verification record (2026-09-15)
 
-ONLINE-00 through ONLINE-05 are **implemented in the working tree** (uncommitted
-at the time of writing). This section records what was built, what was verified
-and what is explicitly still open. The acceptance detail lives in
-[the invited-beta acceptance record](ui-round-verification/online-beta-acceptance-2026-09-15.md).
+ONLINE-00 through ONLINE-05 are **implemented** (committed in `cb21720`; this section
+records what was built, what was verified and what is explicitly still open). The
+acceptance detail lives in
+[the invited-beta acceptance record](../archive/2026-09-15-beta-acceptance.md).
 
 ### 4.1 Stage status
 
 | Stage | Status | Evidence |
 | --- | --- | --- |
 | ONLINE-00 target-led discovery | implemented, live-verified | `benchmarks/online00-coverage-2026-09-15.{md,json}` — dated source×target matrix with query ids, counts, outcomes and versions; EGFR positive control |
-| ONLINE-01 scoped summaries | implemented; live smoke recorded, citation evaluation open | family/document/target scopes with separate prompt versions and cache keys; recorded-response contract tests (`tests/test_online01_scoped_summaries.py`); live DeepSeek `deepseek-flash` calls per scope plus the browser AI panel, with cache reuse, token accounting and one bounded content re-sample — `docs/plans/2026-09-15-llm-live-smoke.md` |
+| ONLINE-01 scoped summaries | implemented; live smoke recorded, citation evaluation open | family/document/target scopes with separate prompt versions and cache keys; recorded-response contract tests (`tests/test_online01_scoped_summaries.py`); live DeepSeek `deepseek-flash` calls per scope plus the browser AI panel, with cache reuse, token accounting and one bounded content re-sample — `docs/archive/2026-09-15-llm-live-smoke.md` |
 | ONLINE-02 validated plans | implemented | 28-request sealed set (`data/fixtures/planner_requests.json`) incl. injection, foreign ids, ambiguity; `tests/test_online02_plan.py` |
 | ONLINE-03 access and ownership | implemented | ADR-0002; 19 isolation tests calling the API directly with guessed ids |
 | ONLINE-04 hosting operations | partially implemented | quota accounting, readiness, hosted runbook; **deployment/restore-against-host outstanding** |
@@ -198,7 +198,7 @@ the scientific evaluation re-deriving the flag from the stored SMILES).
    failure rate, cache behaviour). ONLINE-01 acceptance depends on this.
    **Live smoke recorded 2026-09-15**: DeepSeek `deepseek-flash`, one live call per
    scope through the API plus the browser AI panel, cache reuse confirmed — see
-   [the live-smoke record](2026-09-15-llm-live-smoke.md). **Repeatable baseline
+   [the live-smoke record](../archive/2026-09-15-llm-live-smoke.md). **Repeatable baseline
    recorded 2026-09-15**: `scripts/llm_summary_eval.py`, 45 requests / 53 calls
    over four runs through the shipped input builder and retry policy, per-call
    compliance and refusal classes, at
@@ -207,7 +207,7 @@ the scientific evaluation re-deriving the flag from the stored SMILES).
    citation rule was corrected, the per-source refs were added, and both changes
    were re-measured in the same record (run 4: 18/18 requests answered, the target
    scope citing its three `source:` refs, chip checked in the browser —
-   [plan §7.1](2026-09-15-llm-eval-and-demo-open.md)). What the baseline still does
+   [record §7.1](../archive/2026-09-15-llm-eval-and-demo-open.md)). What the baseline still does
    not cover is recorded in its own "what these numbers do and do not prove"
    section. Hosted-provider choice and budget remain open.
 2. Host, TLS ingress, secret injection, and quota limits set to real values.

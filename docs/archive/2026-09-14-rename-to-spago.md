@@ -1,5 +1,7 @@
 # Rename PatentChem → SPAgo Implementation Plan
 
+> Archived 2026-09-16 (completed 2026-09-14; no open items).
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Rename the project from PatentChem to SPAgo (small molecule patent analysis GO) across all repository documentation.

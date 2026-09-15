@@ -1,5 +1,9 @@
 # Demo-open affordance + ONLINE-01 evaluation baseline — 2026-09-15
 
+> Archived 2026-09-16 (both parts implemented and measured; §7.1 closes the
+> citation defect it found). Record cited by `docs/online-capability.md` and
+> `docs/plans/2026-09-15-online-llm.md` §4.
+
 Status: **implementation plan, owner-approved scope** (owner selected both items
 after the browser check in `2026-09-15-llm-live-smoke.md` §10). Working tree stays
 uncommitted until the owner reviews it.

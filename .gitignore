@@ -12,19 +12,57 @@ apps/web/dist/
 # TypeScript incremental build state: generated, machine-specific, not source.
 *.tsbuildinfo
 
-# Runtime state and caches
+# Runtime state, caches and bulk downloads.
+#
+# These directories hold material that must never be committed: a downloaded
+# bulk release, an extracted patent-family package, a database dump, an export
+# taken from a live investigation. Names, structures and measurements of a
+# private target are exactly what this round is meant to keep local
+# (AGENTS.md §34/§35). `data/fixtures/` stays tracked.
 /local/
 /backups/
-data/cache/
-benchmarks/results/
-docs/plans/ui-round-verification/
+/exports/
+/dumps/
+/logs/
 *.log
+data/cache/
+data/bulk/
+data/extracted/
+benchmarks/results/
+benchmarks/tmp/
 
-# Environment and secrets
+# Database and bulk-data binaries (never the tracked fixtures under data/fixtures).
+*.dump
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.duckdb
+*.db
+
+# Private documents, structures and spreadsheets (AGENTS.md §34). Fixture
+# directories below re-include the file types a sealed fixture legitimately uses.
+*.pdf
+*.sdf
+*.mol
+*.csv
+*.xlsx
+!data/fixtures/**
+
+# Screenshots and captures of a running build: they show whatever target the
+# operator was investigating, so they stay local. Design drafts under
+# docs/design/ are generated from synthetic DEMO-* data and stay tracked.
+docs/plans/ui-round-verification/
+docs/plans/*-verification/
+docs/verification/
+*.har
+
+# Environment, secrets and machine-local overrides.
 .env
-.env.local
+.env.*
+!.env.example
 .codex
 .agents
+docker-compose.override.yml
 
 # OS / editor
 .DS_Store

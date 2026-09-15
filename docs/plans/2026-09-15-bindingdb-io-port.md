@@ -294,7 +294,8 @@ New:
 - `services/core/tests/test_activity_classification.py`,
   `tests/test_patent_numbers.py`, `tests/test_online06_reference.py`.
 - `benchmarks/online06-reference-2026-09-15.md` + `.json`,
-  `docs/plans/ui-round-verification/online06-*.png`.
+  screenshots in `docs/plans/ui-round-verification/online06-*.png` (local-only: that
+  directory is gitignored, because a screenshot of a running build shows live rows).
 
 Changed: `domain/models.py` (`ReferencePolicy`/`ReferenceVerdict`/`ActiveCompound`,
 candidate + measurement extras), `adapters/bioactivity_base.py`,
