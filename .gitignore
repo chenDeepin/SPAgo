@@ -11,6 +11,8 @@ node_modules/
 apps/web/dist/
 
 # Runtime state and caches
+/local/
+/backups/
 data/cache/
 benchmarks/results/
 *.log

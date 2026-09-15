@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-09-15T03:33:27.888092+00:00",
+  "base_url": "http://127.0.0.1:8066",
+  "dataset": "Synthetic demo plus cloned second family: 2 families, 10 shared identities, 24 mentions; query family has 10 compounds / 12 mentions.",
+  "benchmarks": {
+    "patent_lookup": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 3.05,
+      "p95_ms": 3.68,
+      "mean_ms": 3.09
+    },
+    "family_compounds_page": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 6.3,
+      "p95_ms": 7.9,
+      "mean_ms": 6.78
+    },
+    "depiction_cold_single_ms": 2.0,
+    "depiction_warm": {
+      "runs": 20,
+      "errors": 0,
+      "p50_ms": 2.19,
+      "p95_ms": 2.95,
+      "mean_ms": 2.18
+    },
+    "evidence_fetch": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 1.97,
+      "p95_ms": 2.6,
+      "mean_ms": 2.08
+    },
+    "bulk_compound_counts": {
+      "runs": 10,
+      "errors": 0,
+      "p50_ms": 5.29,
+      "p95_ms": 6.57,
+      "mean_ms": 5.76
+    },
+    "document_scoped_compounds": {
+      "runs": 50,
+      "errors": 0,
+      "p50_ms": 5.73,
+      "p95_ms": 9.29,
+      "mean_ms": 6.22
+    }
+  },
+  "health": {
+    "status": "ok",
+    "database": "up",
+    "chemistry": "ok",
+    "rdkit_cartridge": "installed",
+    "dataset_version": "demo-fixture-v1",
+    "ingestion_issues": 2,
+    "api_version": "0.1.0"
+  },
+  "payload_bytes": {
+    "compounds_page_default_100": 9118,
+    "depiction_svg_280x160": 7852,
+    "evidence_list": 1477
+  },
+  "review_baseline": "66ce8d9 + uncommitted review corrections",
+  "runtime": "Local Python 3.10 app on :8066, isolated PostgreSQL/RDKit :55439; request middleware present with fault mode disabled."
+}

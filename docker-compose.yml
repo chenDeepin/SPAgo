@@ -10,8 +10,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-spago}
       POSTGRES_USER: ${POSTGRES_USER:-spago}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spago}
+    # The database is a private component of the app stack: by default it is
+    # reachable only from the host loopback (dev tooling). Do not expose it to a
+    # LAN without changing the demo credentials and reading docs/runbook.md.
     ports:
-      - "${SPAGO_DB_PORT:-5432}:5432"
+      - "${SPAGO_DB_BIND:-127.0.0.1}:${SPAGO_DB_PORT:-5432}:5432"
     volumes:
       - spago-db-data:/var/lib/postgresql
     healthcheck:
@@ -31,6 +34,10 @@ services:
       SPAGO_FIXTURE_DIR: /app/data/fixtures
       SPAGO_MIGRATIONS_DIR: /app/migrations
       SPAGO_DEPICTION_CACHE_DIR: /app/data/cache/depictions
+      # demo (default) loads the synthetic fixture at startup; none applies
+      # migrations only — set it in .env for real-data deployments that import
+      # SureChEMBL packages (see docs/runbook.md).
+      SPAGO_SEED_MODE: ${SPAGO_SEED_MODE:-demo}
       # LLM endpoint: compose does not inject .env automatically — these three
       # are passed explicitly. All empty → offline extractive summaries.
       SPAGO_LLM_BASE_URL: ${SPAGO_LLM_BASE_URL:-}

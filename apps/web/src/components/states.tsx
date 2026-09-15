@@ -1,8 +1,10 @@
 interface EmptyStateProps {
   demoHint?: string | null;
+  /** Real-source deployments: what is loaded and what to enter (PROD-01). */
+  sourceNote?: string | null;
 }
 
-export function EmptyState({ demoHint }: EmptyStateProps) {
+export function EmptyState({ demoHint, sourceNote }: EmptyStateProps) {
   return (
     <div className="empty-state">
       <h1>Inspect patent chemistry</h1>
@@ -12,6 +14,7 @@ export function EmptyState({ demoHint }: EmptyStateProps) {
           This deployment serves a synthetic demo dataset — try <code>{demoHint}</code>.
         </p>
       )}
+      {sourceNote && <p className="hint">{sourceNote}</p>}
     </div>
   );
 }

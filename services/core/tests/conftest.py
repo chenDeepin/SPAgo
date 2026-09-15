@@ -98,6 +98,8 @@ def pg_engine() -> Engine:
             conn.execute(text(f"CREATE DATABASE {TEST_DB}"))
         admin.dispose()
     except Exception as exc:
+        if os.environ.get("SPAGO_REQUIRE_TEST_DATABASE") == "1":
+            raise RuntimeError("Required PostgreSQL test database could not be prepared") from exc
         pytest.skip(f"PostgreSQL not reachable; integration tests skipped: {exc}")
 
     # The RDKit cartridge needs superuser rights; the scratch database inherits

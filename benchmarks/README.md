@@ -33,6 +33,16 @@ measurable — they are **not** capacity claims for bulk datasets.
   offset paging beyond the 500-row response cap, paging payload/latency, depiction and
   scroll cost while 601 rows are loaded (UI-07/UI-08 round). A different fixture from the
   baseline above, so the payload figures are not directly comparable.
+- `real-source-2026-09-15.md` — first real-data cases (SureChEMBL losartan/sildenafil
+  families on an isolated stack): remote extraction timings and serving latency for
+  patent lookup, paging, substructure search and family export on 961 real compounds.
+
+- `review-2026-09-15.json` — post-review synthetic check, current local app and
+  isolated DB with two families sharing 10 identities. Patent lookup p50/p95
+  3.05/3.68 ms; family page 6.30/7.90 ms, 9,118-byte JSON; no benchmark errors.
+  This has different data and runtime from M0 and the real-source run: it is
+  not a controlled performance comparison or a production-scale claim. Current
+  real-scale regression and memory measurements remain an acceptance gap.
 
 ## Reproduce
 

@@ -60,12 +60,24 @@ class TestSeed:
     def test_seed_is_idempotent(self, seeded_engine, fixture_dir: Path, migrations_dir: Path):
         engine, _ = seeded_engine
         seed(engine, fixture_dir, migrations_dir)
+        # Scoped to the demo dataset: the shared session database also carries
+        # other modules' fixtures (paging family, real-schema packages).
         with engine.connect() as conn:
-            assert conn.execute(text("SELECT count(*) FROM compounds")).scalar_one() == 10
-            assert conn.execute(text("SELECT count(*) FROM compound_mentions")).scalar_one() == 12
-            assert conn.execute(text("SELECT count(*) FROM evidence_records")).scalar_one() == 12
-            assert conn.execute(text("SELECT count(*) FROM patent_families")).scalar_one() == 1
-            assert conn.execute(text("SELECT count(*) FROM ingestion_issues")).scalar_one() == 1
+            assert conn.execute(
+                text("SELECT count(*) FROM compounds WHERE dataset_version = 'demo-fixture-v1'")
+            ).scalar_one() == 10
+            assert conn.execute(
+                text("SELECT count(*) FROM compound_mentions WHERE dataset_version = 'demo-fixture-v1'")
+            ).scalar_one() == 12
+            assert conn.execute(
+                text("SELECT count(*) FROM evidence_records WHERE dataset_version = 'demo-fixture-v1'")
+            ).scalar_one() == 12
+            assert conn.execute(
+                text("SELECT count(*) FROM patent_families WHERE family_key = 'DEMO-FAMILY-1'")
+            ).scalar_one() == 1
+            assert conn.execute(
+                text("SELECT count(*) FROM ingestion_issues WHERE dataset_version = 'demo-fixture-v1'")
+            ).scalar_one() == 1
 
     def test_issue_recorded_never_as_compound(self, seeded_engine):
         engine, _ = seeded_engine

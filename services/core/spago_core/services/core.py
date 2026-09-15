@@ -183,38 +183,51 @@ def list_family_compounds(
             params,
         ).mappings().all()
 
-        mentions: dict[uuid.UUID, list[CompoundMention]] = {}
-        if compound_rows:
-            ids = [r["id"] for r in compound_rows]
-            mention_rows = conn.execute(
-                text(
-                    f"""
-                    SELECT m.id, m.compound_id, m.document_id, m.patent_label,
-                           d.publication_number
-                    FROM compound_mentions m
-                    JOIN patent_documents d ON d.id = m.document_id
-                    WHERE m.compound_id = ANY(:ids) {"AND m.document_id = :doc" if document_id else ""}
-                    ORDER BY d.publication_number, m.patent_label
-                    """
-                ),
-                params | {"ids": ids},
-            ).mappings().all()
-            for r in mention_rows:
-                mentions.setdefault(r["compound_id"], []).append(
-                    CompoundMention(
-                        id=r["id"],
-                        compound_id=r["compound_id"],
-                        document_id=r["document_id"],
-                        patent_label=r["patent_label"],
-                        publication_number=r["publication_number"],
-                    )
-                )
+    mentions = list_compound_mentions(
+        engine, [r["id"] for r in compound_rows], family_id, document_id
+    )
 
     items = [
         CompoundRow(compound=_row_to_compound(r), mentions=mentions.get(r["id"], []))
         for r in compound_rows
     ]
     return CompoundPage(total=total, offset=offset, limit=limit, items=items)
+
+
+def list_compound_mentions(
+    engine: Engine,
+    compound_ids: list[uuid.UUID],
+    family_id: uuid.UUID,
+    document_id: uuid.UUID | None = None,
+) -> dict[uuid.UUID, list[CompoundMention]]:
+    """Hydrate a bounded result page with occurrences inside its query scope."""
+    if not compound_ids:
+        return {}
+    scope = "AND m.document_id = :doc" if document_id else ""
+    params = {"ids": compound_ids, "fid": family_id, "doc": document_id}
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                f"""
+                SELECT m.id, m.compound_id, m.document_id, m.patent_label,
+                       d.publication_number
+                FROM compound_mentions m
+                JOIN patent_documents d ON d.id = m.document_id
+                WHERE m.compound_id = ANY(:ids) AND d.family_id = :fid {scope}
+                ORDER BY d.publication_number, m.patent_label
+                """
+            ),
+            params,
+        ).mappings().all()
+    mentions: dict[uuid.UUID, list[CompoundMention]] = {}
+    for r in rows:
+        mentions.setdefault(r["compound_id"], []).append(
+            CompoundMention(
+                id=r["id"], compound_id=r["compound_id"], document_id=r["document_id"],
+                patent_label=r["patent_label"], publication_number=r["publication_number"],
+            )
+        )
+    return mentions
 
 
 def get_compound(engine: Engine, compound_id: uuid.UUID) -> CompoundRow:
@@ -313,9 +326,31 @@ def get_dataset_info(engine: Engine) -> dict | None:
                 """
             )
         ).mappings().first()
-        if row is None:
-            return None
-        return dict(row)
+    if row is None:
+        return None
+    return dict(row)
+
+
+def list_dataset_infos(engine: Engine) -> list[dict]:
+    """All loaded datasets (demo fixture and imported packages alike): the UI
+    shows the real source inventory instead of a hardcoded demo label."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT source_name, dataset_version, synthetic, release_label,
+                       files, notes, retrieved_at
+                FROM dataset_info
+                ORDER BY retrieved_at DESC
+                """
+            )
+        ).mappings().all()
+    out = []
+    for r in rows:
+        item = dict(r)
+        item["retrieved_at"] = item["retrieved_at"].isoformat()
+        out.append(item)
+    return out
 
 
 def count_ingestion_issues(engine: Engine) -> int:

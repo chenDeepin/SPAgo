@@ -1,7 +1,8 @@
 # SPAgo Architecture Overview
 
-Status: **implemented shape with open product acceptance gaps**, checked at `f3da90c`
-plus existing uncommitted repairs on 2026-09-15. Current release scope is in
+Status: **implemented shape + first real-source path, with open product acceptance
+gaps**, reviewed at `66ce8d9` plus the uncommitted product-readiness corrections on
+2026-09-15. Current release scope is in
 [the product-readiness plan](../plans/2026-09-15-product-readiness.md); prior repair
 verification remains in `docs/plans/2026-09-14-ui-review-next-round.md`. History: the M0-only framing
 is preserved in `docs/archive/2026-09-14-m0-foundation.md`; decisions in
@@ -19,8 +20,9 @@ services/core (FastAPI, Python)
     ├─ services/   core reads · projects · export · bioactivity ·
     │              structure search · AI summaries
     ├─ adapters/   external-source contracts: patent fixtures,
-    │              bioactivity fixture, ChEMBL (webservice),
-    │              BindingDB (user-provided TSV), LLM Chat Completions
+    │              real SureChEMBL bulk packages, bioactivity fixture,
+    │              ChEMBL (webservice), BindingDB (user-provided TSV),
+    │              LLM Chat Completions
     ├─ chemistry/  RDKit engine (canonicalization, InChIKey,
     │              descriptors, Murcko scaffolds, depictions)
     ├─ queries/    DuckDB bulk analytical layer (Parquet)
@@ -49,16 +51,50 @@ URL-only publication-number detection → side panel → `?q=` deep link.
 ## Current data paths
 
 ```text
-data/fixtures (synthetic Parquet, demo-fixture-v1)
+data/fixtures (synthetic Parquet, demo-fixture-v1; SPAGO_SEED_MODE=demo)
+real packages  (scripts/extract_surechembl.py → SureChEMBL bulk Parquet
+                over HTTP range reads; import_package → import_jobs)
       ↓  adapters (DuckDB read; source envelope with provenance)
       ↓  chemistry/engine.py (RDKit canonical SMILES, InChIKey,
       ↓                        descriptors, Murcko scaffold)
-      ↓  seed.py (idempotent upsert; dedupe by InChIKey; malformed
-      ↓          structures → ingestion_issues, never compounds)
+      ↓  seed.ingest (idempotent upsert; dedupe by InChIKey; malformed
+      ↓               structures → ingestion_issues, never compounds)
 PostgreSQL  →  api routes (server-paged, cap 500)
 apps/web     (search → family → compounds → evidence/structure search)
 ```
 
+- Demo vs real deployment: `SPAGO_SEED_MODE=none` applies migrations without
+  the demo fixture; real data arrives only via the explicit
+  `python -m spago_core.import_package <dir>` command, which records a durable
+  `import_jobs` row (status, file SHA-256 checksums, ingest summary) and is
+  idempotent. `dataset_info` holds every loaded source; the UI badge, empty
+  state, table footer and save dialog label data by its actual source.
+- Real SureChEMBL mapping (PROD-01): family/document ids derive from
+  SureChEMBL numeric ids; a mention is one (compound, document, patent-field)
+  occurrence with the field in its label; page numbers and patent-local text
+  labels are not in the bulk data and display "not provided" instead of being
+  invented; every evidence record links to the Espacenet publication page for
+  manual verification (a link, never automation).
+- Import review contract: packages preserve retrieval timestamps and dated source
+  versions, validate manifest provenance/checksums/associations, and cap tables
+  at 100,000 rows. Unknown source fields remain unknown; source-vs-normalized
+  InChIKey differences are warnings, not silently upgraded scientific facts.
+  Mentions upsert by stable source-occurrence UUID; local labels are not unique
+  identifiers. Import issues are refreshed only for the package documents.
+  Global compound version records initial identity ingestion; current scoped
+  source versions come from mentions/evidence. Missing/invalid mapping retraction
+  and interrupted-job recovery are still undefined, so imports are not a complete
+  release-replacement protocol.
+- Saved projects: migration 0008 keeps family/compound UUIDs and saved identity
+  snapshots when source rows disappear; project ownership deletion still cascades.
+  Per-item source/version lists are scoped to its family. Reads report missing
+  references and drift; retries return the original saved versions. Legacy source
+  lists remain unknown when they cannot be reconstructed. The UI switches saved
+  families and restores only the selected family's items.
+- Family/document tables and structure hits hydrate mentions within the requested
+  scope; global compound detail remains a separate cross-family record. CSV/SDF
+  export uses scoped versions and rejects overflow before materializing matches;
+  invalid stored structures fail SDF generation instead of silently dropping rows.
 - Structure search: exact = isomeric InChIKey; substructure = cartridge `@>`
   plus a chirality-aware RDKit re-check when the query specifies stereo;
   similarity = explicit `tanimoto_sml >= threshold` (this cartridge's `%`
@@ -67,6 +103,18 @@ apps/web     (search → family → compounds → evidence/structure search)
 - Depictions: RDKit SVG per request with disk cache; only rendered rows fetch.
 - Bioactivity: only typed measurements surface; cross-assay values are never
   ranked or combined into selectivity numbers.
+- Export scope contract (PROD-02): `/api/v1/export` serves an explicit
+  selection, a server-re-executed `structure_query` (covering matches the
+  browser never loaded), a document, or a family. Mention/evidence aggregation
+  follows the requested scope, so a compound occurring in another family never
+  exports that family's records. The 5000-row synchronous cap is enforced in
+  the counting phase; out-of-scope selected ids are rejected with a count.
+- Projects (PROD-03): dataset versions are derived server-side from the saved
+  rows (client labels ignored); each item stores an identity snapshot
+  (inchikey, canonical SMILES) and the full version list; reading reports
+  `source_updated`/`record_missing` drift instead of silently absorbing data
+  changes. The UI reopens a project via Projects → Open, restoring the family
+  view and the saved selection.
 - AI summaries: default is the offline extractive provider
   (`machine_extracted`). With `SPAGO_LLM_BASE_URL`/`SPAGO_LLM_API_KEY`/
   `SPAGO_LLM_MODEL` configured, the AI tab can call one OpenAI-compatible
@@ -87,6 +135,9 @@ apps/web     (search → family → compounds → evidence/structure search)
   [the LLM contract record](../plans/2026-09-14-llm-interface.md).
 - URL state: `?q=&doc=&c=`; new searches push history entries, selection
   replaces; Back/Forward restore via popstate.
+- Deployment shape: both published ports bind to loopback by default
+  (`SPAGO_APP_BIND`/`SPAGO_DB_BIND`); backup/restore/upgrade are documented and
+  drilled in [docs/runbook.md](../runbook.md).
 
 ## Deliberate boundaries
 

@@ -121,7 +121,13 @@ def search_family_structures(
     filters: MoleculeFilters | None = None,
     offset: int = 0,
     limit: int = 100,
+    max_results: int | None = None,
 ) -> StructureSearchResult:
+    """Return a bounded page; when max_results is exceeded, return only total.
+
+    Stereo substructure needs a deterministic candidate re-check; its separate
+    candidate cap is enforced before those rows are fetched.
+    """
     from spago_core.services import get_family_overview
 
     get_family_overview(engine, family_id)  # raises NotFoundError
@@ -142,16 +148,13 @@ def search_family_structures(
         params["qkey"] = query_inchikey
         sql = _candidate_sql(scope, "c.inchikey = :qkey", filter_clauses).format(score="1.0")
         with engine.connect() as conn:
-            rows = conn.execute(
-                text(
-                    sql
-                    + " ORDER BY c.inchikey OFFSET :offset LIMIT :limit"
-                ),
-                params | {"offset": offset, "limit": limit},
-            ).mappings().all()
             total = conn.execute(
                 text(f"SELECT count(*) FROM ({sql}) s"), params
             ).scalar_one()
+            rows = [] if max_results is not None and total > max_results else conn.execute(
+                text(sql + " ORDER BY c.inchikey OFFSET :offset LIMIT :limit"),
+                params | {"offset": offset, "limit": limit},
+            ).mappings().all()
         return StructureSearchResult(
             total=int(total), offset=offset, limit=limit,
             rows=[dict(r) for r in rows], scores={},
@@ -165,7 +168,18 @@ def search_family_structures(
             score="NULL::double precision"
         )
         with engine.begin() as conn:
-            rows = conn.execute(text(sql + " ORDER BY c.inchikey"), params).mappings().all()
+            total = int(conn.execute(text(f"SELECT count(*) FROM ({sql}) s"), params).scalar_one())
+            if query_has_stereo:
+                if total > MAX_STEREO_RECHECK_ROWS:
+                    raise ValueError("Candidate set too large for stereo re-check; narrow the scope.")
+                rows = conn.execute(text(sql + " ORDER BY c.inchikey"), params).mappings().all()
+            elif max_results is not None and total > max_results:
+                rows = []
+            else:
+                rows = conn.execute(
+                    text(sql + " ORDER BY c.inchikey OFFSET :offset LIMIT :limit"),
+                    params | {"offset": offset, "limit": limit},
+                ).mappings().all()
         results = [dict(r) for r in rows]
 
         # Preserve specified stereo: cartridge @> is chirality-insensitive, so
@@ -175,18 +189,18 @@ def search_family_structures(
             from rdkit import Chem
 
             query_mol = parse(query_canonical)
-            if len(results) > MAX_STEREO_RECHECK_ROWS:
-                raise ValueError("Candidate set too large for stereo re-check; narrow the scope.")
             kept = []
             for r in results:
                 mol = Chem.MolFromSmiles(r["canonical_smiles"])
                 if mol is not None and mol.HasSubstructMatch(query_mol, useChirality=True):
                     kept.append(r)
-            results = kept
+            total = len(kept)
+            results = ([] if max_results is not None and total > max_results
+                       else kept[offset : offset + limit])
 
         return StructureSearchResult(
-            total=len(results), offset=offset, limit=limit,
-            rows=results[offset : offset + limit], scores={},
+            total=total, offset=offset, limit=limit,
+            rows=results, scores={},
             query_inchikey=query_inchikey, query_canonical_smiles=query_canonical,
             query_has_stereo=query_has_stereo, mode=mode, threshold=None,
         )
@@ -205,10 +219,10 @@ def search_family_structures(
     page_sql = sql + " ORDER BY score DESC, c.inchikey OFFSET :offset LIMIT :limit"
 
     with engine.begin() as conn:
-        rows = conn.execute(
+        total = conn.execute(text(f"SELECT count(*) FROM ({sql}) s"), params).scalar_one()
+        rows = [] if max_results is not None and total > max_results else conn.execute(
             text(page_sql), params | {"offset": offset, "limit": limit}
         ).mappings().all()
-        total = conn.execute(text(f"SELECT count(*) FROM ({sql}) s"), params).scalar_one()
 
     return StructureSearchResult(
         total=int(total), offset=offset, limit=limit,

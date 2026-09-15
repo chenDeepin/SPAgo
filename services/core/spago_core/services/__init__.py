@@ -17,6 +17,8 @@ from spago_core.services.core import (  # noqa: F401
     get_dataset_info,
     get_family_overview,
     list_compound_evidence,
+    list_compound_mentions,
     list_family_compounds,
     list_ingestion_issues,
+    list_dataset_infos,
 )

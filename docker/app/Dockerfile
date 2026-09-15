@@ -23,10 +23,12 @@ RUN apt-get update \
 
 WORKDIR /app
 
+COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md ./licenses/
 COPY services/core/pyproject.toml services/core/README.md ./services/core/
 COPY services/core/spago_core ./services/core/spago_core
 RUN pip install --no-cache-dir ./services/core
 
+COPY scripts/extract_surechembl.py ./scripts/extract_surechembl.py
 COPY migrations ./migrations
 COPY data/fixtures ./data/fixtures
 COPY --from=webbuild /build/dist ./web

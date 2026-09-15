@@ -6,16 +6,21 @@ SPAgo connects patent search, chemical structures, bioactivity, SAR, claims, and
 
 The project is designed for medicinal chemists, computational chemists, patent researchers, and drug-discovery teams who currently move repeatedly between patent websites, PDFs, chemistry tables, public databases, and general-purpose LLMs.
 
+**License:** [Apache License 2.0](LICENSE) · Copyright 2026 chenDeepin · see also [`NOTICE`](NOTICE) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 ---
 
-# Current status: M0–M5 local demo implementation, with open acceptance gaps
+# Current status: M0–M5 local demo + first real-source path, with open acceptance gaps
 
 - one-command local startup: `docker compose up -d --build` → `http://localhost:8000`;
 - **M0 Foundation**: FastAPI core + React workspace (search → family → compounds → evidence),
   PostgreSQL 15 + RDKit cartridge, versioned migrations, idempotent seeding, DuckDB-over-Parquet
   bulk layer, lazy cached RDKit depictions;
-- **M1 Patent Chemistry Viewer**: save-to-project (idempotent), CSV/SDF export with patent ids,
-  labels, evidence references and dataset version; structure detail drawer; bulk selection;
+- **M1 Patent Chemistry Viewer**: save-to-project (idempotent, server-derived source
+  versions, identity snapshots) with a **Projects → Open** flow that restores the
+  family and the saved selection across sessions and restarts; CSV/SDF export with
+  patent ids, labels, evidence references, source URLs and dataset version;
+  structure detail drawer; bulk selection;
 - **M2 Structure Search**: exact / substructure / similarity against cartridge-indexed chemistry,
   molecule filters, stereo-preserving matching, explicit run + removable results chip
   (embedded Ketcher editor is deferred — see the M1–M5 plan record);
@@ -31,32 +36,39 @@ The project is designed for medicinal chemists, computational chemists, patent r
   tab offers LLM summaries with content-key caching, bounded fact input,
   citation validation, and `llm_inferred` labeling; deterministic query planner;
   AI as an inspector tab;
-- **Repair round (2026-09-15)**: ordinary results page by real server offset beyond the
-  500-row response cap (rows 501+ reachable, one request per page, Load more stops at the last
-  page) with retryable paging errors that keep loaded rows; the model-input budget, request
-  timeout and upstream-429 contract are fixed (429 + validated `Retry-After` instead of 502).
-  The preceding repair record reports 157 backend tests, a production build, and browser checks on an
-  isolated stack at 1440×900 / 1024×800 / 760×800 — see
-  [the repair plan](docs/plans/2026-09-14-ui-review-next-round.md) and
-  [the paging benchmark](benchmarks/paging-beyond-cap-2026-09-15.md).
+- **Repair round (2026-09-15)**: server-offset paging beyond the 500-row cap with
+  retryable errors; the LLM input-budget / request-timeout / upstream-429 contract
+  is fixed; **export scope is correct** — a structure filter exports exactly the
+  matched set (re-executed server-side, including rows the browser never loaded),
+  mentions and evidence never leak across families, oversized scopes are rejected
+  in the counting phase, and the export menu names the exact scope;
+- **Real patent data path (product readiness)**: `scripts/extract_surechembl.py`
+  extracts real patent-family chemistry from the official SureChEMBL bulk release
+  (EMBL-EBI FTP, Parquet, CC BY 4.0) over HTTP range reads, and
+  `python -m spago_core.import_package <dir>` ingests it with a durable import job
+  and file checksums. Verified end-to-end with the real losartan and sildenafil
+  patent families on an isolated stack (browser checks at 1440×900 / 760×800);
+  `SPAGO_SEED_MODE=none` keeps the demo fixture out of real deployments, and the
+  UI labels data by its actual source. Operations (backup, restore, upgrade,
+  security boundaries) are documented in [docs/runbook.md](docs/runbook.md);
+  measurements in [benchmarks/README.md](benchmarks/README.md).
+- Checks: `scripts/run_checks.sh` requires a reachable scratch PostgreSQL/RDKit
+  database; `--no-pg` explicitly checks only a subset. See the current review
+  results in [the readiness plan](docs/plans/2026-09-15-product-readiness.md).
 
-M6 (PDF/OCSR) is intentionally not started. Gaps (e.g. Ketcher embedding, Chrome-in-Chrome
-verification, live ChEMBL calls, real-model smoke) are recorded in
-`docs/archive/2026-09-14-m1-m5-implementation.md`.
-The current [product-readiness plan](docs/plans/2026-09-15-product-readiness.md)
-targets a local single-user viewer first. It is **not yet ready for real-patent use**:
-the data path is fixture-only, filtered “Current results” export can include the whole
-family, and saved projects have no reopening workflow in the UI. Default database
-network exposure, source-version persistence, and backup/restore acceptance also need work.
-Real bioactivity/LLM claims and shared hosting have separate acceptance gates;
-Ketcher and Chrome remain optional enhancements.
-The historical M0–M5 labels do not mean the real-patent workflow is accepted.
+**Release status: local trial candidate; product acceptance remains open.**
+Source refresh does not yet retract deleted/invalid mappings, interrupted import
+jobs have no recovery protocol, and manual scientific source cross-reading and
+an external-user G1 trial remain outstanding. Earlier real-source walkthroughs
+do not close those gates.
 
-The readiness review passed 60 selected local tests and frontend type checking, checked
-the running service and a 993×931 demo browser workflow, and confirmed that the served
-frontend asset and three key backend modules match the current local files. It did not
-rerun full database/real-source/real-model/recovery/performance acceptance. Details and
-the remaining work are in the readiness plan; the existing repair changes are still uncommitted.
+M6 (PDF/OCSR) is intentionally not started. Still open: real bioactivity import
+(PROD-06), a real-model smoke test (PROD-07), multi-user auth (PROD-08), Ketcher
+embedding, and Chrome-in-Chrome verification — recorded in
+[the product-readiness plan](docs/plans/2026-09-15-product-readiness.md). The
+real-data coverage claim is limited to the imported families; uncovered
+publication numbers return an explicit "not found in current dataset". No
+commit/tag/push has been made for this round yet.
 
 The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*` identifiers).
 It is not scientific data.
@@ -70,6 +82,20 @@ docker compose up -d --build
 
 For development without Docker rebuilds, see `services/core/README.md`
 (backend hot reload against the compose `db` service, Vite dev server on :5173).
+
+### Loading real patent data
+
+The demo fixture is optional. Real patent-family chemistry comes from the
+official SureChEMBL bulk release (EMBL-EBI FTP, Parquet, CC BY 4.0): extract a
+family package with `scripts/extract_surechembl.py --release YYYY-MM-DD`
+inside the app container (HTTP range reads, fresh output directory, bounded
+family-package size), import it with
+`docker compose run --rm -v "$PWD/local:/import" app python -m spago_core.import_package /import/<package>`,
+and set `SPAGO_SEED_MODE=none` so the demo fixture is never mixed in. Verified
+with the real losartan (`US-5153197-A`) and sildenafil (`US-5250534-A`) patent
+families. Coverage is limited to what you imported; uncovered numbers return an
+explicit not-found. Full instructions, backup/restore, and upgrade steps are in
+[docs/runbook.md](docs/runbook.md).
 
 ### Optional LLM summaries
 
@@ -909,3 +935,26 @@ SPAgo should eventually make the following interaction natural:
 All while keeping the original patent evidence one click away.
 
 That is the product.
+
+---
+
+# License
+
+SPAgo is licensed under the [Apache License, Version 2.0](LICENSE).
+
+```text
+Copyright 2026 chenDeepin
+```
+
+- Project attribution: [`NOTICE`](NOTICE)
+- Included tools and data-source terms: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+
+Commercial use, modification, and redistribution are permitted under Apache-2.0.
+Charging for support, hosting, or related services is allowed; the open-source
+grant itself remains royalty-free for recipients of the code.
+
+SPAgo may assist with patent organization and evidence-linked chemistry review.
+It does not provide legal advice or definitive freedom-to-operate conclusions.
+
+External datasets and APIs (for example SureChEMBL, EPO OPS, ChEMBL, BindingDB,
+PubChem, and LLM providers) remain under their own Terms of Use.

@@ -14,6 +14,8 @@ interface CompoundTableProps {
   /** Paging failure for the current result set: loaded rows are kept and the
    * Load more control becomes the retry. */
   loadMoreError?: string | null;
+  /** Provenance line driven by the loaded source, not a hardcoded demo label. */
+  sourceNote?: string;
   onToggleSelection: (compoundId: string, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onClearSelection: () => void;
@@ -29,6 +31,7 @@ const COL_STRUCTURE = 160;
 const COL_LABELS = 190;
 const COL_ACTIVITY = 130;
 const COL_EVIDENCE = 120;
+const MIN_TABLE_WIDTH = COL_CHECK + COL_STRUCTURE + 220 + COL_LABELS + COL_ACTIVITY + COL_EVIDENCE;
 
 function activityText(a: {
   standard_type: string;
@@ -55,6 +58,7 @@ export function CompoundTable({
   onLoadMore,
   loadingMore,
   loadMoreError = null,
+  sourceNote,
   onToggleSelection,
   onToggleSelectAll,
   onClearSelection,
@@ -92,6 +96,7 @@ export function CompoundTable({
           aria-rowindex={1}
           style={{
             display: "flex",
+            minWidth: MIN_TABLE_WIDTH,
             alignItems: "center",
             height: "var(--head-h)",
             position: "sticky",
@@ -126,7 +131,7 @@ export function CompoundTable({
           role="table"
           aria-label={`Compounds in ${scopeLabel}`}
           aria-rowcount={page.total}
-          style={{ position: "relative", height: virtualizer.getTotalSize() }}
+          style={{ position: "relative", minWidth: MIN_TABLE_WIDTH, height: virtualizer.getTotalSize() }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const row = items[virtualRow.index];
@@ -303,7 +308,7 @@ export function CompoundTable({
           </span>
         )}
         <span className="fineprint">
-          All identifiers and structures are illustrative (demo dataset).
+          {sourceNote ?? "All identifiers and structures are illustrative (demo dataset)."}
         </span>
       </div>
     </div>

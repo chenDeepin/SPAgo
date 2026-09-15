@@ -2,6 +2,9 @@
 
 FastAPI backend for SPAgo — Milestone 0 foundation.
 
+Licensed under Apache-2.0 with the rest of the repository (see root `LICENSE`,
+`NOTICE`, and `THIRD_PARTY_NOTICES.md`).
+
 ## Layout
 
 - `spago_core/domain/` — typed domain models + provenance states

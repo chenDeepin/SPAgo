@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     default_page_size: int = 100
     max_page_size: int = 500
     cors_origins: str = "http://localhost:5173,http://localhost:8000"
+    # Deployment separation (PROD-01): "demo" loads the synthetic fixture at
+    # startup so `docker compose up` works out of the box; "none" applies
+    # migrations only — real deployments import source packages explicitly.
+    seed_mode: str = "demo"
     # LLM endpoint (LLM interface plan): all three unset → offline mode.
     # A SecretStr key is never logged or returned; empty key = unauthenticated
     # local endpoint (no Authorization header is sent).

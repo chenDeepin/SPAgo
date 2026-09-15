@@ -613,6 +613,9 @@ Retries must be bounded and safe for the operation. Save/import/export retries m
 
 Prefer mature, actively maintained, permissively licensed libraries.
 
+SPAgo’s own source is Apache License 2.0 (`LICENSE`, `NOTICE`). Adding a
+dependency is incomplete until license notices are updated in the same change.
+
 Before adding a major dependency, document:
 
 ```text
@@ -626,6 +629,39 @@ alternatives considered
 Avoid overlapping dependencies that solve the same problem.
 
 One primary library per responsibility is preferred.
+
+## License notice maintenance
+
+Whenever a change **adds, removes, replaces, or materially upgrades** a tool
+that ships with or is required to run SPAgo, update the license inventory in
+the **same PR / commit set**:
+
+| Trigger | Update these files |
+| --- | --- |
+| New/changed direct Python dep (`services/core/pyproject.toml`) | `THIRD_PARTY_NOTICES.md` § Python |
+| New/changed direct frontend dep (`apps/web/package.json`) | `THIRD_PARTY_NOTICES.md` § frontend |
+| New container base image, OS package, or embedded binary | `THIRD_PARTY_NOTICES.md` § containers / binaries |
+| New external data source or API adapter | `THIRD_PARTY_NOTICES.md` § data/API Terms of Use (separate from software license) |
+| Vendored or copied upstream source | source, license, attribution, destination (also §0); `THIRD_PARTY_NOTICES.md` |
+| Project copyright holder or SPDX id change | `LICENSE` / `NOTICE`, package metadata, README License section |
+
+Rules:
+
+- Prefer dependencies compatible with Apache-2.0 redistribution (MIT, BSD,
+  Apache-2.0, ISC, and similar). Treat copyleft (GPL/AGPL) and unusual terms
+  as an explicit architecture decision before adoption.
+- Call out LGPL or other weak-copyleft deps (for example psycopg) with how
+  SPAgo uses them.
+- Do not silently drop attribution. If a NOTICE file or required attribution
+  text ships with a dependency you redistribute, preserve it.
+- Dataset / API Terms of Use are not substitutes for software licenses, and
+  software licenses do not grant dataset redistribution rights.
+- Regenerating a machine report (`pip-licenses`, `npx license-checker`) is
+  helpful; the human-maintained `THIRD_PARTY_NOTICES.md` remains the reviewed
+  source of truth for direct inclusions.
+
+A feature that introduces a new tool without updating
+`THIRD_PARTY_NOTICES.md` (and `NOTICE` when attribution changes) is not done.
 
 ---
 
@@ -833,7 +869,8 @@ A feature is complete only when:
 - performance has not materially regressed;
 - documentation is updated;
 - duplicate UI has not been introduced;
-- installation remains simple.
+- installation remains simple;
+- new or changed included tools update `THIRD_PARTY_NOTICES.md` (and `NOTICE` / package license metadata when attribution or SPDX identity changes) per §23.
 
 Working code alone is not sufficient.
 

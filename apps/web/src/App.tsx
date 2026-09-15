@@ -1,11 +1,12 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api/client";
-import type { CompoundRow } from "./api/types";
+import type { CompoundRow, ProjectDetail } from "./api/types";
 import { CompoundTable } from "./components/CompoundTable";
 import { EvidencePanel } from "./components/EvidencePanel";
 import { ExportMenu } from "./components/ExportMenu";
 import { FamilySidebar } from "./components/FamilySidebar";
+import { ProjectsDialog } from "./components/ProjectsDialog";
 import { SaveToProjectDialog } from "./components/SaveToProjectDialog";
 import { StructureDrawer } from "./components/StructureDrawer";
 import type { StructureSearchSummary } from "./components/StructureSearchDialog";
@@ -38,6 +39,20 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [sarMode, setSarMode] = useState(false);
   const [searchSummary, setSearchSummary] = useState<StructureSearchSummary | null>(null);
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const [openedProject, setOpenedProject] = useState<ProjectDetail | null>(null);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  // Selection restored by an opened project, applied once its family is on
+  // screen (the context-reset effect clears selections on family changes, so
+  // applying earlier would be wiped by the navigation itself).
+  const [pendingProjectSelection, setPendingProjectSelection] = useState<{
+    familyId: string;
+    publicationNumber: string;
+    ids: string[];
+  } | null>(null);
+  const projectNavigationAbort = useRef<AbortController | null>(null);
+  const [openedProjectFamilyId, setOpenedProjectFamilyId] = useState<string | null>(null);
+  const [projectLoading, setProjectLoading] = useState(false);
   // Structure-result paging: one in-flight request at a time, abortable on any
   // context change; the error is tagged with the request it belongs to.
   const [structurePaging, setStructurePaging] = useState(false);
@@ -119,7 +134,29 @@ export function App() {
 
   const selectedRow = useMemo(() => findLoadedRow(urlState.c), [findLoadedRow, urlState.c]);
 
+  const cancelProjectNavigation = useCallback(() => {
+    if (projectNavigationAbort.current) {
+      setOpenedProject(null);
+      setOpenedProjectFamilyId(null);
+      setProjectError(null);
+    }
+    projectNavigationAbort.current?.abort();
+    projectNavigationAbort.current = null;
+    setPendingProjectSelection(null);
+    setProjectLoading(false);
+  }, []);
+
+  const closeProject = useCallback(() => {
+    cancelProjectNavigation();
+    setOpenedProject(null);
+    setOpenedProjectFamilyId(null);
+    setProjectError(null);
+  }, [cancelProjectNavigation]);
+
+  useEffect(() => () => projectNavigationAbort.current?.abort(), []);
+
   const handleSearch = (value: string) => {
+    closeProject();
     if (value === submittedQuery) {
       queryClient.invalidateQueries({ queryKey: ["patent", value] });
       return;
@@ -143,39 +180,45 @@ export function App() {
   useEffect(
     () =>
       subscribeUrlState((restored) => {
+        closeProject();
         setUrlState(restored);
         setSubmittedQuery(restored.q);
         setLastGoodQuery(restored.q);
       }),
-    [],
+    [closeProject],
   );
 
   const handleSelectDoc = (docId: string | null) => {
+    cancelProjectNavigation();
     updateUrl({ ...urlState, doc: docId });
   };
 
   const handleSelectCompound = (compoundId: string) => {
+    cancelProjectNavigation();
     updateUrl({ ...urlState, c: compoundId });
   };
 
   const handleCloseEvidence = useCallback(() => {
+    cancelProjectNavigation();
     // Capture the row before clearing selection so focus can return to it.
     const rowToFocus = document.querySelector<HTMLElement>('[role="row"][aria-selected="true"]');
     updateUrl({ ...urlState, c: null });
     setTimeout(() => rowToFocus?.focus(), 0);
-  }, [updateUrl, urlState]);
+  }, [cancelProjectNavigation, updateUrl, urlState]);
 
   const toggleSelection = useCallback((compoundId: string, checked: boolean) => {
+    cancelProjectNavigation();
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (checked) next.add(compoundId);
       else next.delete(compoundId);
       return next;
     });
-  }, []);
+  }, [cancelProjectNavigation]);
 
   const toggleSelectAllLoaded = useCallback(
     (checked: boolean) => {
+      cancelProjectNavigation();
       const loaded = displayedRows.map((r) => r.compound.id);
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -186,7 +229,7 @@ export function App() {
         return next;
       });
     },
-    [displayedRows],
+    [cancelProjectNavigation, displayedRows],
   );
 
   // Reset bulk selection and paging state whenever the scope or query changes:
@@ -220,6 +263,104 @@ export function App() {
     },
     [patentQuery.data],
   );
+
+  // Navigation and restored selection belong to one explicit project/family
+  // request. Closing, searching or opening a different family obsoletes it.
+  const openProjectFamily = useCallback(
+    async (project: ProjectDetail, savedFamilyId: string) => {
+      cancelProjectNavigation();
+      const controller = new AbortController();
+      projectNavigationAbort.current = controller;
+      setOpenedProject(project);
+      setOpenedProjectFamilyId(savedFamilyId);
+      setProjectError(null);
+      setProjectLoading(true);
+      setSelectedIds(new Set());
+      try {
+        const family = await api.family(savedFamilyId, controller.signal);
+        if (controller.signal.aborted) return;
+        const doc = family.documents[0];
+        if (!doc) throw new Error("The saved family has no documents in the current data.");
+        const ids = project.items
+          .filter((it) => it.family_id === savedFamilyId && !it.record_missing)
+          .map((it) => it.compound_id)
+          .filter((id): id is string => id !== null);
+        structurePagingAbort.current?.abort();
+        setSearchSummary(null);
+        setStructurePaging(false);
+        setStructurePagingError(null);
+        setSearchOpen(false);
+        setStructureOpenId(null);
+        setSubmittedQuery(doc.publication_number);
+        updateUrl({ q: doc.publication_number, doc: null, c: null },
+          doc.publication_number === submittedQuery ? "replace" : "push");
+        setPendingProjectSelection({ familyId: savedFamilyId, publicationNumber: doc.publication_number, ids });
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setProjectError((err as Error).message || "The saved family could not be loaded.");
+        }
+      } finally {
+        if (projectNavigationAbort.current === controller) {
+          projectNavigationAbort.current = null;
+          setProjectLoading(false);
+        }
+      }
+    },
+    [cancelProjectNavigation, submittedQuery, updateUrl],
+  );
+
+  const openProject = useCallback((project: ProjectDetail) => {
+    cancelProjectNavigation();
+    setProjectsOpen(false);
+    setOpenedProject(project);
+    setProjectError(null);
+    setSelectedIds(new Set());
+    setOpenedProjectFamilyId(null);
+    const first = project.items.find((it) => !it.record_missing) ?? project.items[0];
+    if (first) void openProjectFamily(project, first.family_id);
+    else {
+      structurePagingAbort.current?.abort();
+      setSearchSummary(null);
+      setStructurePaging(false);
+      setStructurePagingError(null);
+      setSubmittedQuery(null);
+      updateUrl({ q: null, doc: null, c: null });
+    }
+  }, [cancelProjectNavigation, openProjectFamily, updateUrl]);
+
+  useEffect(() => {
+    if (!pendingProjectSelection || !patentQuery.data) return;
+    if (submittedQuery !== pendingProjectSelection.publicationNumber || urlState.doc !== null) return;
+    if (patentQuery.data.family.id !== pendingProjectSelection.familyId) return;
+    setSelectedIds(new Set(pendingProjectSelection.ids));
+    setPendingProjectSelection(null);
+  }, [pendingProjectSelection, patentQuery.data, submittedQuery, urlState.doc]);
+
+  const openedProjectFamilies = useMemo(() => {
+    const families = new Map<string, string>();
+    for (const item of openedProject?.items ?? []) families.set(item.family_id, item.family_key);
+    return Array.from(families, ([id, label]) => ({ id, label }));
+  }, [openedProject]);
+
+  const openedProjectVersions = useMemo(() => {
+    if (!openedProject) return [] as string[];
+    const seen = new Set<string>();
+    for (const it of openedProject.items) {
+      for (const v of it.dataset_versions ?? []) {
+        seen.add(`${v.dataset_version} (${v.source_name})`);
+      }
+      if (!it.dataset_versions?.length) seen.add(it.dataset_version);
+    }
+    return Array.from(seen).sort();
+  }, [openedProject]);
+
+  const openedProjectDrift = useMemo(() => {
+    if (!openedProject) return { missing: 0, updated: 0 };
+    return {
+      missing: openedProject.items.filter((it) => it.record_missing).length,
+      updated: openedProject.items.filter((it) => it.source_updated).length,
+    };
+  }, [openedProject]);
 
   const loadMoreResults = useCallback(async () => {
     if (!searchSummary || !searchSummary.requestParams || structurePaging) return;
@@ -303,21 +444,24 @@ export function App() {
 
   return (
     <div className="app">
-      <TopBar />
+      <TopBar onOpenProjects={() => { cancelProjectNavigation(); setProjectsOpen(true); }} />
       <SearchBar
         initialQuery={submittedQuery ?? ""}
         submitted={submittedQuery}
         isSearching={searching}
         error={
           patentError && patentError.status === 404
-            ? patentError.message + " Check the number, or try the demo patent."
+            ? patentError.message +
+              (datasetInfo?.synthetic
+                ? " Check the number, or try the demo patent."
+                : " It is not covered by the currently loaded source data.")
             : null
         }
         onSearch={handleSearch}
         onCancel={handleCancelSearch}
       />
 
-      {submittedQuery !== null && (
+      {(submittedQuery !== null || openedProject !== null) && (
         <div className="workspace">
           <FamilySidebar
             patent={patentQuery.data ?? null}
@@ -335,7 +479,7 @@ export function App() {
               <span className="spacer" />
               {patentQuery.data && plainTotal > 0 && (
                 <>
-                  <button className="btn btn-quiet" onClick={() => setSearchOpen(true)}>
+                  <button className="btn btn-quiet" onClick={() => { cancelProjectNavigation(); setSearchOpen(true); }}>
                     Structure ▾
                   </button>
                   <button
@@ -353,6 +497,17 @@ export function App() {
                     familyId={patentQuery.data.family.id}
                     documentId={urlState.doc}
                     selectedIds={Array.from(selectedIds)}
+                    resultsTotal={plainTotal}
+                    structureFilter={
+                      searchSummary
+                        ? {
+                            mode: searchSummary.mode,
+                            smiles: String(searchSummary.requestParams.smiles ?? ""),
+                            threshold: searchSummary.threshold,
+                            total: searchSummary.total,
+                          }
+                        : null
+                    }
                   />
                 </>
               )}
@@ -364,6 +519,56 @@ export function App() {
                 {sidebarCollapsed ? "Show family" : "Hide family"}
               </button>
             </div>
+
+            {openedProject && (
+              <div className="project-banner" role="status">
+                <span>
+                  Project <strong>{openedProject.name}</strong> · {openedProject.item_count} saved
+                  item{openedProject.item_count === 1 ? "" : "s"}
+                  {openedProject.item_count === 0 && " · Nothing saved yet"}
+                  {projectLoading && " · Opening saved family…"}
+                  {openedProjectVersions.length > 0 && (
+                    <> · source {openedProjectVersions.join(", ")}</>
+                  )}
+                  {openedProjectDrift.missing > 0 && (
+                    <span className="paging-error">
+                      {" "}
+                      · {openedProjectDrift.missing} saved record(s) no longer in the data
+                    </span>
+                  )}
+                  {openedProjectDrift.updated > 0 && (
+                    <span className="paging-error">
+                      {" "}
+                      · {openedProjectDrift.updated} record(s) changed source version since saving
+                    </span>
+                  )}
+                </span>
+                {openedProjectFamilies.length > 1 && (
+                  <label>
+                    Saved family{" "}
+                    <select className="select-input" value={openedProjectFamilyId ?? ""}
+                      onChange={(event) => void openProjectFamily(openedProject, event.target.value)}>
+                      {openedProjectFamilies.map((family) => (
+                        <option key={family.id} value={family.id}>{family.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <span className="spacer" />
+                <button
+                  className="show-all-occ"
+                  onClick={closeProject}
+                  aria-label="Close project view"
+                >
+                  Close project ×
+                </button>
+              </div>
+            )}
+            {projectError && (
+              <StateBanner kind="error" message={projectError} onRetry={() => {
+                if (openedProject && openedProjectFamilyId) void openProjectFamily(openedProject, openedProjectFamilyId);
+              }} />
+            )}
 
             {searchSummary && (
               <div className="search-chip" role="status">
@@ -419,6 +624,11 @@ export function App() {
                     selectedIds={selectedIds}
                     sarMode={sarMode}
                     scopeLabel={`${scopeLabel} (structure search)`}
+                    sourceNote={
+                      datasetInfo && !datasetInfo.synthetic
+                        ? `Source: ${datasetInfo.source_name} · ${datasetInfo.dataset_version}`
+                        : undefined
+                    }
                     onLoadMore={loadMoreResults}
                     loadingMore={structurePaging}
                     loadMoreError={
@@ -428,7 +638,7 @@ export function App() {
                     }
                     onToggleSelection={toggleSelection}
                     onToggleSelectAll={toggleSelectAllLoaded}
-                    onClearSelection={() => setSelectedIds(new Set())}
+                    onClearSelection={() => { cancelProjectNavigation(); setSelectedIds(new Set()); }}
                     onOpenStructure={(id) => setStructureOpenId(id)}
                     onSelectCompound={handleSelectCompound}
                   />
@@ -456,6 +666,11 @@ export function App() {
                     selectedIds={selectedIds}
                     sarMode={sarMode}
                     scopeLabel={scopeLabel}
+                    sourceNote={
+                      datasetInfo && !datasetInfo.synthetic
+                        ? `Source: ${datasetInfo.source_name} · ${datasetInfo.dataset_version}`
+                        : undefined
+                    }
                     onLoadMore={() => {
                       if (!compoundsQuery.isFetchingNextPage) compoundsQuery.fetchNextPage();
                     }}
@@ -468,7 +683,7 @@ export function App() {
                     }
                     onToggleSelection={toggleSelection}
                     onToggleSelectAll={toggleSelectAllLoaded}
-                    onClearSelection={() => setSelectedIds(new Set())}
+                    onClearSelection={() => { cancelProjectNavigation(); setSelectedIds(new Set()); }}
                     onOpenStructure={(id) => setStructureOpenId(id)}
                     onSelectCompound={handleSelectCompound}
                   />
@@ -512,13 +727,29 @@ export function App() {
         </div>
       )}
 
-      {submittedQuery === null && <EmptyState demoHint={datasetInfo ? "DEMO-PATENT-A" : null} />}
+      {submittedQuery === null && !openedProject && (
+        <EmptyState
+          demoHint={datasetInfo?.synthetic ? "DEMO-PATENT-A" : null}
+          sourceNote={
+            datasetInfo
+              ? datasetInfo.synthetic
+                ? null
+                : `Loaded source: ${datasetInfo.source_name} · ${datasetInfo.dataset_version}. Enter a covered publication number to open its family.`
+              : null
+          }
+        />
+      )}
+
+      {projectsOpen && (
+        <ProjectsDialog onClose={() => setProjectsOpen(false)} onOpen={openProject} />
+      )}
 
       {saveOpen && patentQuery.data && (
         <SaveToProjectDialog
           familyId={patentQuery.data.family.id}
           familyKey={patentQuery.data.family.family_key}
           datasetVersion={datasetInfo?.dataset_version ?? "unknown"}
+          sourceIsSynthetic={datasetInfo?.synthetic ?? true}
           selectedIds={Array.from(selectedIds)}
           onClose={() => setSaveOpen(false)}
         />

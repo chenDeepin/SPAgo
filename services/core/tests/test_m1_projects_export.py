@@ -70,7 +70,11 @@ class TestProjects:
             f"/api/v1/projects/{pid}/items",
             json={"family_id": fid, "compound_ids": None, "dataset_version": "demo-fixture-v1"},
         ).json()
-        assert first == {"created_rows": 1, "already_present_rows": 0, "scope_family": True}
+        assert first["created_rows"] == 1 and first["already_present_rows"] == 0 and first["scope_family"] is True
+        # Server-derived version list travels with the save (PROD-03).
+        assert first["dataset_versions"] == [
+            {"source_name": "surechembl_simplified_fixture", "dataset_version": "demo-fixture-v1"}
+        ]
 
         again = client.post(
             f"/api/v1/projects/{pid}/items",
@@ -214,7 +218,9 @@ class TestExport:
         res = client.post("/api/v1/export", json={"format": "csv"})
         assert res.status_code == 422
 
-    def test_unknown_selection_is_404(self, m1_engine):
+    def test_unknown_selection_is_rejected(self, m1_engine):
+        """PROD-02 scope contract: ids outside the requested family/document
+        are rejected with 422 and a count (previously a 404 after loading)."""
         client = _client(m1_engine)
         res = client.post(
             "/api/v1/export",
@@ -224,4 +230,5 @@ class TestExport:
                 "format": "csv",
             },
         )
-        assert res.status_code == 404
+        assert res.status_code == 422
+        assert "outside the requested" in res.json()["detail"]

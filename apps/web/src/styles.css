@@ -416,12 +416,59 @@ button {
   font-size: 12px;
   padding: 8px 12px;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
 }
 
 .table-footer .fineprint {
   margin-left: auto;
+}
+
+/* Opened-project context (PROD-03): a temporary banner, not a permanent panel. */
+.project-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  background: var(--panel);
+}
+
+.project-banner .show-all-occ {
+  white-space: nowrap;
+}
+
+.project-banner .spacer {
+  flex: 1;
+}
+
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.project-name {
+  font-weight: 600;
 }
 
 /* Paging failure for the current result set: loaded rows stay, Load more retries. */

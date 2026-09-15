@@ -1,4 +1,6 @@
 # Keep build contexts small and free of local state
+/local/
+/backups/
 .git
 **/.venv
 **/__pycache__

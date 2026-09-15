@@ -1,6 +1,8 @@
 # 产品可用性检查与首个可用版本计划
 
-日期：2026-09-15。基线：本地与远端 `main` 均为 `f3da90c`，加上开始检查时已经存在的未提交修复、测试和文档。状态：**评估及计划完成，以下产品补齐工作尚未实施**。本轮只修改文档，保留全部已有代码改动；未提交、推送、重建服务或更改运行数据。
+日期：2026-09-15。基线：本地与远端 `main` 均为 `f3da90c`，加上开始检查时已经存在的未提交修复、测试和文档。
+更新（第三轮实施后复查）：当前检查基线为 `66ce8d9` + 未提交工作区。**第二轮的“关闭”仅保留为历史实施记录，发布判断以文末 Third-round review 为准。** 本轮发现并修复来源范围、项目快照、异步重开、导入校验及恢复流程缺陷；来源撤回/中断恢复、人工科学对照与 G1 用户验收仍开放，尚不应宣称产品验收完成。
+第一轮结论与第二轮命令/结果保留供追溯，不当作当前代码全部重新执行的证据。
 
 ## 1. 发布判断与首版边界
 
@@ -130,3 +132,87 @@ G2（带活性/LLM 的单用户版本）在 G1 上按公开承诺增加 PROD-06/
 - **未检查**：本轮完整 157 项数据库测试、601 条/多视口重复验收、真实专利/活性/模型、完整保存后恢复、备份/升级演练、多人授权与性能。前轮已有结果保留在原计划和 benchmark 中；未检查不等于测试失败。
 - 文档：`rtk git diff --check` passed；Python 标准库检查本轮 6 份文档的代码围栏/行尾空白和 12 个本地链接/锚点 passed；按编辑前副本检查增量，未覆盖原有修复记录。
 - 下一执行者从本计划开始；先核对新的 HEAD/工作区，不重复实现已关闭修复。每完成一个 PROD 项，将实际命令、代码版本、数据来源、结果及剩余问题写回对应 Q&A；关闭旧修复轮时再归档记录并更新全部链接，不丢弃尚未提交的材料。
+
+## 2026-09-15 实施与验收记录（第二轮）
+
+环境与对应关系：代码 = `f3da90c` + 本轮工作区改动；镜像由当前 checkout 构建（`spago-app:prodcheck 91b509e→78c84c3`，升级演练另建 `spago-app:f3da90c af912a45`）；隔离栈 `spago-verify-app`(127.0.0.1:8055)+`spago-verify-db`，`SPAGO_SEED_MODE=none`，导入两个真实数据包；开发栈 `spago-app-1/spago-db-1` 已用新镜像重建（demo 数据与数据库卷保留，迁移推进到 7）。检查入口：`scripts/run_checks.sh` → **181 项后端测试 + 前端生产构建全部通过**。真实数据源：EMBL-EBI SureChEMBL bulk `2026-09-08`（公开 FTP、Parquet、CC BY 4.0，`fields.parquet` 为 1.7 KB 的官方字段表）。浏览器：in-app browser，1440×900 与 760×800。
+
+### PROD-04（网络默认 + 恢复能力）——关闭
+
+- 默认绑定：`docker-compose.yml` 数据库端口改为 `${SPAGO_DB_BIND:-127.0.0.1}:${SPAGO_DB_PORT:-5432}:5432`，`.env.example` 说明边界。实测开发栈 `spago-db-1` 端口为 `127.0.0.1:5432->5432`（此前 `0.0.0.0/[::]`）；app 本就回环。演示密码与真实部署边界写入 `docs/runbook.md` §6。
+- 备份/恢复演练（隔离栈，真实数据）：`pg_dump -Fc`（728 KB，含项目/import_jobs/961 化合物/3,969 证据）→ 删除两容器与数据库卷 → 全新卷 + `pg_restore` → 项目 `Losartan tetrazole set`(2 items)、losartan 家族 4 文档、healthz 全部恢复。唯一输出为无害的 `COMMENT ON EXTENSION rdkit` 属主警告（当时记录；第三轮已纠正恢复步骤，不再接受忽略恢复错误）。
+- 升级演练：`f3da90c` 旧镜像栈（迁移 1–6、demo 数据、保存项目 `upgrade-drill`）→ 换当前镜像启动 → 自动应用迁移 7（`project_items` 新列 `inchikey/dataset_versions` 确认存在），项目与 demo 家族完好，旧 0006 形状的项目条目按原值可读（`dataset_versions: []`）。
+- Runbook：`docs/runbook.md` 覆盖干净安装、真实数据导入、备份、恢复、升级与回退（=恢复备份）、安全边界。
+
+### PROD-02（筛选/导出/来源范围一致）——关闭
+
+- 实现：`services/export.py` 重写为作用域感知——`patent_numbers/patent_labels/evidence` 聚合按请求的 family/document 过滤，跨同族相同分子不再混入他族记录；`/api/v1/export` 新增可选 `structure_query`（服务端重跑结构检索，覆盖未加载页）；5000 条上限改为**计数阶段** SQL 拒绝（结构查询经匹配计数拒绝）；所选 ID 越界 → 422 报数量；CSV/SDF 增加 `evidence_source_urls` 列与 `X-Spago-Export-Rows` 头。
+- UI：`ExportMenu` 作用域标签按实际命名——`Structure results (N)` / `Current document (N)` / `Current family (N)`；结构过滤激活时“当前结果”即结构结果并携带查询重跑。
+- 测试：`tests/test_export_scope.py` 13 项（含 1→10 失败回归、601 条分页边界导出、跨族证据隔离、计数期上限、越界拒绝、SDF 计数一致）；`test_m1_projects_export.py` 未知 ID 契约按新语义更新为 422。
+- 浏览器（真实氯沙坦数据，1440×900）：四唑亚结构检索 56 命中 → 导出菜单显示 `CSV · Structure results (56)` → UI 实发请求体含 `structure_query` → 服务端返回 `X-Spago-Export-Rows: 56`、CSV 数据行 56（修复前该路径导出全族 961 条）。
+
+### PROD-01（真实数据入口与可核对证据）——机制关闭；广覆盖仍按声明范围
+
+- 来源核对（第一轮 Q&A 要求）：SureChEMBL bulk 官方文档与 FTP 实查——公开、无需注册、Parquet 快照每两周发布、CC BY 4.0；schema 三表（patents/patent_compound_map/compounds）与官方 `fields.parquet` 字段表（desc/clms/abst/ttl/image/molattachment）核对一致。EPO OPS 仍需 key，不作为首版来源。
+- 真实案例：`scripts/extract_surechembl.py` 经 HTTP range read（不整包下载）提取 **真实氯沙坦家族**（`US-5153197-A` → family 27367728：US-5128355-A/US-5138069-A/US-5153197-A/US-5155118-A 四篇真实专利、3,973 映射、976 化合物）与 **西地那非家族**（`US-5250534-A` → family 27265149：3 篇、608 映射、196 化合物）。提取耗时与每步耗时见 `benchmarks/real-source-2026-09-15.md`（compounds 必须分批 IN 查询，否则退化为整文件流）。
+- 入库与部署分离：`SPAGO_SEED_MODE=demo|none`（none=仅迁移，不再自动混入 fixture；隔离栈实测 `datasets/info` 仅 `surechembl_bulk`）；`python -m spago_core.import_package <dir>` 记录 `import_jobs`（running→completed/failed、文件 SHA-256、summary），幂等重导不重复；真实/演示来源在 `dataset_info` 并存，`/api/v1/datasets/info` 返回全量清单。
+- 诚实映射：无页码/无原文标签显示 not provided（不虚构位置）；证据摘录说明 bulk 不含原文；每条证据带 Espacenet 出版物链接（用户手动核验，不做自动化）；缺 SMILES 记为 ingestion issue；mention 以 (compound, document, field) 为单位，标签带字段名避免自然键冲突。
+- 界面：TopBar 徽标按实际来源渲染（真实数据无 Demo 字样、显示检索时间），空态提示“Loaded source: …”，表尾 `Source: …`，保存对话框 demo 注释条件化，未命中公开号提示“未被当前来源覆盖”。
+- 验收核对：API + 浏览器完成公开号→同族（4 文档）→去重结构（961，InChIKey 去重 976→961，4 条 issue 记录）→证据（machine_extracted、Espacenet 链接、page=None）→结构筛选（四唑 56 命中）闭环；另一同族（西地那非）独立可查；未覆盖公开号明确 404。**科学人工对照未做**（见缺口）。
+- 测试：`tests/test_real_source_import.py` 7 项（真实 schema 适配器映射、job 记录与幂等、失败记录、seed_mode 边界、服务路径）。
+
+### PROD-03（保存后重新打开、版本不漂移）——关闭
+
+- 服务端：`save_scope` 版本清单由实际保存行推导（family=文档来源，selection=mention 来源），客户端 `dataset_version` 仅作兼容参数被忽略；迁移 0007 为 `project_items` 增加 `inchikey/canonical_smiles`（保存时快照）与 `dataset_versions`（完整来源清单）；读取回传 `record_missing/source_updated` 漂移标志，保存含义不被后续导入静默改写（测试覆盖版本变更 → `source_updated=true` 且保存清单不变）。
+- UI：TopBar `Projects` 按钮 → 按需模态列出项目 → 打开即恢复同族视图（经首个文档公开号走正常检索流）并重选已存化合物；项目横幅显示名称、条目数与服务端推导的来源版本及漂移提示，可关闭；无新仪表盘/永久面板。
+- 验收（浏览器，真实数据）：选 2 个四唑化合物 → 保存 `Losartan tetrazole set` → 关闭页面重开 → Projects → Open → 家族恢复（`?q=US-5128355-A`）、恰好 2 行复选、横幅含 `surechembl-2026-09-08 (surechembl_bulk)`；**应用容器重启后**再次打开结果一致（截图 `docs/plans/ui-round-verification/project-reopen-real-1440.png`）。发现并修复一次导航时序问题（恢复选择曾被上下文重置 effect 清空，改为家族加载后应用）。
+- 测试：`tests/test_project_versions.py` 4 项 + `test_m1_projects_export.py` 断言更新。
+
+### PROD-05（可重现检查与验收）——部分关闭
+
+- 已完成：`scripts/run_checks.sh`（自动选择 ≥20 的 Node；`--no-pg` 子集入口）一键跑 181 项测试 + 前端构建，本轮以它收尾全绿；真实规模测量见 `benchmarks/real-source-2026-09-15.md`（检索 1.9 ms、100 行页 17 ms、500 行页 56 ms、苯亚结构 86 ms、961 行导出 245 ms）；开发栈已用当前镜像重建并确认 demo 流程、导出契约不受影响。
+- 未完成（如实记录）：**未提交/未打 tag/未推送**——候选 commit 与镜像整理等待发布授权；外部实际使用者试用未安排；G1 全量清单中“人工科学对照选定结构/标签/立体信息”未执行（本轮证据为来源记录与确定性化学身份，未做逐条人工比对原文）；并发/多 worker 未测。
+
+### 剩余缺口（按 §1 门槛）
+
+- PROD-06 真实活性、PROD-07 真实模型 smoke、PROD-08 多用户授权：均未实施，维持 NEXT 状态；首版按“结构查看器”范围发布时它们不阻塞。
+- Ketcher 嵌入、Chrome 实际加载：仍为 NEXT 增强，不阻塞单用户查看器。
+- 本轮真实数据的覆盖声明仅限两个已导入家族；不得宣称任意专利可查（未覆盖公开号明确 404 已实现）。
+- 提取脚本对 SureChEMBL schema 变更无契约测试保护（官方声明 schema 可能随版本变化）；首版已用官方 `fields.parquet` 核对，后续版本需复查。
+
+## Third-round review — 2026-09-15 实施后复查与修正
+
+基线：`66ce8d9` + 开始时已存在的未提交实现/许可/文档。范围为 CORE 审查修正；未提交、未推送、未替换用户运行栈或用户数据库。独立审查分别覆盖导入、项目/导出、部署；最终结论来自当前源码、隔离数据库、浏览器和实际命令。
+
+### Q&A：本轮发现与处置
+
+| 发现 | 修正与边界 |
+| --- | --- |
+| 列表及第 500 条以后的结构命中会混入其他同族 occurrences；导出版本来自全局 compound | family/document 范围批量读取 mentions；CSV/SDF 按实际来源输出版本清单，空选择不扩大范围，超限先计数；无效 SDF 明确失败。 |
+| 项目源记录删除会级联删除快照，旧列表内连接隐藏缺失记录；多来源漂移检测不完整 | 新迁移 0008 保留项目持有的源 UUID 与身份快照，LEFT JOIN 报缺失；逐项目条目保存同族来源版本，重试返回原保存清单。此前已丢失的历史数据无法由迁移恢复，旧 mixed 清单保持未知。 |
+| 项目仅重开首个家族、跨族勾选混合；迟到响应覆盖新操作；空项目显示旧范围 | 按保存家族切换并分别恢复勾选；关闭/搜索/新选择取消旧导航；列表错误可重试，家族错误重试真正重发；空项目清除旧查询范围。 |
+| 包路径引号、来源时间/版本/布尔值、未知字段、关联缺失未严格处理 | 明确来源契约、时间保持、未知字段标记、InChIKey 差异警告、SHA256 校验与 100,000 行上限；失败 job 可追溯。提取要求日期版本与空目录；容器提供脚本及 HTTPFS 首次安装路径。 |
+| 同来源 occurrence 修正结构触发 PK 冲突，重复标签吞合并记录；同版本后包清掉先前 issues | occurrence 以稳定 UUID 更新化合物/证据；移除标签自然键唯一约束；issues 限定当前包文档；evidence 查找改为 ID 映射，避免逐条遍历。 |
+| 恢复步骤可能失去 RDKit extension/owner，检查脚本可能跳过 PG 仍声称全通过 | 恢复到新库，由容器 postgres 执行严格单事务 pg_restore；保留旧库/卷；默认检查要求 PG，--no-pg 明确是子集。许可文件进入镜像；local/backups 排除构建和 Git。 |
+
+### 后续 CORE 计划（重新开放 PROD-01/04/05 的对应门槛）
+
+1. **源刷新正确性 / P1**：先在 Q&A 确认完整快照与部分包语义，再实现版本化撤回/替换。验收覆盖 valid→invalid、缺 SMILES、mapping 消失、跨包重叠、重复重试；旧 project 快照保留并标记失效，旧来源不得继续冒充当前证据。当前仅支持 upsert；使用新来源版本前需人工检查差异。
+2. **中断导入恢复 / P1**：在现有 DB job 机制内定义进程中断、重试与取消状态；强杀后不能永久被误认为正常 running。验收包括写入事务中断、重试幂等和明确恢复操作。CLI extraction 尚非持久后台任务，不宣称已满足所有 job 语义。
+3. **科学验收 / P1**：对两个真实家族及一个缺失案例，人工比对选定结构、盐/立体信息、映射字段与原文/来源定位；保存可公开的最小回归记录，记录无法定位的证据。源码和合成测试不能替代此项。
+4. **G1 交付验收 / P1**：从干净镜像按 runbook 执行真实提取→导入→筛选→保存/跨族重开→导出→备份恢复，重新测当前代码的真实规模性能；安排外部使用者完成一次流程。Python 依赖仍采用范围约束，发布候选需记录实际解析版本和镜像摘要以保证可复现。
+
+上述门槛未完成前，定位为本地单用户试用候选。PROD-06/07/08 和 Ketcher/Chrome 维持原范围；不以增加这些能力掩盖 CORE 缺口。
+
+### 验证记录
+
+- **后端与构建 passed**：`SPAGO_TEST_DATABASE_URL=postgresql+psycopg://spago:spago@127.0.0.1:55439/spago NODE_BIN=/home/chen/.nvm/versions/node/v22.22.0/bin/node bash scripts/run_checks.sh`（命令通过 RTK 执行）→ **217 passed，0 skipped，15.39 s**，两条既有依赖弃用警告；TypeScript + Vite production build passed。随后窄屏样式修正再次 `npm run build` passed；最终静态资源 `index-COP10Zc-.js` / `index-BmWXuN2o.css`。未为警告引入额外依赖。
+- **数据库 passed**：本轮创建独立容器 `spago-review-db-0915`（回环 :55439），测试只销毁其 scratch DB。新增 0007→0008 迁移回归保留旧身份快照，source 删除保留 saved items，project 删除仍级联；源结构修正与重复 occurrence 回归通过。没有对用户运行库应用 0008。
+- **恢复演练 passed**：同一隔离容器内 `pg_dump -U spago -d spago -Fc`（41,960 bytes）→ 校验 archive → 新建 `spago_review_restored` → `pg_restore --exit-on-error --single-transaction -U postgres`。15 张 public 表的行数与排序内容 MD5 全部相等（含 2 projects / 3 saved items / 24 evidence）；RDKit 4.2.0 可用，无忽略错误。旧库保持原状。
+- **浏览器 passed，合成集成**：新进程从当前 checkout 启动 :8066，独立 DB 两个同族共享分子。IAB 1440×900 / 760×800 实测项目打开分别恢复 1/2 个所选、空项目清除旧表/范围、列表 503 明示错误且 Retry 恢复、家族 503 Retry 真正导航成功。临时测试中间件仅在 `/tmp` 注入 5 秒延迟：关闭打开对话框后迟到详情不导航，等待家族时重新勾选后旧响应不覆盖选择；正常来源模式下确认跨族 mentions 不再混入。目视 settled screenshots；窄屏列重叠修复为有最小列宽的横向滚动，项目 banner/footer 正常换行。DOM、URL、复选值与本地服务器请求日志联合核验；未当作真实来源科学验证。
+- **容器 passed**：独立 `spago-app:review-0915` 从当前 checkout 构建；容器内 extractor `--help` 运行成功；干净一次性容器从 DuckDB 官方 HTTPS 仓库首次安装并加载 HTTPFS 成功；`/app/licenses` 含 LICENSE/NOTICE/THIRD_PARTY_NOTICES。未下载专利 bulk 数据，未替换用户镜像 tag 或运行容器。
+- **性能已测/范围有限**：现有 benchmark harness 指向 :8066，结果保留在 `benchmarks/review-2026-09-15.json`。family page p50/p95=6.30/7.90 ms、JSON 9,118 bytes，全部计时调用零错误。双同族合成数据与旧环境不相同，不声称优化或生产规模无回归；当前真实规模/内存仍未检查。
+- **未检查**：修正后的真实家族重新提取/导入、人工科学原文比对、真实活性/模型、外部使用者、多人/多 worker。第二轮真实数据与性能记录仅作历史证据。源撤回与中断 job 恢复是已知未实现项，按上面的 CORE 计划继续。
+- **变更范围**：导入 adapter/CLI/seed、项目/export/structure/core 查询与 routes、迁移 0008 与回归测试、App/ProjectsDialog/CompoundTable/样式、检查脚本与部署打包、README/PROMPT/架构/runbook/本计划/benchmark/许可清单。全部已有用户改动保留；无 stage/commit/push/tag/release。
+
+- **文档检查 passed**：`rtk git diff --check`；7 份当前文档的围栏与 16 个本地链接存在性检查通过。最终复查镜像 `spago-app:review-0915`，image ID `sha256:a9674e8a32bb2d94070fa9d926b7cb729324955298710c20a3b64fdfc81d2dbe`。

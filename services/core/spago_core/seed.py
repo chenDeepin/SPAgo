@@ -1,10 +1,14 @@
-"""Idempotent fixture seeding: adapter -> RDKit normalization -> PostgreSQL.
+"""Idempotent ingestion: adapter -> RDKit normalization -> PostgreSQL.
 
-Run:  python -m spago_core.seed
+Run:  python -m spago_core.seed        (demo fixture; controlled by SPAGO_SEED_MODE)
+      python -m spago_core.import_package <dir>   (a source package, e.g. a
+      real SureChEMBL extract)
 
-Deduplicates compounds by InChIKey, preserves per-document mentions, records
-malformed structures as ingestion issues, and never upgrades provenance states.
-Safe to run repeatedly (stable ids + upserts).
+`ingest()` is the shared pipeline: any adapter result (demo fixture or a real
+source package) is normalized and persisted the same way. Deduplicates
+compounds by InChIKey, preserves per-document mentions, records malformed
+structures as ingestion issues, and never upgrades provenance states. Safe to
+run repeatedly (stable ids + upserts).
 """
 from __future__ import annotations
 
@@ -18,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from spago_core.adapters import BioactivityFixtureAdapter, SureChemblFixtureAdapter
+from spago_core.adapters.base import AdapterResult
 from spago_core.chemistry import NormalizedStructure, StructureParseError, murcko_scaffold, normalize
 from spago_core.config import get_settings
 from spago_core.db import make_engine, run_migrations
@@ -58,16 +63,34 @@ def seed(
     fixture_dir: Path | None = None,
     migrations_dir: Path | None = None,
 ) -> SeedReport:
+    """Load the demo fixture dataset (SPAGO_SEED_MODE=none skips this)."""
     settings = get_settings()
     fixture_dir = fixture_dir or settings.fixture_dir
+    migrations_dir = migrations_dir or settings.migrations_dir
+    result = SureChemblFixtureAdapter(fixture_dir).load()
+    return ingest(
+        engine,
+        result,
+        migrations_dir=migrations_dir,
+        bioactivity_dir=fixture_dir,
+    )
+
+
+def ingest(
+    engine: Engine,
+    result: AdapterResult,
+    migrations_dir: Path | None = None,
+    bioactivity_dir: Path | None = None,
+) -> SeedReport:
+    """Persist any adapter result: normalize chemistry, upsert provenance-
+    carrying rows, record issues. Idempotent; safe to re-run."""
+    settings = get_settings()
     migrations_dir = migrations_dir or settings.migrations_dir
 
     applied = run_migrations(engine, migrations_dir)
     if applied:
         logger.info("applied migrations: %s", applied)
 
-    adapter = SureChemblFixtureAdapter(fixture_dir)
-    result = adapter.load()
     report = SeedReport(
         warnings=list(result.envelope.warnings),
         dataset_version=result.envelope.dataset_version,
@@ -135,10 +158,12 @@ def seed(
                 },
             )
 
-        # --- ingestion issues: replace this dataset's records ---------------------
+        # --- replace issues only for documents in this package --------------------
         conn.execute(
-            text("DELETE FROM ingestion_issues WHERE dataset_version = :v"),
-            {"v": result.envelope.dataset_version},
+            text("DELETE FROM ingestion_issues WHERE dataset_version = :v "
+                 "AND document_id = ANY(:documents)"),
+            {"v": result.envelope.dataset_version,
+             "documents": [doc.publication_number for doc in result.documents]},
         )
         for issue in result.issues:
             report.issues.append(
@@ -251,7 +276,6 @@ def seed(
                           tpsa = EXCLUDED.tpsa, logp = EXCLUDED.logp,
                           has_stereo = EXCLUDED.has_stereo,
                           is_multi_component = EXCLUDED.is_multi_component,
-                          dataset_version = EXCLUDED.dataset_version,
                           m = mol_from_smiles(EXCLUDED.canonical_smiles),
                           scaffold = EXCLUDED.scaffold
                     """
@@ -289,8 +313,12 @@ def seed(
                                                    retrieved_at)
                     VALUES (:id, :compound_id, :document_id, :patent_label,
                             :source_record_id, :source_name, :dataset_version, :retrieved_at)
-                    ON CONFLICT (compound_id, document_id, patent_label) DO UPDATE
-                      SET source_record_id = EXCLUDED.source_record_id,
+                    ON CONFLICT (id) DO UPDATE
+                      SET compound_id = EXCLUDED.compound_id,
+                          document_id = EXCLUDED.document_id,
+                          patent_label = EXCLUDED.patent_label,
+                          source_name = EXCLUDED.source_name,
+                          source_record_id = EXCLUDED.source_record_id,
                           dataset_version = EXCLUDED.dataset_version,
                           retrieved_at = EXCLUDED.retrieved_at
                     """
@@ -308,8 +336,9 @@ def seed(
             )
             report.mentions += 1
 
+        mention_by_id = {m.mention_id: m for m in result.mentions}
         for ev in result.evidence:
-            mention = next((m for m in result.mentions if m.mention_id == ev.compound_mention_id), None)
+            mention = mention_by_id.get(ev.compound_mention_id)
             if mention is None or mention.raw_smiles not in normalized:
                 continue
             norm = normalized[mention.raw_smiles]
@@ -372,7 +401,11 @@ def seed(
                 compound_by_source_record[mention.source_record_id] = _compound_id(norm.inchikey)
 
         try:
-            activity_result = BioactivityFixtureAdapter(fixture_dir).load()
+            if bioactivity_dir is None:
+                activity_result = None
+                report.warnings.append("No bioactivity source configured; measurements not loaded.")
+            else:
+                activity_result = BioactivityFixtureAdapter(bioactivity_dir).load()
         except FileNotFoundError:
             activity_result = None
             report.warnings.append("No bioactivity fixture present; measurements not loaded.")
@@ -484,6 +517,19 @@ def seed(
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     settings = get_settings()
+    if settings.seed_mode == "none":
+        # Real-source deployments: migrations only. The demo fixture is never
+        # mixed into a real dataset automatically (PROD-01); import packages
+        # with `python -m spago_core.import_package <dir>` instead.
+        logging.getLogger(__name__).info(
+            "SPAGO_SEED_MODE=none: migrations applied, demo fixture not loaded"
+        )
+        engine = make_engine()
+        try:
+            run_migrations(engine, settings.migrations_dir)
+        finally:
+            engine.dispose()
+        return
     engine = make_engine()
     try:
         report = seed(engine)

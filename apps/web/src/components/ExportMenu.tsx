@@ -5,14 +5,33 @@ interface ExportMenuProps {
   familyId: string;
   documentId: string | null;
   selectedIds: string[];
+  /** Total of the plain list in the current family/document scope. */
+  resultsTotal: number;
+  /** Active structure filter, if any: "current results" then means the
+   * structure result set, re-executed server-side at export time. */
+  structureFilter: {
+    mode: string;
+    /** Raw query SMILES as entered; the server re-canonicalizes it. */
+    smiles: string;
+    threshold: number | null;
+    total: number;
+  } | null;
 }
 
 type ExportFormat = "csv" | "sdf";
 type ExportScope = "selection" | "results";
 
 /** Single Export owner (design contract 7): choose format and scope explicitly.
- * "Current results" exports the server-side scope, never just the loaded page. */
-export function ExportMenu({ familyId, documentId, selectedIds }: ExportMenuProps) {
+ * "Current results" exports the server-side scope — family, document, or the
+ * active structure query — never just the loaded page, and the label names the
+ * exact scope (PROD-02). */
+export function ExportMenu({
+  familyId,
+  documentId,
+  selectedIds,
+  resultsTotal,
+  structureFilter,
+}: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +51,16 @@ export function ExportMenu({ familyId, documentId, selectedIds }: ExportMenuProp
     try {
       await api.exportFile({
         family_id: familyId,
-        document_id: scope === "results" ? documentId : null,
+        document_id: scope === "results" && !structureFilter ? documentId : null,
         compound_ids: scope === "selection" ? selectedIds : null,
+        structure_query:
+          scope === "results" && structureFilter
+            ? {
+                mode: structureFilter.mode,
+                smiles: structureFilter.smiles,
+                threshold: structureFilter.mode === "similarity" ? structureFilter.threshold : null,
+              }
+            : null,
         format,
       });
       setOpen(false);
@@ -45,6 +72,11 @@ export function ExportMenu({ familyId, documentId, selectedIds }: ExportMenuProp
   };
 
   const selectionDisabled = selectedIds.length === 0;
+  const resultsLabel = structureFilter
+    ? `Structure results (${structureFilter.total})`
+    : documentId
+      ? `Current document (${resultsTotal})`
+      : `Current family (${resultsTotal})`;
 
   return (
     <div className="export-root" ref={rootRef}>
@@ -86,7 +118,7 @@ export function ExportMenu({ familyId, documentId, selectedIds }: ExportMenuProp
             disabled={busy}
             onClick={() => run("csv", "results")}
           >
-            CSV · Current results
+            CSV · {resultsLabel}
           </button>
           <button
             role="menuitem"
@@ -94,10 +126,12 @@ export function ExportMenu({ familyId, documentId, selectedIds }: ExportMenuProp
             disabled={busy}
             onClick={() => run("sdf", "results")}
           >
-            SDF · Current results
+            SDF · {resultsLabel}
           </button>
           <p className="hint-note">
-            Exports keep patent numbers, labels, evidence references, and dataset version.
+            {structureFilter
+              ? "The structure query is re-run on the server, so the export covers every match, not just the loaded rows."
+              : "Exports keep patent numbers, labels, evidence references, and dataset version."}
           </p>
         </div>
       )}

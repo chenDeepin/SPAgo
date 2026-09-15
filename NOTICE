@@ -1,0 +1,12 @@
+SPAgo
+Copyright 2026 chenDeepin
+
+This product includes software developed for the SPAgo project
+(small molecule patent analysis GO).
+
+SPAgo is licensed under the Apache License, Version 2.0.
+See the LICENSE file in the project root.
+
+Third-party software and data-source terms are summarized in
+THIRD_PARTY_NOTICES.md. That file is informational and does not
+modify the Apache License terms that apply to SPAgo source code.

@@ -91,6 +91,9 @@ class DatasetInfoResponse(BaseModel):
     files: dict = {}
     notes: Optional[str] = None
     ingestion_issues: list[dict] = []
+    # Every loaded dataset (demo + imported packages), newest first (PROD-01:
+    # the UI shows the real source inventory, not a hardcoded demo label).
+    datasets: list[dict] = []
 
 
 @router.get("/datasets/info", response_model=DatasetInfoResponse)
@@ -106,6 +109,7 @@ def datasets_info(engine=Depends(get_engine)):
         files=info["files"] or {},
         notes=info["notes"],
         ingestion_issues=services.list_ingestion_issues(engine),
+        datasets=services.list_dataset_infos(engine),
     )
 
 
@@ -396,14 +400,10 @@ def structure_search(
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    # Mentions for the search hits: one batched family query, per-hit fallback
-    # for hits beyond the first max-size page.
-    mention_map: dict = {}
-    overview_page = services.list_family_compounds(
-        engine, family_id, body.document_id, 0, settings.max_page_size
+    # Hydrate only this search page, with the same family/document scope.
+    mention_map = services.list_compound_mentions(
+        engine, [r["id"] for r in result.rows], family_id, body.document_id
     )
-    for row in overview_page.items:
-        mention_map[row.compound.id] = [MentionResponse(**m.model_dump()) for m in row.mentions]
 
     hits = []
     for r in result.rows:
@@ -423,13 +423,7 @@ def structure_search(
             scaffold=r["scaffold"],
             normalization_notes=r["normalization_notes"],
         )
-        mentions = mention_map.get(r["id"])
-        if mentions is None:
-            try:
-                full = services.get_compound(engine, r["id"])
-                mentions = [MentionResponse(**m.model_dump()) for m in full.mentions]
-            except NotFoundError:
-                mentions = []
+        mentions = [MentionResponse(**m.model_dump()) for m in mention_map.get(r["id"], [])]
         hits.append(
             StructureSearchHit(
                 compound=compound,
@@ -649,6 +643,10 @@ class ProjectItemResponse(BaseModel):
     inchikey: Optional[str] = None
     canonical_smiles: Optional[str] = None
     dataset_version: str
+    # Full server-derived source list at save time (PROD-03) and drift flags.
+    dataset_versions: list[dict] = []
+    record_missing: bool = False
+    source_updated: bool = False
     added_at: str
 
 
@@ -665,13 +663,16 @@ class SaveScopeRequest(BaseModel):
     family_id: uuid.UUID
     # None/empty saves the whole family; otherwise the selected compound ids.
     compound_ids: Optional[list[uuid.UUID]] = None
-    dataset_version: str = Field(min_length=1)
+    # Deprecated: accepted for compatibility, ignored. The server derives the
+    # dataset versions from the rows actually saved (PROD-03).
+    dataset_version: Optional[str] = None
 
 
 class SaveScopeResponse(BaseModel):
     created_rows: int
     already_present_rows: int
     scope_family: bool
+    dataset_versions: list[dict] = []
 
 
 @router.get("/projects", response_model=list[ProjectSummaryResponse])
@@ -725,19 +726,46 @@ def remove_item(project_id: uuid.UUID, item_id: uuid.UUID, engine=Depends(get_en
 # --- export (M1: CSV / SDF with provenance) -------------------------------------------
 
 
+class ExportStructureQueryBody(BaseModel):
+    mode: str = Field(pattern="^(exact|substructure|similarity)$")
+    smiles: str = Field(min_length=1, max_length=2000)
+    threshold: Optional[float] = Field(default=None, ge=0.3, le=1.0)
+    filters: Optional[MoleculeFiltersBody] = None
+
+
 class ExportRequest(BaseModel):
     family_id: uuid.UUID
     document_id: Optional[uuid.UUID] = None
-    # Explicit selection wins over family/document scope.
+    # Explicit selection wins over family/document/structure scope.
     compound_ids: Optional[list[uuid.UUID]] = None
+    # Re-executed server-side so the export covers every match, not just the
+    # loaded page. Requires the same chemistry contract as structure search.
+    structure_query: Optional[ExportStructureQueryBody] = None
     format: str = Field(pattern="^(csv|sdf)$")
 
 
 @router.post("/export")
 def export_scope(body: ExportRequest, engine=Depends(get_engine)):
-    """Export by server-side scope: 'current results' (family/document) or an
-    explicit selection. Never silently only the loaded page."""
+    """Export by server-side scope: an explicit selection, a structure query,
+    a family/document scope — never silently only the loaded page.
+
+    Scope errors (unknown or out-of-scope ids, unusable structure query) and
+    oversized scopes are rejected with 422 from the counting phase."""
     from spago_core.services import export as export_svc
+    from spago_core.services import structure_search as ss
+
+    structure_query = None
+    if body.structure_query is not None and body.compound_ids is None:
+        structure_query = export_svc.StructureExportQuery(
+            mode=body.structure_query.mode,
+            smiles=body.structure_query.smiles,
+            threshold=body.structure_query.threshold,
+            filters=(
+                ss.MoleculeFilters(**body.structure_query.filters.model_dump())
+                if body.structure_query.filters
+                else None
+            ),
+        )
 
     try:
         rows = export_svc.collect_export_rows(
@@ -745,22 +773,34 @@ def export_scope(body: ExportRequest, engine=Depends(get_engine)):
             family_id=body.family_id,
             document_id=body.document_id,
             compound_ids=body.compound_ids,
+            structure_query=structure_query,
         )
+        if body.format == "csv":
+            content = export_svc.render_csv(rows)
+            media_type = "text/csv; charset=utf-8"
+            filename = "spago-export.csv"
+        else:
+            content = export_svc.render_sdf(rows)
+            media_type = "chemical/x-mdl-sdfile"
+            filename = "spago-export.sdf"
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except export_svc.ExportTooLargeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except export_svc.ExportScopeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
+        # Covers structure-query parse errors (StructureParseError) and any
+        # other scope-contract violation: 422 with the instance reason.
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    if body.format == "csv":
-        content = export_svc.render_csv(rows)
-        media_type = "text/csv; charset=utf-8"
-        filename = "spago-export.csv"
-    else:
-        content = export_svc.render_sdf(rows)
-        media_type = "chemical/x-mdl-sdfile"
-        filename = "spago-export.sdf"
     return Response(
         content=content,
         media_type=media_type,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # Lets callers and tests confirm the exported scope size without
+            # parsing the file.
+            "X-Spago-Export-Rows": str(len(rows)),
+        },
     )

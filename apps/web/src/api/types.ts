@@ -75,6 +75,12 @@ export interface PatentResponse {
   mention_counts: Record<string, number>;
 }
 
+export interface FamilyResponse {
+  family: PatentFamily;
+  documents: PatentDocument[];
+  mention_counts: Record<string, number>;
+}
+
 export interface EvidenceRecord {
   id: string;
   compound_id: string | null;
@@ -121,6 +127,16 @@ export interface DatasetInfoResponse {
     raw_smiles: string;
     issue: string;
   }[];
+  /** All loaded datasets (demo + imported), newest first (PROD-01). */
+  datasets?: DatasetEntry[];
+}
+
+export interface DatasetEntry {
+  source_name: string;
+  dataset_version: string;
+  synthetic: boolean;
+  release_label: string | null;
+  retrieved_at: string;
 }
 
 /* --- M1: projects + save --- */
@@ -141,6 +157,10 @@ export interface ProjectItem {
   inchikey: string | null;
   canonical_smiles: string | null;
   dataset_version: string;
+  /** Server-derived source list at save time (PROD-03). */
+  dataset_versions?: { source_name: string; dataset_version: string }[];
+  record_missing?: boolean;
+  source_updated?: boolean;
   added_at: string;
 }
 
@@ -152,6 +172,7 @@ export interface SaveScopeResult {
   created_rows: number;
   already_present_rows: number;
   scope_family: boolean;
+  dataset_versions?: { source_name: string; dataset_version: string }[];
 }
 
 /* --- M2: structure search --- */

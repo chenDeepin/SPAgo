@@ -8,6 +8,7 @@ interface SaveToProjectDialogProps {
   familyId: string;
   familyKey: string;
   datasetVersion: string;
+  sourceIsSynthetic: boolean;
   selectedIds: string[];
   onClose: () => void;
 }
@@ -16,11 +17,13 @@ type SaveOutcome = "saved" | "already" | null;
 
 /** Save dialog per design contract 6: scope is explicit (selection vs whole
  * family), the target project is confirmed, failures keep the dialog with a
- * retry, and re-saving never duplicates rows. */
+ * retry, and re-saving never duplicates rows. Source versions are recorded
+ * server-side from the saved rows (PROD-03). */
 export function SaveToProjectDialog({
   familyId,
   familyKey,
   datasetVersion,
+  sourceIsSynthetic,
   selectedIds,
   onClose,
 }: SaveToProjectDialogProps) {
@@ -162,8 +165,9 @@ export function SaveToProjectDialog({
         />
 
         <p className="hint-note">
-          Source dataset <span className="mono">{datasetVersion}</span> (demo fixture) is recorded
-          with the saved items. Re-saving the same scope never duplicates entries.
+          Source dataset <span className="mono">{datasetVersion}</span>
+          {sourceIsSynthetic ? " (demo fixture)" : ""} is recorded with the saved
+          items by the server at save time. Re-saving the same scope never duplicates entries.
         </p>
       </div>
 

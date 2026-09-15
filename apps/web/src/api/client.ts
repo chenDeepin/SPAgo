@@ -97,6 +97,11 @@ export const api = {
       `/api/v1/patents/${encodeURIComponent(publicationNumber)}`,
       signal,
     ),
+  family: (familyId: string, signal?: AbortSignal) =>
+    getJson<import("./types").FamilyResponse>(
+      `/api/v1/families/${familyId}`,
+      signal,
+    ),
   compounds: (
     familyId: string,
     documentId: string | null,
@@ -138,6 +143,11 @@ export const api = {
     family_id: string;
     document_id?: string | null;
     compound_ids?: string[] | null;
+    structure_query?: {
+      mode: string;
+      smiles: string;
+      threshold?: number | null;
+    } | null;
     format: "csv" | "sdf";
   }) => {
     const ext = body.format;
