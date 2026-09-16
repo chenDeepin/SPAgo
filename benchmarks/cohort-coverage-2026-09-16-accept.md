@@ -60,4 +60,3 @@ Verdict: **qualifies** — 1833 of 2531 in-scope compound(s) at or below 10 µM;
 A `failed` row is a source outage; an `empty` row is a source that answered
 with nothing; a target absent from this matrix was never investigated. The
 three are different facts and are not collapsed here.
-
