@@ -22,6 +22,12 @@ docker compose up -d --build
   `POSTGRES_PASSWORD` first (see §6).
 - Verify: `curl -s localhost:8000/healthz` → `"status":"ok"`; the top bar shows
   the loaded dataset.
+- Plain `docker compose up --build` serves `/healthz` with `build_id:"unknown"`
+  — an explicit placeholder, never a guess. Builds that must be
+  distinguishable in records use `scripts/build_app.sh`, which injects the
+  checkout's `git describe --always --dirty` identity into the image;
+  `scripts/build_identity.py` compares what a server actually serves with an
+  expected identity and fails on a mismatch.
 
 ## 2. Loading real patent data (SureChEMBL extract)
 
@@ -465,7 +471,7 @@ version and configuration so §4 can be used for rollback.
 
 ```bash
 git fetch && git checkout <new version>
-docker compose build
+scripts/build_app.sh          # compose build + the checkout's build identity (B-34)
 docker compose up -d          # app applies forward migrations at startup
 ```
 
@@ -560,10 +566,17 @@ someone other than the operator:
 ## H3. First deployment
 
 ```bash
-docker compose build            # or your platform's equivalent
+scripts/build_app.sh            # compose build + git-derived build identity (B-34)
 docker compose up -d
 curl -fsS https://<domain>/healthz          # public, reveals nothing sensitive
 ```
+
+Record the served `build_id` (`build_source:"env"` when injected, `"unknown"`
+when the image was built without one) with every run record.
+`scripts/build_identity.py --expected <id> --base-url https://<domain>` exits
+non-zero on a mismatch or — with `--require` — on an unknown identity, so a
+recorded result is relatable to the build that produced it. `api_version` is a
+package version shared by many builds; it never identifies one.
 
 Create the first administrator and an invitation (these are operator commands):
 

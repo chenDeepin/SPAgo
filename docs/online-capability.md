@@ -15,7 +15,7 @@ Update this page whenever a capability or a source version changes. The
 
 | Component | Version / identity |
 | --- | --- |
-| Application | reviewed checkout `efb1357`; `/healthz` currently reports package `api_version=0.1.0`, not a unique build identity (B-34) |
+| Application | reviewed checkout `efb1357`; `/healthz` reports package `api_version=0.1.0` plus a packaging-time `build_id`/`build_source` (B-34): `git describe --always --dirty` when built with `scripts/build_app.sh`, an explicit `unknown` from a plain compose build; images built before B-34 carry no `build_id` field |
 | Database | PostgreSQL 15 + RDKit cartridge 4.2.0 |
 | Schema | migrations 0001–0020 present (forward-only); verify the deployed schema separately |
 | UniProt | `rest.uniprot.org/uniprotkb/search` (REST, `uniprot-rest-uniprotkb`) |
@@ -392,16 +392,22 @@ Nothing else — a green test suite, a working demo, a passed review — substit
 
 All of the following must hold, each closed by an artifact rather than an assertion —
 a checked box without the output, report or record that produced it is not evidence.
-The run record includes `/healthz` and the actual revision/image identity. Currently
-`api_version=0.1.0` alone cannot identify a build; record the packaging identity
-separately until B-34 supplies a comparable served identity. Do not infer that a
-server matches a checkout merely because their API versions agree.
+The run record includes `/healthz` and the actual revision/image identity.
+`api_version=0.1.0` alone cannot identify a build; since B-34 `/healthz` also
+reports the packaging-time `build_id`. Compare expected and served identities
+with `scripts/build_identity.py --expected <id> --require`, which exits
+non-zero on a mismatch or an unknown — do not close this gate against a build
+whose served identity is `unknown`, and do not infer that a server matches a
+checkout merely because their API versions agree. Images built before B-34
+carry no `build_id`; their historical artifacts stay as recorded, without a
+backfilled or guessed identity.
 
 1. **Deployment shape is the reviewed one.** HTTPS terminates in front of the app;
    `SPAGO_COOKIE_SECURE=true`; `SPAGO_AUTH_MODE=required`; `SPAGO_SEED_MODE=none`; a
    connection attempt to the database port from outside fails.
 2. **Readiness is clean.** `/api/v1/readyz` returns `ready` with an empty `notes`
-   array, and `/healthz` reports the recorded `api_version`.
+   array, `/healthz` reports the recorded `api_version`, and its `build_id`
+   matches the run record (not `unknown`; B-34).
 3. **Budget is bounded and known.** Model endpoint, model id and monthly token budget
    are recorded; both quota limits are non-zero; `/api/v1/usage` accounting works;
    the operator's latency/cost targets (§H9) are filled in *and* measured — a go/no-go
@@ -467,7 +473,8 @@ A scientist using only the browser must be able to complete, in one sitting:
 7. Save the selection, sign out, sign in again, reopen the project, and export.
 8. Report any defect before the beta is called usable.
 
-Record the outcome per step, with `/healthz`, the revision/image identity and the coverage
+Record the outcome per step, with `/healthz` (its served `build_id`, compared
+by `scripts/build_identity.py`), the revision/image identity and the coverage
 matrix for the run. A run against the local stack is a rehearsal, not this gate: it
 proves the workflow, not the deployment.
 

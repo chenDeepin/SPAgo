@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     #: correctly refused. Off by default like every compatibility switch.
     llm_json_mode: bool = False
 
+    #: Packaging-time build identity (B-34): docker build arg → image env →
+    #: here. The runtime image has no `.git` directory, so the identity must
+    #: arrive already injected; an empty value is reported by /healthz as an
+    #: explicit "unknown", never guessed from `__version__`, which cannot
+    #: distinguish the many builds recorded under one API version.
+    build_id: str = ""
+
     # Hosted access (ONLINE-03, ADR-0002). "disabled" is the local
     # single-user product: one implicit local identity, unchanged behaviour and
     # unchanged existing rows. "required" is the hosted mode where every

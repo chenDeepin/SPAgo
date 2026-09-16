@@ -16,6 +16,14 @@ ENV PYTHONUNBUFFERED=1 \
     SPAGO_FIXTURE_DIR=/app/data/fixtures \
     SPAGO_DEPICTION_CACHE_DIR=/app/data/cache/depictions
 
+# B-34: the runtime image has no .git directory, so the build identity is
+# injected at packaging time as a build arg and baked into the image env
+# (scripts/build_app.sh computes it on the build host). "unknown" is the
+# deliberate placeholder when nothing was injected — /healthz reports it as
+# such instead of guessing from the API version.
+ARG SPAGO_BUILD_ID=unknown
+ENV SPAGO_BUILD_ID=${SPAGO_BUILD_ID}
+
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl \
       libxrender1 libxext6 libsm6 libice6 libexpat1 \

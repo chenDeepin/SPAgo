@@ -163,6 +163,18 @@ MVP loop (search → family → compound → structure filter → export) runs w
 `npm run test:e2e` in `apps/web` against the seeded compose stack
 (`SPAGO_BASE_URL` overrides `http://127.0.0.1:8000`).
 
+### Distinguishable builds
+
+`docker compose up --build` needs no extra setup and serves an explicit
+`build_id: "unknown"` in `/healthz` — a placeholder stated as such, never a
+guess. To make a verification artifact relatable to the build actually served,
+build with `scripts/build_app.sh`, which bakes the checkout's
+`git describe --always --dirty` identity (e.g. `efb1357` or `efb1357-dirty`)
+into the image, and check what a server reports with
+`scripts/build_identity.py --expected <id>` — it exits non-zero on a mismatch
+or, with `--require`, on an unknown identity. `api_version` stays the package
+version `0.1.0`; it is a separate concept from the build identity.
+
 ### Loading real patent data
 
 The demo fixture is optional. Real patent-family chemistry comes from the official

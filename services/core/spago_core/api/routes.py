@@ -52,6 +52,12 @@ class HealthResponse(BaseModel):
     dataset_version: Optional[str] = None
     ingestion_issues: int = 0
     api_version: str
+    # B-34: packaging-time build identity. `api_version` is a package version
+    # shared by many builds; `build_id` distinguishes them. `build_source` says
+    # where it came from: "env" = injected as SPAGO_BUILD_ID at packaging time,
+    # "unknown" = not injected — reported as such, never guessed.
+    build_id: str
+    build_source: str
 
 
 def health_payload(app) -> HealthResponse:
@@ -86,6 +92,8 @@ def health_payload(app) -> HealthResponse:
         dataset_version=dataset_version,
         ingestion_issues=issues,
         api_version=app.state.version,
+        build_id=app.state.build_id,
+        build_source=app.state.build_source,
     )
 
 

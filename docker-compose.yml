@@ -28,6 +28,14 @@ services:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
+      # B-34: distinguishable build identity, baked into the image env by the
+      # Dockerfile. The default keeps plain `docker compose up --build` working
+      # and serves an explicit "unknown"; scripts/build_app.sh exports a
+      # computed `git describe --always --dirty` identity before building.
+      # Deliberately absent from `environment:` below — a runtime value there
+      # would mask the identity the image was actually built with.
+      args:
+        SPAGO_BUILD_ID: ${SPAGO_BUILD_ID:-unknown}
     image: spago-app:m0
     environment:
       SPAGO_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-spago}:${POSTGRES_PASSWORD:-spago}@db:5432/${POSTGRES_DB:-spago}

@@ -38,6 +38,13 @@ def create_app() -> FastAPI:
     )
     app.state.engine = make_engine(settings.database_url)
     app.state.version = __version__
+    # B-34: build identity is injected at packaging time (docker build arg →
+    # image env → SPAGO_BUILD_ID); the container has no .git directory, so it is
+    # never read from a checkout at runtime. A missing identity is reported
+    # explicitly as unknown — never defaulted from `__version__`, which is a
+    # package version, not a build identity.
+    app.state.build_id = settings.build_id.strip() or "unknown"
+    app.state.build_source = "env" if settings.build_id.strip() else "unknown"
 
     app.add_middleware(
         # B-15: the container *is* the supported install and it has no proxy, so the
