@@ -92,6 +92,11 @@ class ActivityRecord(BaseModel):
     #: falls back to the target's provenance and never invents a source.
     source_name: str | None = None
     source_dataset_version: str | None = None
+    #: B-23: the path this record was actually extracted by, when it is not the
+    #: REST client for its source — a local snapshot file, for example. The
+    #: service prefers this over the URL heuristic, so a row read from disk is
+    #: never stored as if it came over a network endpoint (§9/§10).
+    extraction_method: str | None = None
 
 
 class ActivityResult(BaseModel):
@@ -111,6 +116,13 @@ class ActivityResult(BaseModel):
     #: no numeric value) never reach document resolution and are counted in
     #: `rejection_counts` instead, so the two tallies describe different sets.
     document_reference_counts: dict[str, int] = Field(default_factory=dict)
+    #: B-23: the search parameters this retrieval actually ran with, when they are
+    #: more than the caller's own query. A local snapshot names the file it read,
+    #: its release, its digest, the rows scanned and the match mode, so the ask is
+    #: reconstructible from the stored retrieval record (§25) instead of from a run
+    #: log. Merged into `source_retrievals.query`; empty for every network adapter,
+    #: whose query is the caller's alone.
+    query_context: dict[str, str | int | bool | None] = Field(default_factory=dict)
 
 
 @runtime_checkable

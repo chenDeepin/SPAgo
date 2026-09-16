@@ -301,6 +301,56 @@ is; the potency verdict is recomputed from the stored rows, so it does reflect t
 retry. In the UI the control appears on the target header's failed/partial chip, with
 that source's own last-run cost beside it.
 
+### 2.8 Answering a target from a local BindingDB release (B-23)
+
+On a workstation that holds a BindingDB dump, answer one target from the **whole
+release** instead of the endpoint's bounded answer. This is operator work against
+the database directly; there is no browser path to it (a multi-gigabyte scan inside
+a request would violate `AGENTS.md` §21), and no source is contacted:
+
+```bash
+SPAGO_DATABASE_URL=postgresql+psycopg://spago:spago@127.0.0.1:5432/spago \
+services/core/.venv/bin/python scripts/bindingdb_snapshot.py \
+    --target IL6 \
+    --file /path/to/BindingDB_All_2609.tsv \
+    --json benchmarks/bindingdb-snapshot-<date>.json
+```
+
+What it spends: one pass over the file (≈113 s / 3.24 M rows / 8.98 GB on the
+reference machine, ≈29 k rows/s), CPU and disk read only — no rate limit, no
+network, no HTTP request. `--dry-run` does the same scan and writes nothing. The
+target must already be stored (resolve it in the app first); the script never
+resolves or invents one.
+
+What it writes: ordinary measurement rows for that target, through the same
+service the REST path uses, one source at a time — so ChEMBL and PubChem rows are
+not re-asked or re-dated (B-06). Each row carries
+`source_version=bindingdb-snapshot-tsv` and `dataset_version=bindingdb-snapshot:<release>`;
+the retrieval row carries the search it actually ran (file name, release, sha256,
+bytes, rows scanned, match mode) and is re-labelled by a snapshot run even when it
+previously held the REST outcome. A re-run updates rows by the release's own record
+ids instead of duplicating them.
+
+What it decides, and the honest bounds:
+
+- **Matching** is the reviewed UniProt accession first (every
+  `UniProt … of Target Chain N` column), then `Target Name` exactly. `--name-mode
+  auto` accepts a substring and is how a related protein's rows ("Interleukin-6
+  receptor subunit alpha") enter the requested target's set — opt-in for that reason.
+- **Organism** comes from the target's own row and rows stating another one are
+  excluded and counted (`--all-organisms` keeps them, `--organism` overrides).
+  A row whose organism cannot be compared is kept and reported as unverified.
+- **Bounds** `--max-rows` / `--max-seconds` stop the scan; the result is stored as
+  `partial`, says how far it read, and records **no** file digest, because a prefix
+  is not a snapshot. Only a scan that reached the end records the digest and
+  `complete`.
+- A snapshot row is a `DATABASE_CURATED` fact about that file, not evidence that a
+  compound occurs in a patent, and not a corpus occurrence (`AGENTS.md` §7/§10/§11).
+  Exit codes: `0` completed or matched nothing (`empty`), `1` `failed`/`partial`,
+  `2` refused before any scan (no such stored target, no such file, unknown mode).
+- The measured shape and what it does not prove:
+  `benchmarks/bindingdb-snapshot-2026-09-16.md`.
+
 ## 3. Backup
 
 Backs up everything scientific: projects, saved items, evidence, source
@@ -486,7 +536,7 @@ someone other than the operator:
 | Duty | Why the app cannot cover it | What to configure |
 | --- | --- | --- |
 | TLS termination and certificate renewal | The app sets `Secure` cookies and never serves a certificate. | Your proxy or platform ingress, with a chain your users' browsers accept. |
-| **Compression** | The image serves assets uncompressed; measured, the embedded structure editor's first open transfers 20.3 MB raw instead of 4.95 MB gzip (`benchmarks/online08-structure-editor-2026-09-16.md`). | Enable gzip or brotli for `text/*`, `application/javascript`, `application/json` and the `.wasm`/`.data` editor assets. This is the cheapest perceived-speed win available before inviting users. |
+| **Compression** | The app compresses its own responses (gzip, level 6, in the container), so this is no longer a blocking duty: the editor's first open transfers 5.2 MB instead of 20.3 MB (`benchmarks/asset-compression-2026-09-16.md`). | Optional further win: brotli at the proxy for `text/*`, `application/javascript`, `application/json` and the `.wasm`/`.data` editor assets. Do not double-encode — the app passes through a response that already carries `content-encoding`. |
 | Connection and request limits, sign-in throttling | The service enforces model **token quotas** and nothing else; there is no per-IP or per-account rate limiting, and no sign-in attempt lockout. | Put a request rate limit in front. For a small invited cohort, record the decision not to and why. |
 | Log retention and access control | The app writes operational logs to stdout. | Your platform's log pipeline. Never log cookies, API keys or model payloads. |
 | Backup schedule | §H7 rehearses a restore; it does not schedule one. | A periodic `pg_dump` (or the platform's snapshot) plus the §H7 rehearsal after any change to the database shape. |

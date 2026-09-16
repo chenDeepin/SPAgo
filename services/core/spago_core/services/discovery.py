@@ -82,6 +82,12 @@ QUALITY_REJECTIONS = {
     "unparseable_structure",
     "missing_affinity",
     "unsupported_modality",
+    # B-23: a local snapshot states the organism and its own record key, so a row
+    # from another species is a quality rejection of its own kind — the record is
+    # real, it just does not belong in this target's set — and a row with no record
+    # key cannot be stored idempotently at all.
+    "organism_mismatch",
+    "missing_record_id",
 }
 
 
@@ -433,7 +439,10 @@ class TargetDiscoveryService:
             target,
             "bindingdb",
             status=status,
-            query={"uniprot": accession},
+            # B-23: the adapter reports the search parameters it actually ran with
+            # (a local snapshot names its file, release, digest and match mode), so
+            # the stored query describes the ask rather than the caller's intent.
+            query={"uniprot": accession, **result.query_context},
             dataset_version=result.envelope.dataset_version,
             source_version=result.envelope.source_version,
             pages=result.pages_fetched,
@@ -547,7 +556,19 @@ class TargetDiscoveryService:
                         CAST(:rejection_counts AS jsonb), CAST(:reference_counts AS jsonb),
                         :latency_ms, CAST(:warnings AS jsonb), :checksum, :retrieved_at)
                 ON CONFLICT (id) DO UPDATE
-                  SET status = EXCLUDED.status,
+                  -- The whole outcome of the latest ask, not just its counts: the
+                  -- ask itself (`query`, pages) and the identity it was answered
+                  -- with (`source_version`, `dataset_version`, `checksum`) belong
+                  -- to the row too. Leaving them at the first run's values made a
+                  -- re-ask through another access path — a local snapshot after a
+                  -- REST call (B-23) — read as the old path: the file identity the
+                  -- adapter reports never reached `query`, and the row still said
+                  -- `bindingdb-rest` (AGENTS §8/§25).
+                  SET query = EXCLUDED.query,
+                      dataset_version = EXCLUDED.dataset_version,
+                      source_version = EXCLUDED.source_version,
+                      pages_fetched = EXCLUDED.pages_fetched,
+                      status = EXCLUDED.status,
                       records_seen = EXCLUDED.records_seen,
                       records_kept = EXCLUDED.records_kept,
                       records_excluded = EXCLUDED.records_excluded,
@@ -555,6 +576,7 @@ class TargetDiscoveryService:
                       reference_counts = EXCLUDED.reference_counts,
                       warnings = EXCLUDED.warnings,
                       latency_ms = EXCLUDED.latency_ms,
+                      checksum = EXCLUDED.checksum,
                       retrieved_at = EXCLUDED.retrieved_at
                 """
             ),
@@ -1083,6 +1105,11 @@ def _source_of(record: ActivityRecord) -> str:
 
 
 def _extraction_method(record: ActivityRecord) -> str:
+    # B-23: an adapter that reads a local release states its own path, so the
+    # stored row says "read from a snapshot file" instead of inheriting the
+    # network client's name. The URL heuristic stays for the REST adapters.
+    if record.extraction_method:
+        return record.extraction_method
     if "chembl" in (record.source_url or ""):
         return "chembl_webclient_discovery"
     return "bindingdb_rest_uniprot"

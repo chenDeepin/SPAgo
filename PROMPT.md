@@ -63,6 +63,18 @@
 >   report and `POST …/supplement-imports/{id}/confirm` — an agent's rows are a
 >   **proposal** (stored, readable, counted as `unreviewed_supplements`, outside the
 >   candidates/verdict/exports) until a person confirms the import in a recorded act.
+> - **B-26** per-publication coverage audit: `GET /api/v1/patents/coverage` answers
+>   what is stored for a publication and from which leg, keeping "never asked" apart
+>   from "the source knows nothing".
+> - **B-06** per-source re-run: `POST /api/v1/targets/{id}/discover` takes one source —
+>   a failed source is retried without spending another source's rate limit or
+>   re-dating its rows — and the header shows which rows this run asked for.
+> - **B-23** operator snapshot path: `scripts/bindingdb_snapshot.py` answers a target
+>   from the whole local BindingDB release with the file's release and digest stored
+>   next to every row (operator-only; not a hosted capability).
+> - **B-15** served-asset compression: the app compresses its own responses (gzip,
+>   level 6), so a `docker compose up` install sends the editor's first open as 5.2 MB
+>   instead of 20.3 MB without a proxy (`benchmarks/asset-compression-2026-09-16.md`).
 >
 > **Two facts to keep straight.** The reference verdict is a **count under a stated
 > policy — not a biological or legal conclusion**: on live data TSLP has no
@@ -100,9 +112,9 @@
 > 4. Engineering work that is *not* approved scope is collected, with its priority
 >    order, in `docs/plans/backlog.md`. That register is a proposal list, not a queue:
 >    an item there is not started, promised or authorized until it is deliberately
->    picked and planned as its own round. Its current head is **B-26** (per-publication
->    coverage audit, P1), then B-23 (operator-gated snapshot search) and B-06
->    (per-source re-run); the register's update log records every move and why.
+>    picked and planned as its own round. Its current head is **B-04** (import refresh
+>    completeness and interrupted-import resume, P2); the register's update log records
+>    every move and why.
 >
 > Current source coverage is genuinely thin for some acceptance targets (human TSLP has
 > one small-molecule candidate in these sources; IL-6R has one, and BindingDB does not

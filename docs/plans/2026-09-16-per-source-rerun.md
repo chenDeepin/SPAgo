@@ -107,3 +107,15 @@ sources it did not ask are provably untouched.
 - **Not built, on purpose (D5)** — retracting rows a *complete* refresh no longer returns:
   recorded as B-30.
 
+**Correction, 2026-09-16 (found by the B-23 acceptance run).** This round's upsert
+updated a re-asked source's status, counts, latency, warnings and `retrieved_at` but
+not its `query`, `pages_fetched`, `dataset_version`, `source_version` or `checksum`
+(they kept the first insert's values). The defect only becomes visible when a source
+is re-asked through a *different access path*: after the local BindingDB snapshot run,
+the stored row still read `bindingdb-rest` with a REST-only `query`, while its own
+measurements said `bindingdb-snapshot-tsv`. Fixed in the B-23 round
+(`discovery._persist_retrieval`), pinned by
+`test_a_snapshot_run_after_a_rest_run_relabels_the_retrieval`; the correction is also
+stated in `benchmarks/per-source-rerun-2026-09-16.md`. The invariant this round
+claimed — an unasked source's row is untouched — was and is unaffected.
+

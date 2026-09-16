@@ -10,6 +10,10 @@ Every file here was derived from a live response observed on **2026-09-15**
 (the two `US10508115` files were recorded **2026-09-16**), then reduced to the
 fields the adapters read and to a handful of records. Nothing here is invented:
 identifiers, gene names and assay descriptions are the ones the services returned.
+The one exception is `bindingdb_snapshot_sample.tsv`: the real BindingDB release is
+an 8.9 GB operator dataset that cannot be committed, so the reader is exercised by a
+synthetic file carrying that release's header shape. It says so in its own row below
+and in `THIRD_PARTY_NOTICES.md` §5.
 
 | File | Live source | Reduction |
 | --- | --- | --- |
@@ -23,6 +27,7 @@ identifiers, gene names and assay descriptions are the ones the services returne
 | `chembl_patent_activities_US10508115.json` | `...activity.json?document_chembl_id__in=CHEMBL5727449&only=<the patent-path projection>` (**2026-09-16**) | 9 of 402 records: 3 EC50 in nM (one the source flags `potential_duplicate`, one linked to the IL-6 target rather than TLR7) and 6 kinetic rows (`kon` with no unit, `k_off` in `s-1`) that carry no `standard_value` — the real exclusion case this path reports instead of dropping silently. |
 | `bindingdb_P05231.json` | `https://bindingdb.org/rest/getLigandsByUniprot?uniprot=P05231&response=application/json` | 2 of 9 affinities, including the `\|r\|` CXSMILES marker. |
 | `bindingdb_P29965_empty.json` | `...uniprot=P29965...` | Real zero-hit response. |
+| `bindingdb_snapshot_sample.tsv` | **Synthetic** (written for B-23, not a live response) | A 17-row / 19-column BindingDB-style release: the header names and value wording of the real 640-column export, every identifier `SYNTH-*`, every value invented. Cases it exists for: a row with a filled potency but no structure, a row with no record id, a rat row, an unverifiable organism, `Human` vs `Homo sapiens` for one species, a censored `>10000`, kinetic columns, a TrEMBL-only accession and a complex row matching on chain 2. |
 | `pubchem_identity.json` | `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/.../property/.../JSON` | One property row. |
 | `pubchem_assays_TSLP.json` | `https://pubchem.ncbi.nlm.nih.gov/rest/pug/assay/target/genesymbol/TSLP/aids/JSON` | First 5 of 20 AIDs. |
 

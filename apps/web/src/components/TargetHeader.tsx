@@ -238,7 +238,12 @@ export function TargetHeader({
               `coverage-chip coverage-${entry.status}` +
               (focusedSource === entry.source_name ? " coverage-chip-focused" : "")
             }
-            title={STATUS_TITLE[entry.status]}
+            title={
+              entry.source_version
+                ? `${STATUS_TITLE[entry.status]} · answered by ${entry.source_version}` +
+                  (entry.dataset_version ? ` (${entry.dataset_version})` : "")
+                : STATUS_TITLE[entry.status]
+            }
           >
             <strong>{entry.source_name}</strong> {STATUS_LABEL[entry.status]}
             {entry.records_kept > 0 && ` · ${entry.records_kept} kept`}
@@ -342,6 +347,13 @@ export function TargetHeader({
                 <p className="fineprint">
                   <strong>{entry.source_name}</strong> · {entry.records_kept} kept record
                   {entry.records_kept === 1 ? "" : "s"} · {coverageLine}
+                  {/* B-23: one source can have more than one access path (BindingDB
+                      over REST or from a local release file), and the version fields
+                      are what say which one answered — the dataset is the file. Stated
+                      here, next to the run's other provenance, rather than added to the
+                      chip itself (§17). */}
+                  {entry.source_version && ` · via ${entry.source_version}`}
+                  {entry.dataset_version ? ` (${entry.dataset_version})` : ""}
                 </p>
                 {recorded && (
                   <ul>

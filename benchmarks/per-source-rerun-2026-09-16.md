@@ -31,6 +31,18 @@ The retry's changed fields are `status`, `records_seen`, `records_kept`, `latenc
 `changed_fields: []` on both retries: their status, counts, latency, checksum and
 `retrieved_at` are byte-identical before and after.
 
+> Correction, 2026-09-16 (B-23 round). The retry *also* rewrites the asked row's
+> `query`, `pages_fetched`, `dataset_version`, `source_version` and `checksum`. That
+> was not true when this record was written: the upsert never updated those columns,
+> so a source re-asked through a *different access path* kept the first run's ask and
+> identity (a local BindingDB snapshot after a REST call still read
+> `bindingdb-rest` / `bindingdb:2026-09-15` with a REST-only `query`). The B-23
+> acceptance run found it; `discovery._persist_retrieval` now updates them, and
+> `test_a_snapshot_run_after_a_rest_run_relabels_the_retrieval` pins it. The fixture
+> table above is unaffected for the *unasked* sources, which this record is about;
+> for an asked source, "only that source's row changes" is still the claim, now with
+> the whole row.
+
 The failing retry leaves the stored rows in place (5 candidate rows before and after) and
 retracts nothing — a failed ask establishes no absence (`AGENTS.md` §11); the successful
 retry re-dates only its own two rows and still stores 5, not 7. The verdict counts 3

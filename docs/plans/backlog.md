@@ -7,18 +7,19 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 (B-06 delivered; B-23 promoted to P1)** — the priority table was
-re-sorted when B-06 landed: the P1 group was empty again, so **B-23 (local BindingDB snapshot
-search) takes the top**. It is the one P1-sized gap whose *engineering* is unblocked while its
-*finish* is not: the snapshot terms and the §25 versioning stay with the operator, but the
-thinner online path B-06 just made recoverable still costs a live BindingDB ask per target,
-and the snapshot adapter is the item the beta's own cohort needs before it can be re-run
-without the network. **It is recorded as P1 with its gate explicitly intact** — the
-engineering starts, the gate closes it. B-15 moves up behind it (served-asset compression is
-ungated, `S–M`, and the first Ketcher open is the one measured cost a beta user feels), and
-**B-30 joins the register as LATER** (a source refresh that retracts what its release no
-longer contains), with the reason it is not part of B-06 in §B-30. See the update log at the
-end of this file and §4 for the one-sentence arguments.
+Last updated: **2026-09-16 (B-15 delivered; no P1 remains)** — B-15 landed in the same
+session as B-23, so the table's head is **B-04** (import refresh completeness and
+interrupted-import resume, P2, ungated). B-15's measured outcome: the first open of the
+structure editor transfers 5,234,921 B instead of 20,269,580 B (3.87×) with no proxy,
+because the app now compresses its own responses — the capability's §5 bullet and the
+runbook's §H2 duty table were rewritten to match, and the benchmark is
+`benchmarks/asset-compression-2026-09-16.md`. The operator gate is unchanged and
+nothing here closes a `docs/online-capability.md` §6 checkbox. B-23 left the table as
+delivered **with its operator gate intact**: the adapter, the script and the stored
+provenance exist and were accepted on the real file, while the snapshot's terms, the
+file's location and any re-run on another release stay with the operator — the honest
+limit is in `docs/online-capability.md` §5. See the update log at the end of this file
+and §4 for the one-sentence arguments.
 
 ## 0. Standing constraints for everything below
 
@@ -38,8 +39,6 @@ end of this file and §4 for the one-sentence arguments.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning (finish only) |
-| P2 | B-15 | Compress served assets (Ketcher first open) | NEXT | S–M | deployment proxy or image config |
 | P2 | B-04 | Import refresh completeness and interrupted-import resume | NEXT | M | — |
 | P2 | B-14 | CI running the existing check script | NEXT | S | repo hosting decision |
 | P2 | B-09 | Reviewed target-scope catalog expansion | NEXT | M | scientific review |
@@ -79,6 +78,8 @@ it):**
 | B-25 | 2026-09-16 | The bundle path: `domain/models.py` `SupplementBundle` / `SupplementImportReport` / `SupplementConfirmation` / `SuppliedRowState`, `services/supplements.py` (`map_bundle_record` alias table + contradiction refusals, `import_supplement_bundle`, `confirm_supplement_import`, provenance-preserving upserts), migrations 0018 (`supplement_imports` — the run, its per-row answers including refusals, and who confirmed it) and 0019 (remark provenance constraint widened to the five states), `POST /targets/{id}/supplements/bundle` + `GET …/supplement-imports` + `POST …/supplement-imports/{id}/confirm`, `unreviewed_supplements` on the verdict, `SupplementDialog`'s bundle pane and `ReferenceStrip`'s review control; `tests/test_b25_supplement_bundle.py` (34 cases, suite 643 → 677). Browser-verified end to end on the local stack (import → report → confirm → verdict/candidates → withdraw → re-import → read back), which found and fixed three defects the unit tests could not (duplicate rendering of the fresh report, a re-posted remark not counted as an update, `repeated_of` not derived on read-back). |
 | B-26 | 2026-09-16 | The coverage audit: `CoverageAnswer` / `CoverageLeg` / `PublicationCoverage` / `CoverageReport` + `COVERAGE_RULE = patent-coverage-v1`, `services/coverage.py` (`audit_publications` over the corpus, stored per-publication lookups, target-led rows and hand-added rows; `_headline` order `corpus > declared > supplement > proposed > empty > failed > not_queried`; `unqueried` naming every leg nobody asked; `merge_coverage_reports` for lists over the 50 bound; CSV/Markdown renderers), `POST /api/v1/patents/coverage` and `/coverage/export?format=markdown\|csv\|json` (rule in a header *and* in the file), `PublicationCoverage.tsx` (the collapsed *Coverage* strip in the patent view and on the 404 path, with the document jump and the export control) and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py` (39 cases, suite 677 → 716 — corrected 2026-09-16 from the B-06 round, whose `--collect-only` reads 727 including its own 11 cases; the 741 recorded at delivery was an ad-hoc count); live record `benchmarks/patent-coverage-2026-09-16.{md,json}` (5 publications p50 4.4 ms / 11.7 KB, the 50-publication bound p50 5.5 ms, and one request showing `corpus` / `declared` ×2 / `asked_empty` / `not_queried` kept apart). Browser-verified on the local stack (404 path, family view, document jump, never-asked row, export request) including the failure state by blocking the route: the strip then shows no counts at all, so a failed read cannot be misread as an absence. |
 | B-06 | 2026-09-16 | Per-source re-run: `investigate` now persists **only the sources it asked** (a source the run did not ask is reported from its stored row, or recorded `not_queried` only when it has never been asked), `DiscoveryReport.requested_sources` as the run's own scope, `RetrievalResponse.requested_in_run`, a refusal (422) for a run that names no source, the target header's per-source **Retry** control on a `failed`/`partial` chip with that source's own last-run cost, and `discoverNote` naming what the run asked and what it did not; `tests/test_b06_per_source_rerun.py` (11 cases, suite 716 → 727 collected, all passing), record `benchmarks/per-source-rerun-2026-09-16.{md,json}`. |
+| B-23 | 2026-09-16 | Local BindingDB release as a source path: `adapters/bindingdb_snapshot.py` (one streaming pass, stdlib only — required/endpoint columns, accession-first matching across every chain's UniProt column, exact `Target Name` by default, organism canonicalized/filtered with counted exclusions, one record per filled endpoint, in-pass digest) and `scripts/bindingdb_snapshot.py` (operator entry point: target from stored rows, `--dry-run`, `--max-rows`/`--max-seconds`, JSON record, exit codes 0/1/2; deliberately not reachable from the app, §21); `tests/test_b23_bindingdb_snapshot.py` (36 cases) over the synthetic fixture `data/fixtures/open_sources/bindingdb_snapshot_sample.tsv` (17 rows); acceptance on the operator's real 8.98 GB / 3,237,052-row release in `benchmarks/bindingdb-snapshot-2026-09-16.{md,json}` — 113.2 s, 153 kept records all matched by accession, digest in the same pass, a bound produces `partial` with no digest, and the stored REST set (9 compounds) reconciles as a strict subset of the file's 133. The round also fixed the retrieval upsert, which never rewrote `query`/`pages_fetched`/`source_version`/`dataset_version`/`checksum` (a snapshot run after a REST call still read `bindingdb-rest`), and surfaced the access path in the target header's source line. |
+| B-15 | 2026-09-16 | In-process response compression: `GZipMiddleware` in `spago_core/main.py` (level 6, `minimum_size` 500, thread threshold matched to `FileResponse`'s 64 KiB chunk so file chunks are compressed off the event loop), with `tests/test_served_assets.py` (8 cases: settings asserted from `create_app()` itself, gzip + `vary` for an accepting client, identity for one that does not, small bodies untouched, `application/wasm` compressed, no stale `content-length` on a streamed body, `image/png` never re-encoded). Measured on the rebuilt container in `benchmarks/asset-compression-2026-09-16.md`: the structure dialog's first open transfers **5,234,921 B instead of 20,269,580 B** (3.87×; entry JS+CSS 392,253 → 112,461), the browser's own resource timing confirms the four page-visible dialog assets at their compressed sizes, and `/healthz` stayed at 3.5–7.8 ms during three cold gzipped WASM transfers. No dependency added (§23 not triggered), no new service (§6 not engaged). The round also carried two `scripts/bindingdb_snapshot.py` fixes its tests found: the human preamble now follows `--json -` output to stderr, and the test-side database URL keeps its password. |
 
 ## 2. Items
 
@@ -321,15 +322,19 @@ it.
   behaviour. Hosting decision (where CI runs) is the operator's.
 - **Class NEXT · P2 · S.**
 
-### B-15 — Compress served assets (Ketcher first open)
+### B-15 — Compress served assets (Ketcher first open) — *delivered 2026-09-16*
 
-- **Problem.** Measured and recorded (capability §5; `benchmarks/online08-structure-editor-2026-09-16.md`):
-  the shipped container serves assets uncompressed, so a first editor open transfers
-  ~20.3 MB raw instead of ~4.95 MB gzip. Entry bundle is unaffected (320 KB raw /
-  93 KB gzip).
-- **Scope if built.** Enable compression at the image or proxy layer, then re-measure
-  bytes and time-to-usable-editor with the same method; record the delta.
-- **Class NEXT · P2 · S–M.**
+- **Problem (as it was).** Measured and recorded (capability §5;
+  `benchmarks/online08-structure-editor-2026-09-16.md`): the shipped container served
+  assets uncompressed, so a first editor open transferred ~20.3 MB raw instead of
+  ~4.95 MB gzip. Entry bundle was unaffected (320 KB raw / 93 KB gzip).
+- **Delivered.** `GZipMiddleware` in the app process (level 6, 64 KiB thread threshold),
+  8 tests in `services/core/tests/test_served_assets.py`, and the re-measurement in
+  `benchmarks/asset-compression-2026-09-16.md`: **20,269,580 B → 5,234,921 B** on the
+  first editor open, entry JS+CSS 392,253 → 112,461 B, `/healthz` 3.5–7.8 ms during
+  three cold gzipped WASM transfers. No dependency, no new service.
+- **Class NEXT · delivered · S–M.** The remaining compression is a proxy's option
+  (brotli), recorded in `docs/runbook.md` §H2 as optional rather than blocking.
 
 ### B-16 — Operator usage visibility
 
@@ -406,6 +411,23 @@ it.
 
 ### B-23 — Local BindingDB snapshot search (operator dataset, TSV first)
 
+**Delivered 2026-09-16** (`docs/plans/2026-09-16-bindingdb-snapshot.md`; record
+`benchmarks/bindingdb-snapshot-2026-09-16.{md,json}`). The problem, scope, decisions and
+honesty requirements below are kept as the record of what was asked. What the build
+changed relative to them, stated because the register should not claim more than the
+artifact: the first step is **TSV only** (LMDB deferred as argued below), matching is
+the reviewed UniProt accession across every chain's `UniProt … of Target Chain N`
+column with `Target Name` **exact** by default (`--name-mode auto` runs the looser
+substring rule deliberately), organism rows that state a different species are excluded
+and counted while an uncomparable one is kept and reported, and a bounded scan is
+stored `partial` with **no** file digest — a prefix has no file identity. The
+acceptance run on the operator's real release exposed and fixed a defect in the shared
+write path (the retrieval upsert never rewrote the run's ask or its version columns),
+which is recorded in this round's files and in B-06's. **The operator gate stands**: the
+file's licence terms, where it lives and any run on another release remain the
+operator's; the engineering does not close them, and this is operator tooling for a
+workstation — not a capability of the hosted beta (`docs/online-capability.md` §5).
+
 - **Problem.** SPAgo's only BindingDB path is the bounded REST adapter
   (`adapters/bindingdb_rest.py`): what the endpoint returns within its caps *is* the
   set, and a rate-limited or partial answer cannot be checked against anything. The
@@ -438,7 +460,7 @@ it.
 - **Honest limit.** Local-only value: a hosted deployment would need the dump on the
   host (tens of GB), so this is operator tooling for a workstation, not a feature of
   the invited beta.
-- **Class NEXT · P2 · M (TSV); L if LMDB is ever justified by a measured need.**
+- **Class NEXT · delivered 2026-09-16 · M (TSV); L if LMDB is ever justified by a measured need.**
 
 ### B-24 — Patent-led compound discovery via ChEMBL patent search
 
@@ -574,10 +596,11 @@ exactly the honesty rule the last three rounds were about.
 ### B-28 — Batch target run with change diff *(discussion only, not yet an item)*
 
 `scripts/cohort_coverage.py` already loops the acceptance cohort; `BindingDB_IO`
-supports several queries in one pass (`readers/multi.py`). If B-23 lands, a batch
-"investigate N targets, diff against the previous run" operator command becomes cheap
-and worth its own small item — record it here so it is not invented twice. It stays a
-note until B-23 exists; it is not in the priority table.
+supports several queries in one pass (`readers/multi.py`). **B-23 has landed**, so a
+batch "investigate N targets, diff against the previous run" operator command is now
+cheap to argue and worth its own small item — it stays a note here so it is not
+invented twice, and it is not in the priority table until the current P1/P2 order is
+worked through.
 
 ### B-29 — A stored analysis as a project artifact
 
@@ -627,7 +650,7 @@ was copied into SPAgo by this register.
 
 | Source capability | Source evidence | SPAgo today (checked) | Verdict |
 | --- | --- | --- | --- |
-| Target → ligands over the local snapshots, one pass, several queries | `readers/multi.py`, `readers/tsv.py`, `readers/lmdb.py` | Bounded REST only (`adapters/bindingdb_rest.py`); DuckDB reads a fixture directory (`queries/bulk.py`) | **Adopt, TSV first** → B-23 |
+| Target → ligands over the local snapshots, one pass, several queries | `readers/multi.py`, `readers/tsv.py`, `readers/lmdb.py` | Bounded REST only (`adapters/bindingdb_rest.py`); DuckDB reads a fixture directory (`queries/bulk.py`) | **Adopted, TSV first** → B-23 (delivered 2026-09-16; LMDB deferred, one target per pass) |
 | Patent → ligands over the same dumps and over supplements | `patents.py::{search_tsv_by_patents, search_lmdb_by_patents, search_supplements_by_patents}` | No patent-led local search | Fold into B-23 / B-26 |
 | Patent → compounds via ChEMBL documents + activities | `readers/api.py::search_chembl_patent_api` | Target-led ChEMBL only; the document lookup serves declared patents of already-discovered compounds | **Adopt** → B-24 |
 | Two snapshots of one source merged by a stated priority (newer wins, empties backfilled), keyed by reactant id with an InChIKey fallback | `dedupe.py`, `docs/version_merge.md` | Per-InChIKey union across *different* sources; no two-snapshot case exists yet | Adopt as the policy when B-23 lands |
@@ -640,18 +663,20 @@ was copied into SPAgo by this register.
 | Fixed-scale card sheet + lossless PDF + verifier | `figures.py`, `layout.py`, `pdfio.py`, `verify.py` | Browser depiction + CSV/SDF | **LATER** → B-27 |
 | A verifier takes its parameters from the artifact it verifies | `verify.py` (dpi/bond/columns read back from `run_meta.json`) | Round records re-state their parameters by hand | **Adopt as a rule** → `AGENTS.md` §36 |
 
-**Ordering argument.** B-24 goes first among the new items: it is bounded, ungated,
+**Ordering argument.** B-24 went first among the new items: it is bounded, ungated,
 uses a source the build already talks to, and it repairs a degradation in the primary
 loop (enter a patent → see its compounds) that exists today whenever the corpus is
-thin. B-25 is second because the supplement path is already shipped and the missing
+thin. B-25 was second because the supplement path is already shipped and the missing
 piece is the shape its real producers use — without it, "agent + sources" stays manual
-data entry. B-23 is third: the largest coverage gain, but operator- and file-gated, and
+data entry. B-23 was third: the largest coverage gain, but operator- and file-gated, and
 its value is local; it must not be mistaken for a beta capability. B-26 followed
 because it is only as useful as the sources it summarizes (B-02, B-23, B-24). All four
-of the first group have since been delivered (B-24, B-25, B-26 on 2026-09-16); the
-B-23 port remains the one of the four behind its operator gate. None of the new
-items closes a `docs/online-capability.md` §6 checkbox, and none of them changes the
-recommendation to pass the hosted gate first.
+of the first group have since been delivered (B-24, B-25, B-26 on 2026-09-16, B-23 on
+2026-09-16 as an operator path); **the operator gate on B-23 is explicitly not closed
+by that delivery** — the release's terms, the file's location and any run on another
+release stay with the operator, and nothing in the port changes the recommendation to
+pass the hosted gate first. None of the new items closes a `docs/online-capability.md`
+§6 checkbox.
 
 **What does *not* change.** The bounded-REST path stays the default for the hosted
 deployment; the snapshots do not become a second source of truth; the potency gate,
@@ -680,22 +705,24 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
    for "no compounds".
 9. **B-06** — *delivered 2026-09-16:* recover a failed source by re-asking that source, and
    only it — no other source's rate limit spent, no other source's rows re-dated.
+10. **B-23** — *delivered 2026-09-16:* answer a target from the whole BindingDB release on
+    the operator's disk, with the file's release, digest, rows scanned and match rule stored
+    next to every row — and without a request, a rate limit or the network; a bounded scan
+    is `partial` and records no digest, so a prefix can never read as the snapshot.
 
-**Why B-23 is now at the top.** Two things changed with B-06. First, the *recovery* gap is
-closed: a source that fails can be re-asked alone, and the run says which sources it asked
-(`benchmarks/per-source-rerun-2026-09-16.md` measures the write set: one source's rows
-re-dated, the others untouched). That makes the remaining cost of the online path visible
-rather than hidden — every target investigation still asks BindingDB over the network, once
-per target, and the beta's own cohort run is the place that hurts. Second, B-26's report now
-names the missing snapshot leg in every row it prints, so the same gap is legible from two
-surfaces. B-23 is therefore promoted to P1 — **with its gate intact and stated**: the
-snapshot's licence terms and the §25 version record stay with the operator, and this
-promotion means the *engineering* may start (an adapter reading a local TSV through DuckDB
-with release, checksum and retrieval date recorded), not that the item can be finished
-without that decision. **B-15** moves up behind it: it is ungated, `S–M`, and the first
-Ketcher open is the one measured cost a beta user feels directly. **B-30** joins the
-register as LATER with the reasoning in its entry: absence is only established by a complete
-ask, so a refresh-retraction rule needs its own round — it is not an unfinished part of B-06.
+**Why B-23 was promoted (2026-09-16), and what replaced it.** With B-06 landed, the
+*recovery* gap was closed and the remaining cost of the online path became visible rather
+than hidden: every target investigation still asks BindingDB over the network, once per
+target. B-26's report named the missing snapshot leg in every row it printed, so the same
+gap was legible from two surfaces. B-23 was therefore promoted to P1 with its operator gate
+stated rather than lifted — the engineering could start, the gate closed the item — and it
+was accepted on the operator's real 8.98 GB release on 2026-09-16
+(`benchmarks/bindingdb-snapshot-2026-09-16.md`), with the gate still exactly where it was.
+**B-15** takes the top now: it is ungated, `S–M`, and the first Ketcher open is the one
+measured cost a beta user feels directly (20.3 MB uncompressed, and the shipped container
+does not compress). **B-30** stays `LATER` with the reasoning in its entry: absence is only
+established by a complete ask, so a refresh-retraction rule needs its own round — it is not
+an unfinished part of B-06.
 
 ## 5. Deliberately out (do not treat as queued)
 
@@ -725,3 +752,4 @@ ask, so a refresh-retraction rule needs its own round — it is not an unfinishe
 | 2026-09-16 | **B-25 delivered** (`SupplementBundle` + the bundle service, migrations 0018/0019, the three `supplement-imports` routes, `unreviewed_supplements` on the verdict, `SupplementDialog`'s bundle pane, `ReferenceStrip`'s review control; `tests/test_b25_supplement_bundle.py`, suite 643 → 677; docs in `docs/online-capability.md` §3a, `README.md` and `docs/runbook.md` §2.5). Browser-verified end to end on the local stack, which found three defects the unit tests did not (the fresh report rendered twice, a re-posted remark not counted as an update, `repeated_of` not derived on read-back — all fixed in the round). Re-sorted, with the reason stated: the P1 group is empty again, so **B-26 is promoted to P1** — with four paths now contributing to a publication's coverage, nothing puts them side by side for one publication, and the gate's criterion 5 asks for exactly that shape at the target level. **B-06 stays second** (a single failed source still forces a full re-run; the status machine to do better already exists), B-23 third with its operator/file gate unchanged. |
 | 2026-09-16 | **B-26 delivered** (the coverage service + `patent-coverage-v1`, `POST /api/v1/patents/coverage` and its three exports, `PublicationCoverage.tsx` — the collapsed *Coverage* strip in the patent view and on the 404 path — and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py`, suite 677 → 741; live record `benchmarks/patent-coverage-2026-09-16.{md,json}`). Re-sorted, with the moves stated: the P1 group is empty, so **B-06 is promoted to P1** — the audit gave every source outcome a surface, including `failed`, and what the beta workflow can still hit live is the recovery from a failed source, which today means re-running the whole investigation and re-spending the other sources' rate limits. It is ungated and S–M. **B-23 stays the first P2** with its gates unchanged, and B-15 moves down with them. Three notes recorded from the round: (1) `holds_records` was added to the report's `totals` so the strip reads the service's own headline count instead of re-deriving it (`AGENTS.md` §11); (2) the strip filters its publication list with the mirrored client shape rule before asking, because the synthetic fixture's ids are deliberately not publication numbers and a request carrying none of them is refused 422 — a refusal banner where a coverage line belongs would be worse than no strip; (3) the notes/export `<details>` is controlled state after the browser check found it snapping shut between opening it and clicking export (a DOM-owned marker reset by an unrelated re-render). |
 | 2026-09-16 | **B-06 delivered** (asked-only persistence in `TargetDiscoveryService.investigate` + `DiscoveryReport.requested_sources`, `RetrievalResponse.requested_in_run`, the 422 refusal for a run that names no source, the target header's per-source **Retry** control on `failed`/`partial` chips with that source's own last-run cost and a run note naming the asked set, `tests/test_b06_per_source_rerun.py` 11 cases, record `benchmarks/per-source-rerun-2026-09-16.{md,json}`). The round found the defect sharper than the register had it: `investigate` wrote a `not_queried` row for every source it did **not** ask, and the retrieval id is one row per (target, source) — so a subset run **overwrote** the other sources' stored outcome while their candidate rows stayed in the database. A subset run now writes only what it produced, reports the rest from its stored row, and records `not_queried` only for a source that has never been asked. Measured: one retry = 1 upstream request for that source and **0** for the other two; only that source's retrieval row changes; its own candidate rows re-date (2 when it answers, 0 when it fails); measurements and verdict unchanged. Live browser check on two surfaces (IL6R's `bindingdb failed`, IL6's `pubchem partial`) — the other chips' stored outcomes, including `retrieved_at`, were identical afterwards; healthy chips offered no retry control. Re-sorted, with the moves stated: the P1 group is empty again, so **B-23 (local BindingDB snapshot search) takes the top** with its operator/file gate explicitly intact — its engineering is what is unblocked, and a retry without the network is what the beta's own cohort needs. **B-15 moves to the first P2**, and **B-30** joins the register as `LATER · M`: a *complete* refresh retracting rows its release no longer returns is an absence rule of its own (a `failed`/`partial` ask establishes none), so it was not folded into this round. |
+| 2026-09-16 | **B-23 delivered** (`adapters/bindingdb_snapshot.py` — one streaming pass, stdlib only, with the file digest computed in the same read; `scripts/bindingdb_snapshot.py` as the operator entry point; `tests/test_b23_bindingdb_snapshot.py` 36 cases over a new synthetic fixture; acceptance on the operator's real 8.98 GB / 3,237,052-row release in `benchmarks/bindingdb-snapshot-2026-09-16.{md,json}`: 113.2 s, 153 kept records all matched by accession, 133 compounds, a `--max-rows` dry-run showing `partial` with no digest, and the stored REST set reconciling as a strict subset; `docs/runbook.md` §2.8, `docs/online-capability.md` §5, `README.md`, fixtures README, `THIRD_PARTY_NOTICES.md`). Two things the round found rather than planned: (1) the **retrieval upsert never rewrote `query`, `pages_fetched`, `source_version`, `dataset_version` or `checksum`**, so a source re-asked through another access path kept the first run's identity — the snapshot run left the row reading `bindingdb-rest` with a REST-only query while its own measurements said `bindingdb-snapshot-tsv`; fixed in `discovery._persist_retrieval`, pinned by a regression test, and corrected in B-06's record; (2) the access path was not visible in the target view at all, so the header's source line and chip tooltip now state it (`via bindingdb-snapshot-tsv (bindingdb-snapshot:2609)`), browser-verified on the rebuilt image. Re-sorted, with the moves stated: the P1 group is empty again, so **B-15 (compress served assets) takes the top** — it is ungated, `S–M`, and the first Ketcher open is the one measured cost a beta user feels directly, with the shipped container still serving assets uncompressed. **B-04 follows**, and **B-23 leaves the table as delivered with its operator gate explicitly intact**: the file's terms, its location and any run on another release remain the operator's, and nothing in this round closes a `docs/online-capability.md` §6 checkbox. |

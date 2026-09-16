@@ -117,6 +117,29 @@ measurable — they are **not** capacity claims for bulk datasets.
   with the other chips' stored outcomes — including their `retrieved_at` — identical
   afterwards. Upstream wall time is **not** measured (no source is called in the fixture
   run); hosted timings are not claimed.
+- `bindingdb-snapshot-2026-09-16.md` (raw: `...json`; the pre-fix run is kept as
+  `bindingdb-snapshot-il6-2026-09-16-before-fix.json`) — B-23: one full pass over the
+  operator's real 8.98 GB / 3,237,052-row BindingDB release answering IL6 in 113.2 s
+  with no upstream call (153 kept records, 153 matched by UniProt accession, 0 by
+  name; digest computed in the same pass — a separate `sha256sum` costs 20.56 s). The
+  stored retrieval names the file (release, sha256, bytes, rows scanned, match mode)
+  and every measurement says `bindingdb-snapshot:2609`; a live `--max-rows` dry-run
+  shows a bound produces `partial`, exit 1 and **no** digest. Reconciliation against
+  the stored REST rows: the endpoint's 9 compounds are a strict subset of the file's
+  133, both paths' rows kept. The first pass exposed a defect the unit tests could not
+  (the retrieval upsert never rewrote `query`/`source_version`/`dataset_version`/
+  `checksum`, so the row still said `bindingdb-rest`) — fixed in the round and pinned
+  by a regression test. Operator tooling on a workstation, not a hosted capability.
+- `asset-compression-2026-09-16.md` — B-15: what the app itself now sends. The same
+  container rebuilt with gzip in the process: the first open of the structure dialog
+  transfers **5,234,921 B instead of 20,269,580 B** (3.87×; entry JS+CSS 392,253 →
+  112,461 B), observed per asset with `curl` (`content-encoding: gzip`,
+  `vary: Accept-Encoding`) and confirmed in the browser's own resource timing, with
+  `identity` requests unchanged. The Indigo WASM is measured server-side only (the
+  worker revalidated its cached copy in the browser run, and page-level timing does
+  not see the worker's fetch). Level 6 over 9 (106 ms vs 234 ms for the dialog chunk),
+  and `/healthz` stayed at 3.5–7.8 ms while three cold gzipped WASM transfers ran. The
+  loopback editor-ready time is recorded as a **non-claim**.
 
 ## Reproduce
 

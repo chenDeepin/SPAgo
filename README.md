@@ -70,6 +70,17 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
   computed on read (no stored verdict to go stale); exported as Markdown/CSV, shown as the
   patent view's collapsed *Coverage* strip, and runnable as
   `scripts/patent_coverage.py --patents-file …` for a portfolio.
+- **A whole BindingDB release as a source path, for an operator (B-23).**
+  `scripts/bindingdb_snapshot.py --target IL6 --file /path/BindingDB_All_2609.tsv` answers
+  one stored target from a release held on disk: the complete file instead of the REST
+  endpoint's bounded answer, no upstream call and no rate limit, with the organism the
+  release states (mismatches excluded and counted, uncomparable ones kept and reported),
+  the chain count and the document each row came from. Every row keeps
+  `bindingdb-snapshot:<release>`, and the retrieval records what was actually read — file,
+  release, sha256, bytes, rows scanned, match mode — with a stopped scan stored as
+  `partial` and no digest, so a prefix can never read as the snapshot. Deliberately not a
+  web path (`AGENTS.md` §21); a re-run updates rows by the release's own record ids
+  instead of duplicating them.
 - **Scoped, cited summaries (ONLINE-01)** for a patent family, one document or a target,
   with separate prompt versions and cache keys per scope, and an offline extractive
   provider that needs no model.

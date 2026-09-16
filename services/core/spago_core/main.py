@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 from spago_core import __version__
 from spago_core.api.auth_routes import router as auth_router
@@ -37,6 +38,26 @@ def create_app() -> FastAPI:
     )
     app.state.engine = make_engine(settings.database_url)
     app.state.version = __version__
+
+    app.add_middleware(
+        # B-15: the container *is* the supported install and it has no proxy, so the
+        # assets are compressed here instead of by an ingress that may not exist —
+        # above all the embedded editor's 7.8 MB bundle and 11.8 MB WASM, whose first
+        # open is the one transfer cost a reader feels directly. Level 6, not 9:
+        # measured on this checkout, 9 saves 48 KB of a 5.2 MB first open for twice
+        # the CPU (`benchmarks/asset-compression-2026-09-16.md`). The thread
+        # threshold matches the 64 KiB chunk `FileResponse` streams, so a file chunk
+        # is compressed on a worker thread rather than in the event loop. Responses
+        # that already carry `content-encoding`, 206 partial responses and bodies
+        # under the minimum pass through untouched, which is what keeps a
+        # compressing proxy in front of this process safe (`docs/runbook.md` §H2).
+        # Added before CORS/gate, so it sits innermost: they wrap a compressed
+        # response without touching its body.
+        GZipMiddleware,
+        minimum_size=500,
+        compresslevel=6,
+        thread_minimum_size=64 * 1024,
+    )
 
     app.add_middleware(
         CORSMiddleware,

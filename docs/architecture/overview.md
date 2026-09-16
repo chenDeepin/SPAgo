@@ -169,8 +169,9 @@ apps/web     (search → family → compounds → evidence/structure search)
 - Export is synchronous up to 5000 rows (documented cap); larger scopes need
   the future persisted background-job mechanism.
 - The embedded Ketcher editor is loaded on demand in the structure-search dialog
-  (packaging fixes and the measured 20.3 MB first-open cost:
-  `benchmarks/online08-structure-editor-2026-09-16.md`); typing or pasting a SMILES
+  (packaging fixes and the measured first-open cost: 5.2 MB compressed, 20.3 MB
+  decoded, `benchmarks/asset-compression-2026-09-16.md`; the app compresses its own
+  responses, so no proxy is required for that figure); typing or pasting a SMILES
   string stays equivalent, and the editor is not the renderer for result rows.
 - No PDF/OCSR (M6), no live ChEMBL/BindingDB calls in the demo seed, and no
   cross-family structure search (family-scoped by contract).

@@ -1,0 +1,20 @@
+BindingDB Reactant_set_id	Ligand SMILES	BindingDB MonomerID	BindingDB Ligand Name	Target Name	Target Source Organism According to Curator or DataSource	Ki (nM)	IC50 (nM)	Kd (nM)	EC50 (nM)	kon (M-1-s-1)	koff (s-1)	Article DOI	PMID	Patent Number	Number of Protein Chains in Target (>1 implies a multichain complex)	UniProt (SwissProt) Primary ID of Target Chain 1	UniProt (TrEMBL) Primary ID of Target Chain 1	UniProt (SwissProt) Primary ID of Target Chain 2
+SYNTH-1	CCO	900001	Ethanol (synthetic fixture)	Interleukin-6	Homo sapiens	 1.5						10.1000/synthetic.il6.1	99900001		1	P05231		
+SYNTH-2	CC(=O)O	900002	Acetic acid (synthetic fixture)	Interleukin-6	Homo sapiens		>10000					10.1000/synthetic.il6.2	99900002		1	P05231		
+SYNTH-3	Cc1ncccc1NC(=O)c1ccc2c(c1)C(=O)C[C@@H]1C[C@](O)(CC[C@@]21Cc1ccccc1)C(F)(F)F	140015	Compound 1 (synthetic fixture)	Interleukin-6	Homo sapiens		 1.1					10.1000/synthetic.il6.3		WO2021/123456 A1	1	P05231		
+SYNTH-4	CCO	900004	Ethanol (synthetic fixture, rat)	Interleukin-6	Rattus norvegicus	 3.0						10.1000/synthetic.il6.4	99900004		1	P05231		
+SYNTH-5	CCC	900005	Propane (synthetic fixture)	Interleukin-6	Homo sapiens			 2.5				10.1000/synthetic.il6.5			1			
+SYNTH-6	CCCC	900006	Butane (synthetic fixture)	Interleukin-6 receptor subunit alpha	Homo sapiens	 0.2						10.1000/synthetic.il6.6			1	P08887		
+SYNTH-7		900007	Structure not published (synthetic fixture)	Interleukin-6	Homo sapiens	 2.0						10.1000/synthetic.il6.7			1	P05231		
+SYNTH-8	CCO	900008	Ethanol (synthetic fixture)	Interleukin-6	Homo sapiens							10.1000/synthetic.il6.8			1	P05231		
+SYNTH-9	CCO	900009	Ethanol (synthetic fixture)	Interleukin-6	Homo sapiens	not a number						10.1000/synthetic.il6.9			1	P05231		
+	CCO		Ethanol (synthetic fixture)	Interleukin-6	Homo sapiens	 9.0						10.1000/synthetic.il6.10			1	P05231		
+SYNTH-11	COc1cc(OCC(O)CC(=O)OC(C)(C)C)ccc1-c1ccc2NC(C)(C)C(=O)N(C)c2c1COc1cc(F)ccc1C	331842	Compound 2 (synthetic fixture)	Interleukin-6 / Interleukin-6 receptor complex	Homo sapiens		 83.0					10.1000/synthetic.il6.11			2	P05231		P08887
+SYNTH-12	CCCCC	900012	Pentane (synthetic fixture)	Interleukin-6 receptor subunit alpha	Homo sapiens	 4.0						10.1000/synthetic.il6.12			2	P08887		P05231
+SYNTH-13	CCO	900013	Ethanol (synthetic fixture)	Interleukin-6	Homo sapiens					1000000	0.01	10.1000/synthetic.il6.13			1	P05231		
+SYNTH-14	Cc1ncccc1NC(=O)c1ccc2c(c1)C(=O)C[C@@H]1C[C@](O)(CC[C@@]21Cc1ccccc1)C(F)(F)F	140015	Compound 1 (synthetic fixture, second row)	Interleukin-6	Homo sapiens		 1.1					10.1000/synthetic.il6.3			1	P05231		
+SYNTH-15	CCCCCC	900015	Hexane (synthetic fixture)	Interleukin-6 (TrEMBL curated)	Homo sapiens			 7.0				10.1000/synthetic.il6.15			1		Q9SYNTH	
+SYNTH-16	CCCCCCC	900016	Heptane (synthetic fixture)	IL-6 (construct, synthetic fixture)	Homo sapiens	 0.9						10.1000/synthetic.il6.16			1	P05231		
+SYNTH-17	CCCCCCCC	900017	Octane (synthetic fixture)	Interleukin-6		 5.0									1	P05231		
+SYNTH-18	CCCCCCCCC	900018	Nonane (synthetic fixture)	Interleukin-6	Human	 6.5						10.1000/synthetic.il6.18			1	P05231		
+SYNTH-19	CCCCCCCCCC	900019	Decane (synthetic fixture)	Interleukin-6	Human embryonic kidney cells (synthetic fixture)	 8.0						10.1000/synthetic.il6.19			1	P05231		

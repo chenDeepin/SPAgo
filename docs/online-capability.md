@@ -306,15 +306,27 @@ family's publication set, or a substitute for asking a source. See *Not supporte
   analysis, or a statement about claim scope.
 - **No full Markush analysis.** R-group handling is not implemented.
 - **The structure editor loads on demand and is large.** Ketcher (3.18.0) ships in
-  the structure-search dialog only: the first open fetches 20.3 MB uncompressed
-  (4.95 MB gzip) — the dialog chunk 7.8 MB, the Indigo engine a separate 11.8 MB
-  `.wasm` (fetched inside its worker), plus a 444 KB chunk and the worker script.
-  First paint is unaffected (entry bundle 320 KB raw / 93 KB gzip). Measured, not
-  estimated: `benchmarks/online08-structure-editor-2026-09-16.md` — including the
-  fact that the shipped container does **not** compress assets, so a slow connection
-  pays the uncompressed figure until the deployment's proxy compresses it.
+  the structure-search dialog only: the first open fetches 5.2 MB (20.3 MB decoded) —
+  the dialog chunk 7.8 MB, the Indigo engine a separate 11.8 MB `.wasm` (fetched
+  inside its worker), plus a 444 KB chunk and the worker script. First paint is
+  unaffected (entry bundle 320 KB raw / 107 KB gzip). Measured, not estimated:
+  `benchmarks/asset-compression-2026-09-16.md` — the app compresses its own responses
+  (gzip, level 6, in the app container), so the figure holds on `docker compose up`
+  without a proxy; an ingress may still add brotli.
 - **No full-document ingestion or OCSR.** Claims text and PDF chemistry are not
   in the pipeline; summaries say "claims were not assessed".
+- **The local BindingDB snapshot path is operator-only and not part of the hosted
+  beta.** `scripts/bindingdb_snapshot.py` answers a target from an operator-supplied
+  release file (8.9 GB in the measured case) against the database directly. The
+  hosted app keeps the REST adapter; no HTTP request can trigger a bulk-file scan
+  (`AGENTS.md` §21), and the file itself stays outside the repository (§34). What it
+  buys is a workstation gain: the whole release instead of the endpoint's bounded
+  answer, with the target organism, the chain count and the document the source
+  states, and the file's release/digest recorded on the retrieval and on every
+  measurement row. It is not a hosted-user capability, and its rows are
+  `database_curated` facts about that file — never a corpus occurrence and never a
+  patent-coverage claim. Measured shape:
+  `benchmarks/bindingdb-snapshot-2026-09-16.md`.
 - **No model credential or endpoint chosen by a user.** The endpoint comes from
   server configuration; request schemas reject extra fields.
 - **No team sharing, public signup, SSO or password reset.** Invitations only.
