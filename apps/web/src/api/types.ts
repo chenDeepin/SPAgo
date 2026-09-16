@@ -271,6 +271,12 @@ export interface CitationRef {
   inchikey?: string;
   measurement_id?: string;
   target_id?: string;
+  /** B-37: the owning record, so a citation opens the exact object it cites —
+   * including when that compound is not the selected one and not on the loaded
+   * page. Null on `evidence` citations whose mention is no longer current. */
+  compound_id?: string;
+  family_id?: string;
+  document_id?: string;
   /** Set on `source` citations: the coverage chip to focus. */
   source_name?: string;
 }
@@ -848,7 +854,10 @@ export interface AnalysisListResponse {
 
 export interface AnalysisDetail extends AnalysisEntry {
   text: string;
-  citations: { fact_ref: string; kind: string; label?: string | null }[];
+  /** The stored citation objects, with the record ids the summary's scope
+   * carried (B-37). Older stored analyses predate some fields; treat every
+   * field but `fact_ref`/`kind` as optional. */
+  citations: CitationRef[];
   usage: Record<string, unknown> | null;
 }
 

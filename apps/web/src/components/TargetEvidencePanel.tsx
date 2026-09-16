@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { Candidate, ResolvedTarget, TargetMeasurement } from "../api/types";
+import { useEffect, useRef, useState } from "react";
+import type { Candidate, CitationRef, ResolvedTarget, TargetMeasurement } from "../api/types";
 import { AiPanel, type AiScopeOption } from "./AiPanel";
 import { TakeBackControl } from "./TakeBackControl";
 import { activityClassLabel } from "./ReferenceStrip";
@@ -13,6 +13,15 @@ interface TargetEvidencePanelProps {
   error: string | null;
   /** The candidate table's labelled modality filter, passed to the summary. */
   includeAllModalities: boolean;
+  /** B-37: record-bearing citations (candidate, measurement) are routed to the
+   * app, which selects the cited compound — even when it is not the selected
+   * one and not on the loaded page — and reopens this panel on it. */
+  onNavigateCitation?: (citation: CitationRef) => void;
+  /** B-37: the measurement a citation named, to highlight in today's rows. The
+   * cited row is marked; an id that no longer exists in today's data gets an
+   * explicit note instead of silence — the snapshot and the present stay
+   * distinguishable. */
+  focusMeasurementId?: string | null;
   /** Focus a per-source coverage chip when the summary cites `source:<name>`.
    * Without it that citation would switch tabs and go nowhere. */
   onFocusSource?: (sourceName: string) => void;
@@ -41,6 +50,8 @@ export function TargetEvidencePanel({
   loading,
   error,
   includeAllModalities,
+  onNavigateCitation,
+  focusMeasurementId,
   onFocusSource,
   onFocusReference,
   onWithdrawSupplement,
@@ -51,6 +62,7 @@ export function TargetEvidencePanel({
   // Evidence | AI tabs reuse the existing inspection area, so the target view
   // does not grow a second permanent panel (AGENTS.md §17/§18).
   const [tab, setTab] = useState<InspectorTab>("evidence");
+  const citedRowRef = useRef<HTMLTableRowElement | null>(null);
 
   useEffect(() => {
     setShowDuplicates(true);
@@ -58,19 +70,35 @@ export function TargetEvidencePanel({
 
   // A `source:<name>` citation is about the retrieval, not this candidate, so it
   // focuses the coverage chip in the header; `reference:<target-id>` is about the
-  // verdict, so it focuses the potency strip. Everything else belongs to this
-  // panel's evidence tab.
-  const openCitation = (factRef: string) => {
-    if (factRef.startsWith("source:") && onFocusSource) {
-      onFocusSource(factRef.slice("source:".length));
+  // verdict, so it focuses the potency strip. A `candidate`/`measurement`
+  // citation names a record: it goes to the app, which selects the cited
+  // compound (this one or another) and points this panel at the exact row.
+  const openCitation = (citation: CitationRef) => {
+    if (citation.kind === "source" && citation.source_name && onFocusSource) {
+      onFocusSource(citation.source_name);
       return;
     }
-    if (factRef.startsWith("reference:") && onFocusReference) {
+    if (citation.kind === "reference" && onFocusReference) {
       onFocusReference();
+      return;
+    }
+    if (
+      (citation.kind === "candidate" || citation.kind === "measurement") &&
+      onNavigateCitation
+    ) {
+      onNavigateCitation(citation);
       return;
     }
     setTab("evidence");
   };
+
+  const rows = measurements ?? [];
+  const citedRow = focusMeasurementId
+    ? rows.find((m) => String(m.id) === focusMeasurementId)
+    : undefined;
+  useEffect(() => {
+    if (citedRow) citedRowRef.current?.scrollIntoView({ block: "center" });
+  }, [citedRow]);
 
   const aiOptions: AiScopeOption[] = [
     {
@@ -88,7 +116,6 @@ export function TargetEvidencePanel({
     },
   ];
 
-  const rows = measurements ?? [];
   const visible = showDuplicates ? rows : rows.filter((m) => !m.potential_duplicate);
   const hiddenDuplicates = rows.length - visible.length;
 
@@ -175,6 +202,20 @@ export function TargetEvidencePanel({
         </label>
       )}
 
+      {/* B-37: the cited record versus today's data. A hit is highlighted in
+          place below; a miss is stated, never silently dropped — the
+          measurement the summary cited came from its input snapshot, and
+          today's rows may have changed since. */}
+      {focusMeasurementId && !loading && !citedRow && (
+        <div className="state-banner" role="status" data-testid="cited-record-missing">
+          <span>
+            The cited measurement <span className="mono">{focusMeasurementId}</span> is not in
+            today's stored rows for this compound. The summary saw it in its input snapshot;
+            the data has changed since, or the record was retracted.
+          </span>
+        </div>
+      )}
+
       {[...byAssay.entries()].map(([key, group]) => {
         const first = group[0];
         return (
@@ -206,7 +247,16 @@ export function TargetEvidencePanel({
               </thead>
               <tbody>
                 {group.map((m) => (
-                  <tr key={m.id}>
+                  <tr
+                    key={m.id}
+                    className={focusMeasurementId && String(m.id) === focusMeasurementId ? "cited-row" : undefined}
+                    ref={
+                      focusMeasurementId && String(m.id) === focusMeasurementId
+                        ? citedRowRef
+                        : undefined
+                    }
+                    data-testid={focusMeasurementId && String(m.id) === focusMeasurementId ? "cited-measurement-row" : undefined}
+                  >
                     <td>{m.standard_type}</td>
                     <td className="mono">
                       {m.relation !== "=" ? `${m.relation} ` : ""}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import type { Compound, EvidenceRecord, Mention } from "../api/types";
+import type { CitationRef, Compound, EvidenceRecord, Mention } from "../api/types";
 import { AiPanel, type AiScopeOption } from "./AiPanel";
 
 interface EvidencePanelProps {
@@ -12,6 +12,13 @@ interface EvidencePanelProps {
   evidenceError: string | null;
   familyId: string;
   familyKey: string;
+  /** B-37: record-bearing citations that name another compound or a
+   * document are routed to the app, which selects the cited object. */
+  onNavigateCitation?: (citation: CitationRef) => void;
+  /** B-37: the evidence record a citation named — shown and highlighted in
+   * place when it belongs to this compound; an explicit note when it does not
+   * exist in today's data. */
+  focusEvidenceId?: string | null;
   onClose: () => void;
 }
 
@@ -74,6 +81,8 @@ export function EvidencePanel({
   evidenceError,
   familyId,
   familyKey,
+  onNavigateCitation,
+  focusEvidenceId,
   onClose,
 }: EvidencePanelProps) {
   const [occurrenceIdx, setOccurrenceIdx] = useState(0);
@@ -94,20 +103,43 @@ export function EvidencePanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // B-37: a citation may name an evidence record directly. When it belongs to
+  // this compound it is shown and its occurrence selected; the occurrence the
+  // reader was on must not hide the record a summary cites.
+  const citedEvidence = focusEvidenceId
+    ? evidence?.find((e) => e.id === focusEvidenceId) ?? null
+    : null;
+  useEffect(() => {
+    if (!citedEvidence?.compound_mention_id) return;
+    const idx = mentions.findIndex((m) => m.id === citedEvidence.compound_mention_id);
+    if (idx >= 0) setOccurrenceIdx(idx);
+  }, [citedEvidence, mentions]);
+
   const occurrence = mentions[occurrenceIdx] ?? null;
   const occurrenceEvidence =
     evidence?.find((e) => e.compound_mention_id === occurrence?.id) ?? null;
   const fallbackEvidence = evidence?.find((e) => !e.compound_mention_id) ?? null;
-  const shown = occurrenceEvidence ?? fallbackEvidence;
+  const shown = citedEvidence ?? occurrenceEvidence ?? fallbackEvidence;
 
   const scopeNote =
     mentions.length > 0
       ? `${mentions.length} occurrence${mentions.length === 1 ? "" : "s"} in this family`
       : "no occurrence details available";
 
-  const openCitation = (factRef: string) => {
+  const openCitation = (citation: CitationRef) => {
     setTab("evidence");
-    if (factRef.startsWith("measurement:")) setBioactivityOpen(true);
+    // A record-bearing citation goes to the app when it names another
+    // compound or a document: the exact object may not be the selected one,
+    // and selecting it is the app's job (B-37). Same-compound measurement
+    // citations expand this compound's activity section in place.
+    if (citation.kind === "measurement") setBioactivityOpen(true);
+    if (
+      onNavigateCitation &&
+      ((citation.compound_id && citation.compound_id !== compound.id) ||
+        citation.kind === "document")
+    ) {
+      onNavigateCitation(citation);
+    }
   };
 
   return (
@@ -186,6 +218,19 @@ export function EvidencePanel({
             </div>
           )}
 
+          {/* B-37: the cited evidence record versus today's data. A miss is
+              stated, never silent — the summary saw the record in its snapshot,
+              and the data may have changed since. */}
+          {focusEvidenceId && !evidenceLoading && !citedEvidence && (
+            <div className="state-banner" role="status" data-testid="cited-record-missing">
+              <span>
+                The cited evidence record <span className="mono">{focusEvidenceId}</span> is not
+                linked to this compound in the current data. The summary saw it in its input
+                snapshot; the record or its occurrence may no longer be current.
+              </span>
+            </div>
+          )}
+
           {evidenceLoading ? (
             <div role="status" aria-label="Loading evidence">
               <div className="skeleton" style={{ height: 120 }} />
@@ -208,8 +253,14 @@ export function EvidencePanel({
                 <Field label="Retrieved at" value={new Date(shown.retrieved_at).toLocaleString()} />
               </dl>
 
-              <div className="excerpt-card">
-                <div className="label">Source record</div>
+              <div
+                className="excerpt-card"
+                data-cited={citedEvidence && shown?.id === citedEvidence.id ? "true" : undefined}
+                data-testid={citedEvidence && shown?.id === citedEvidence.id ? "cited-evidence-card" : undefined}
+              >
+                <div className="label">
+                  Source record{citedEvidence && shown?.id === citedEvidence.id ? " · cited by the summary" : ""}
+                </div>
                 {shown.raw_excerpt ?? (
                   <span className="not-provided">Original passage not provided.</span>
                 )}
@@ -274,7 +325,7 @@ function AiTab({
   documentId: string | null;
   familyKey: string;
   documentLabel: string | null;
-  onOpenCitation: (factRef: string) => void;
+  onOpenCitation: (citation: CitationRef) => void;
 }) {
   // The scopes on offer are named, and the chosen one is what the request
   // states: a document summary is never presented as a family summary.

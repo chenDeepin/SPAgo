@@ -322,7 +322,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
         measurement_rows = conn.execute(
             text(
                 """
-                SELECT mm.id, mm.standard_type, mm.relation, mm.value, mm.unit,
+                SELECT mm.id, mm.compound_id, mm.standard_type, mm.relation, mm.value, mm.unit,
                        mm.source_name, mm.dataset_version, mm.provenance_state,
                        a.assay_key, a.assay_type, t.name AS target_name,
                        c.inchikey
@@ -359,9 +359,10 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
             text(
                 """
                 SELECT e.id, e.source_type, e.section, e.page, e.raw_excerpt,
-                       d.publication_number
+                       d.publication_number, cm.compound_id
                 FROM current_evidence_records e
                 JOIN patent_documents d ON d.id = e.document_id
+                LEFT JOIN current_compound_mentions cm ON cm.id = e.compound_mention_id
                 WHERE d.family_id = :fid
                 ORDER BY e.id
                 LIMIT :limit
@@ -395,6 +396,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
     measurements = [
         {
             "ref": f"measurement:{r['id']}",
+            "compound_id": str(r["compound_id"]),
             "inchikey": r["inchikey"],
             "standard_type": r["standard_type"],
             "relation": r["relation"],
@@ -413,6 +415,10 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
         {
             "ref": f"evidence:{r['id']}",
             "evidence_id": str(r["id"]),
+            # The owning compound, when the evidence is tied to a live mention:
+            # a retracted mention keeps the evidence with no compound_id rather
+            # than pointing at an occurrence that is no longer current.
+            "compound_id": str(r["compound_id"]) if r["compound_id"] else None,
             "publication_number": r["publication_number"],
             "source_type": r["source_type"],
             "section": r["section"],
@@ -524,7 +530,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
         measurement_rows = conn.execute(
             text(
                 """
-                SELECT mm.id, mm.standard_type, mm.relation, mm.value, mm.unit,
+                SELECT mm.id, mm.compound_id, mm.standard_type, mm.relation, mm.value, mm.unit,
                        mm.source_name, mm.evidence_class, coalesce(mm.evidence_class,'unspecified') AS cls,
                        a.assay_key, a.assay_type, t.name AS target_name, c.inchikey
                 FROM current_measurements mm
@@ -548,8 +554,9 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
             text(
                 """
                 SELECT e.id, e.source_type, e.section, e.page, e.raw_excerpt,
-                       e.provenance_state, e.source_url
+                       e.provenance_state, e.source_url, cm.compound_id
                 FROM current_evidence_records e
+                LEFT JOIN current_compound_mentions cm ON cm.id = e.compound_mention_id
                 WHERE e.document_id = :did
                 ORDER BY e.id LIMIT :limit
                 """
@@ -590,6 +597,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
         "measurements": [
             {
                 "ref": f"measurement:{r['id']}",
+                "compound_id": str(r["compound_id"]),
                 "inchikey": r["inchikey"],
                 "standard_type": r["standard_type"],
                 "relation": r["relation"],
@@ -608,6 +616,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
             {
                 "ref": f"evidence:{r['id']}",
                 "evidence_id": str(r["id"]),
+                "compound_id": str(r["compound_id"]) if r["compound_id"] else None,
                 "publication_number": doc["publication_number"],
                 "source_type": r["source_type"],
                 "section": r["section"],
@@ -844,6 +853,7 @@ def _collect_target_facts(
             {
                 "ref": f"measurement:{m['id']}",
                 "measurement_id": str(m["id"]),
+                "compound_id": str(m["compound_id"]),
                 "inchikey": m["inchikey"],
                 "standard_type": m["standard_type"],
                 "relation": m["relation"],
@@ -1903,7 +1913,10 @@ def _build_citations(output: LlmSummaryOutput | None, snapshot: dict) -> list[di
 
     by_ref: dict[str, dict] = {}
     if snapshot.get("family"):
-        by_ref[snapshot["family"]["ref"]] = {"kind": "family"}
+        by_ref[snapshot["family"]["ref"]] = {
+            "kind": "family",
+            "family_id": snapshot["family"].get("id"),
+        }
     if snapshot.get("document"):
         doc = snapshot["document"]
         by_ref[doc["ref"]] = {
@@ -1971,6 +1984,7 @@ def _build_citations(output: LlmSummaryOutput | None, snapshot: dict) -> list[di
         by_ref[m["ref"]] = {
             "kind": "measurement",
             "inchikey": m["inchikey"],
+            "compound_id": m.get("compound_id"),
             "measurement_id": m["ref"].split(":", 1)[1],
             "label": (
                 f"{m['standard_type']} {m['relation']} {m['value']:g} {m['unit']} "
@@ -1987,6 +2001,7 @@ def _build_citations(output: LlmSummaryOutput | None, snapshot: dict) -> list[di
         by_ref[e["ref"]] = {
             "kind": "evidence",
             "evidence_id": e["evidence_id"],
+            "compound_id": e.get("compound_id"),
             "label": (
                 (f"{prefix} · " if prefix else "")
                 + f"{e['source_type']}"

@@ -2,7 +2,9 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api/client";
 import type {
+  AnalysisEntry,
   Candidate,
+  CitationRef,
   CompoundRow,
   PlanStep,
   ProjectDetail,
@@ -629,8 +631,87 @@ export function App() {
     updateUrl({ ...urlState, c: compoundId });
   };
 
+  // B-37: the exact record a summary citation names. Selecting the cited
+  // compound is one URL change (the D2 pin keeps a filtered-out compound
+  // visible as a labelled outsider); the focus id is panel state the record's
+  // own surface highlights, and a stale id renders an explicit note instead of
+  // silence. Cleared when the inspector closes or a new citation navigates.
+  const [citationFocus, setCitationFocus] = useState<{
+    measurementId?: string | null;
+    evidenceId?: string | null;
+  } | null>(null);
+
+  const navigateCitation = useCallback(
+    (citation: CitationRef) => {
+      if (citation.kind === "document" && citation.document_id) {
+        handleSelectDoc(citation.document_id);
+        setCitationFocus(null);
+        return;
+      }
+      if (citation.compound_id) {
+        cancelProjectNavigation();
+        updateUrl({ ...urlState, c: citation.compound_id });
+        setCitationFocus(
+          citation.kind === "measurement"
+            ? { measurementId: citation.measurement_id ?? null, evidenceId: null }
+            : citation.kind === "evidence"
+              ? { measurementId: null, evidenceId: citation.evidence_id ?? null }
+              : null,
+        );
+      }
+    },
+    [cancelProjectNavigation, updateUrl, urlState],
+  );
+
+  /** B-37: a citation inside a stored analysis opens its scope at the exact
+   * record. Target scopes reopen by URL state directly; family and document
+   * scopes reopen through the stored query, then select the cited compound. */
+  const openAnalysisCitation = useCallback(
+    (citation: CitationRef, entry: AnalysisEntry) => {
+      if (!entry.scope_id) return;
+      closeProject();
+      if (entry.scope === "target") {
+        const query = entry.scope_query ?? citation.target_id ?? entry.scope_label;
+        setSubmittedQuery(null);
+        setTargetQuery(query);
+        setSelectedIds(new Set());
+        setEvidenceClassFilter(null);
+        updateUrl(
+          {
+            q: query,
+            doc: null,
+            c: citation.compound_id ?? null,
+            t: entry.scope_id,
+          },
+          "push",
+        );
+        setCitationFocus(
+          citation.kind === "measurement"
+            ? { measurementId: citation.measurement_id ?? null, evidenceId: null }
+            : null,
+        );
+        return;
+      }
+      if (entry.scope_query) {
+        openPatent(entry.scope_query);
+        setCitationFocus(
+          citation.kind === "evidence"
+            ? { measurementId: null, evidenceId: citation.evidence_id ?? null }
+            : null,
+        );
+        // The family view reads `c` once its family loads; setting it in the
+        // same navigation keeps the cited compound selected on arrival.
+        if (citation.compound_id) {
+          updateUrl({ q: entry.scope_query, doc: null, c: citation.compound_id, t: null }, "push");
+        }
+      }
+    },
+    [closeProject, openPatent, updateUrl],
+  );
+
   const handleCloseEvidence = useCallback(() => {
     cancelProjectNavigation();
+    setCitationFocus(null);
     // Capture the row before clearing selection so focus can return to it.
     const rowToFocus = document.querySelector<HTMLElement>('[role="row"][aria-selected="true"]');
     updateUrl({ ...urlState, c: null });
@@ -1319,6 +1400,8 @@ export function App() {
               loading={measurementsQuery.isFetching}
               error={(measurementsQuery.error as Error | null)?.message ?? null}
               includeAllModalities={allModalities}
+              onNavigateCitation={navigateCitation}
+              focusMeasurementId={citationFocus?.measurementId ?? null}
               onFocusSource={focusSourceChip}
               onFocusReference={focusReferenceVerdict}
               withdrawing={withdrawSupplementMutation.isPending}
@@ -1685,6 +1768,8 @@ export function App() {
               evidence={evidenceQuery.data}
               evidenceLoading={evidenceQuery.isFetching}
               evidenceError={(evidenceQuery.error as Error | null)?.message ?? null}
+              onNavigateCitation={navigateCitation}
+              focusEvidenceId={citationFocus?.evidenceId ?? null}
               onClose={handleCloseEvidence}
             />
           )}
@@ -1715,6 +1800,7 @@ export function App() {
         <AnalysesDialog
           onClose={() => setAnalysesOpen(false)}
           onOpenScope={(query) => { setAnalysesOpen(false); handleSearch(query); }}
+          onOpenCitation={openAnalysisCitation}
         />
       )}
 

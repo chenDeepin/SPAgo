@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "../api/client";
-import type { FamilySummaryResponse } from "../api/types";
+import type { CitationRef, FamilySummaryResponse } from "../api/types";
 
 export interface AiScopeOption {
   /** Passed to the API and shown to the user; never inferred. */
@@ -15,7 +15,11 @@ export interface AiScopeOption {
 
 interface AiPanelProps {
   options: AiScopeOption[];
-  onOpenCitation: (factRef: string) => void;
+  /** B-37: the whole typed citation, not just its ref string — navigating to
+   * the exact record needs the compound/document ids the ref alone does not
+   * carry. Kinds with no ownable record (a family or target scope) still arrive
+   * here; the owner decides what they mean. */
+  onOpenCitation: (citation: CitationRef) => void;
   /** Optional modifier for the request (target scope only). */
   includeAllModalities?: boolean;
 }
@@ -222,7 +226,7 @@ export function AiPanel({ options, onOpenCitation, includeAllModalities = false 
           <ul className="citation-list">
             {shown.citations.map((c) => (
               <li key={c.fact_ref}>
-                <button className="citation-link" onClick={() => onOpenCitation(c.fact_ref)}>
+                <button className="citation-link" onClick={() => onOpenCitation(c)}>
                   <span className="citation-kind">{c.kind}</span> {c.label ?? c.fact_ref}
                 </button>
               </li>

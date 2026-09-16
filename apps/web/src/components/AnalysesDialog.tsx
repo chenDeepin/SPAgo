@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import type { AnalysisDetail, AnalysisEntry } from "../api/types";
+import type { AnalysisDetail, AnalysisEntry, CitationRef } from "../api/types";
 import { Modal } from "./Modal";
 
 interface AnalysesDialogProps {
@@ -9,6 +9,11 @@ interface AnalysesDialogProps {
   /** Submit a query to reopen a scope (family publication number or target
    * key). Omitted when the surrounding view cannot navigate. */
   onOpenScope?: (query: string) => void;
+  /** B-37: open a citation of a stored analysis at its exact record. The entry
+   * carries the scope context (scope id and reopen query); the citation names
+   * the record. Offered only when the scope still exists — a citation whose
+   * scope is gone stays readable text with the scope's own "gone" note. */
+  onOpenCitation?: (citation: CitationRef, entry: AnalysisEntry) => void;
 }
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -32,7 +37,7 @@ const PROVENANCE_LABELS: Record<string, string> = {
  * Opening one is a pure read — no provider is called — and the entry says
  * whether the data behind it has moved since, instead of presenting an old
  * analysis as current. */
-export function AnalysesDialog({ onClose, onOpenScope }: AnalysesDialogProps) {
+export function AnalysesDialog({ onClose, onOpenScope, onOpenCitation }: AnalysesDialogProps) {
   const [scope, setScope] = useState<string>("");
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -204,12 +209,33 @@ export function AnalysesDialog({ onClose, onOpenScope }: AnalysesDialogProps) {
                           Citations ({detail.citations.length}) — records inside the scope
                         </div>
                         <ul className="citation-list">
-                          {detail.citations.map((c) => (
-                            <li key={c.fact_ref}>
-                              <span className="citation-kind">{c.kind}</span>{" "}
-                              {c.label ?? c.fact_ref} <span className="mono">{c.fact_ref}</span>
-                            </li>
-                          ))}
+                          {detail.citations.map((c) => {
+                            const canOpen = !!onOpenCitation && !!entry.scope_id;
+                            return (
+                              <li key={c.fact_ref}>
+                                {canOpen ? (
+                                  <button
+                                    className="citation-link"
+                                    onClick={() => {
+                                      if (!onOpenCitation) return;
+                                      onOpenCitation(c, entry);
+                                      onClose();
+                                    }}
+                                  >
+                                    <span className="citation-kind">{c.kind}</span>{" "}
+                                    {c.label ?? c.fact_ref}{" "}
+                                    <span className="mono">{c.fact_ref}</span>
+                                  </button>
+                                ) : (
+                                  <>
+                                    <span className="citation-kind">{c.kind}</span>{" "}
+                                    {c.label ?? c.fact_ref}{" "}
+                                    <span className="mono">{c.fact_ref}</span>
+                                  </>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                         <p className="hint-note">
                           This is the stored analysis, unchanged. LLM output is an inference

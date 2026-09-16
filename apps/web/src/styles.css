@@ -1492,6 +1492,19 @@ button.dataset-badge:hover {
   border-bottom: var(--border-w) solid var(--border);
 }
 
+/* B-37: the exact record a summary citation named, marked where it renders so
+   the reader can see which row supported the sentence they clicked. */
+.meas-table tr.cited-row td {
+  background: var(--accent-bg, rgba(59, 130, 246, 0.08));
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: -2px;
+}
+
+.excerpt-card[data-cited="true"] {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: -2px;
+}
+
 .skeleton-note {
   font-size: 12px;
   color: var(--text-2);
