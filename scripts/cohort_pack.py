@@ -575,6 +575,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--database-url", default=None, help="defaults to $SPAGO_DATABASE_URL or the deployment default"
     )
+    parser.add_argument(
+        "--compact",
+        action="store_true",
+        help=(
+            "omit the per-record rows and keep the aggregate blocks (verdicts, "
+            "stratification, sources); the stratification counts are computed "
+            "from the full records either way. For committed summary artifacts — "
+            "the full reviewer pack is one command away without it."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.expected_build == UNKNOWN:
@@ -647,8 +657,13 @@ def main(argv: list[str] | None = None) -> int:
                 "verdict_source_only": _verdict_dict(verdicts[found.id]),
                 "verdict_combined": _verdict_dict(combined[found.id]),
                 "stratification": _stratification(records),
-                "records": records,
+                "records": None if args.compact else records,
                 "records_truncated": truncated,
+                **(
+                    {"records_note": "omitted by --compact; regenerate without it for the full reviewer pack"}
+                    if args.compact
+                    else {}
+                ),
             }
         )
         source_only = verdicts[found.id]

@@ -1,6 +1,6 @@
 # Cohort review pack (B-32, machine half)
 
-Generated 2026-09-16T15:30:01+00:00 by `scripts/cohort_pack.py` (generator checkout `ea9b9d8-dirty`, spago_core `0.1.0`). Raw record: `benchmarks/cohort-pack-2026-09-16.json`.
+Generated 2026-09-16T15:35:35+00:00 by `scripts/cohort_pack.py` (generator checkout `eb486d0-dirty`, spago_core `0.1.0`). Raw record: `benchmarks/cohort-pack-2026-09-16.json`.
 
 ## Served build
 

@@ -111,3 +111,15 @@ verdict read cap), human record: `benchmarks/cohort-pack-2026-09-16.md`.
   claimed done here.
 - Hosted-shape verification of the pack (a run recorded against a deployed build)
   belongs to B-31's gate; this run was the local stack.
+
+## Post-delivery trim (same round, coordinator)
+
+The first committed pack JSON was 2.6 MB — the per-record rows of 3,346+
+EGFR records dwarfed every existing benchmark artifact, against the spirit
+of AGENTS.md §34. `scripts/cohort_pack.py` gained `--compact` (records
+omitted, stratification computed from the full rows either way, a note
+saying the full reviewer pack is one command away), and the committed
+`benchmarks/cohort-pack-2026-09-16.{json,md}` were regenerated with it
+(2.6 MB → 78 KB JSON; verdicts, sources, schema and build unchanged).
+The full pack for the independent reviewer is regenerated without
+`--compact`; tests re-run (13 passed).
