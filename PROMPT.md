@@ -1,36 +1,39 @@
 # SPAgo — Product Contract and Current Handoff
 
-> **Current handoff — 2026-09-17, implementation round 3 (product change).**
-> **B-46 delivered: the tables are one tab stop each and the reader can hear where it
-> is.** Both virtualized tables now follow the composite-widget pattern — roving
-> `tabIndex` (the current row is the only one at `0`, its nested controls follow it),
-> `ArrowDown`/`ArrowUp`/`Home`/`End` moving the current row with the virtualizer
-> scrolling it into view and focus following after it renders, and an `aria-label` on
-> every row so a reader announces `Candidate 2 of 157: WEBQKRLKWNIYKK-UHFFFAOYSA-N,
-> weak IC50 13810 nM, measured binding, no patent mapping`. Before: Tab crossed the
-> candidate table one row at a time (B-44's pass measured 30 further presses still
-> inside rows after the first row, on a 157-row result). After: **3** stops inside the
-> compound table, **1** inside the candidate table, Enter still opening the Evidence
-> inspector and Space on a checkbox still selecting without inspecting
-> (`npm run check:table-keyboard`); a *held* arrow key needed the position tracked in a
-> ref, not read back from the focused element, or 60 presses advanced only 30 rows.
-> Measurements and the reader transcript:
-> `benchmarks/table-keyboard-2026-09-17.{md,txt}`; plan and outcome
-> `docs/archive/2026-09-17-table-keyboard-model.md`. Not delivered, and stated as a
-> limit: cell-level arrow navigation inside a row (the row's name carries the content
-> instead), and anything about Orca's own Ctrl+Alt+arrow table commands, which this
-> harness cannot drive.
+> **Current handoff — 2026-09-17, implementation round 4 (product change).**
+> **B-43 delivered: one navigation step, one history entry.** Searching a publication
+> from an open target view pushed the same state twice, so Back landed on a duplicate
+> and needed a second press. Re-reproduced before the fix (history 2 → **4**, Back twice
+> to reach the target view) and verified after (2 → **3**, one Back restores the scope),
+> with B-39's per-entry filter state pinned in the same run (`?q=IL6&t=…&th=1` returns
+> with `th=1` and its candidate table). `npm run test:e2e` 8 passed. Check:
+> `apps/web/scripts/history-step-check.mjs`; record `docs/archive/2026-09-17-history-step.md`.
 >
-> **Same day, round 2: B-44 delivered** — a real screen reader (Orca 42.0) was driven
-> over both tables by `apps/web/scripts/at-pass.mjs`, with `apps/web/scripts/x11-focus.py`
-> giving the driven window the session's activation (without it the reader announces
-> nothing at all — a session fault the record now names). It found that no data cell
-> carried `role="cell"`, so a reader heard **"table with 1 row 6 columns"** for a
-> ten-row table; the fix makes it **"table with 11 rows 6 columns"** with real cells.
-> **B-08 closed with a negative result:** no documented BindingDB path supplies a
-> source-declared assay description or variant context, and the capability page's
-> wording was corrected rather than the adapter. **B-47** (P3) records the release's
-> `pH`/`Temp (C)` columns, which no path maps.
+> **The register now holds no ungated engineering item.** Every remaining row is the
+> operator's (B-31 hosted acceptance; B-21's claims-source decision; B-09's scientific
+> review; B-11's provider choice; B-20's user base; B-16's admin-view decision) or gated
+> on a measured need or a decision this checkout cannot produce alone (B-40 reviewed
+> comparison task, B-05 dataset + ADR, B-07 bounded design, B-12 scaling need, B-22
+> source decision, B-27 user ask, B-28 repeated-batch volume, B-41 pilot friction,
+> B-45 no-network runner, B-47 model decision). `docs/plans/backlog.md` §1 states each
+> gate per row. The next implementation round therefore starts from a register update —
+> an item promoted by real evidence or an operator decision — not from the table as it
+> stands.
+>
+> **Same day, rounds 1–3.** **B-44 delivered** (round 2): a real screen reader (Orca
+> 42.0) was driven over both tables by `apps/web/scripts/at-pass.mjs`, with
+> `apps/web/scripts/x11-focus.py` giving the driven window the session's activation —
+> without it the reader announces nothing at all, a session fault the record names. It
+> found that no data cell carried `role="cell"`, so a reader heard "table with 1 row 6
+> columns" for a ten-row table; the fix makes it "table with 11 rows 6 columns" with
+> real cells. **B-46 delivered** (round 3): each table is one tab stop, the arrow keys
+> move the current row, and every row carries an `aria-label` so the reader announces
+> `Candidate 2 of 157: WEBQKRLKWNIYKK-UHFFFAOYSA-N, weak IC50 13810 nM, measured
+> binding, no patent mapping` (Tab stops inside the compound table 30 → 3, candidate
+> table → 1). **B-08 closed with a negative result** (round 2): no documented BindingDB
+> path supplies a source-declared assay description or variant context, so the
+> capability page was corrected rather than the adapter; the release's `pH`/`Temp (C)`
+> columns that no path maps are recorded as **B-47**.
 >
 > **Actual stage.** A locally implemented product with browser-verified workflow
 > correctness, a full CI gate (every push runs the whole backend suite against the
@@ -40,45 +43,34 @@
 > B-32's second half).** A local rehearsal, a green CI run or a pass on this desktop
 > never closes them.
 >
-> **Verified in this round:** `scripts/run_checks.sh` green (backend suite + frontend
-> build), `npm run test:e2e` **8 passed** on the rebuilt stack,
-> `npm run check:table-keyboard` as above, the reader pass on the same build, and
-> `/healthz` serving `0d1d983-dirty` with the identity recorder agreeing.
->
 > **Limits that matter to the product loop:**
-> - Cells are not focus targets: arrow keys move between rows, not within one. A
->   two-dimensional grid is not claimed, and Orca's Ctrl+Alt+arrow commands are
->   untested here (it grabs them at the X level; synthetic keys never reach the grab).
-> - One reader (Orca 42.0), one browser, one platform, one viewport for the reader
->   evidence; the pass is manual and desktop-bound, not part of CI.
+> - Cells are not focus targets: arrow keys move between rows, not within one, and
+>   Orca's own Ctrl+Alt+arrow commands are untested here (it grabs them at the X level;
+>   synthetic keys never reach the grab). A two-dimensional grid is not claimed.
+> - Reader evidence is one reader, one browser, one platform, one viewport, and the pass
+>   is manual and desktop-bound, not part of CI.
 > - B-30's retraction needs a *complete* or *empty* ask; failed/partial asks and other
 >   access paths are provably untouched, and 155 legacy rows with no recorded access
 >   path are never retracted. Document-level corpus absence stays unclaimed.
 > - The cohort pack is machine-prepared evidence, not an independent review; B-31's
 >   gate needs the human cross-read the pack is shaped for.
-> - The retraction run note was not browser-reproduced (the reason is in its plan), and
->   B-43 (a patent search from a target view pushes two history entries) is recorded
->   with a workaround.
-> - One live model provider remains historically measured; second-provider evaluation
->   stays gated on an explicit choice and budget. Claims text needs the operator's
->   B-21 decision (OPS registration/terms) before any integration (B-22 stays P3).
+> - One live model provider remains historically measured; a second one stays gated.
+>   Claims text needs the operator's B-21 decision before any integration (B-22 stays P3).
 > - The optional companion's physical toolbar click and side-panel chrome remain
->   unverified. Full cross-family SAR (B-40), PDF/OCSR/M6, Markush and general chat
->   are not delivered.
+>   unverified. Full cross-family SAR (B-40), PDF/OCSR/M6, Markush and general chat are
+>   not delivered.
 >
 > **Next-stage order:** 1. B-31 retains the real hosted gate in
 > `docs/online-capability.md` §6 — host/TLS, readiness, owner isolation, restore,
 > provider smoke, source coverage, latency/cost, invited scientist and independent
 > reader, with the build-identity recorder and the cohort pack as its tooling.
-> Operator-only decisions stay explicit. 2. With **B-46 delivered, P2 holds only
-> operator-shaped items** — B-21's claims-source decision and B-09's scientific review
-> — so the next implementation round takes the register's P3 order, where **B-43**
-> (one push per navigation step, browser-reproduced, S) is the first ungated item.
-> The register records every rank and why.
+> Operator-only decisions stay explicit. 2. No ungated engineering item is queued: the
+> next implementation round needs a register update (evidence that promotes one of the
+> gated items, or the operator's decision), and §1 records why each open row waits.
 >
 > **Evidence map:** scope and hosted gate `docs/online-capability.md`; operations
-> `docs/runbook.md` §H1–H10; per-item delivery records in `docs/plans/backlog.md`
-> with their plans and benchmarks under `docs/archive/`; accessibility evidence
+> `docs/runbook.md` §H1–H10; per-item delivery records in `docs/plans/backlog.md` with
+> their plans and benchmarks under `docs/archive/`; accessibility evidence
 > `benchmarks/screen-reader-pass-2026-09-17.{md,txt}` and
 > `benchmarks/table-keyboard-2026-09-17.{md,txt}`; the cohort pack
 > `benchmarks/cohort-pack-2026-09-16.*`.

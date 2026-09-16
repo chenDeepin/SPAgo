@@ -544,13 +544,15 @@ export function App() {
   const openPatent = useCallback(
     (value: string) => {
       setTargetQuery(null);
-      if (resolvedTargetId) updateUrl({ q: value, doc: null, c: null, t: null }, "push");
-      if (value === submittedQuery) {
-        queryClient.invalidateQueries({ queryKey: ["patent", value] });
-        return;
-      }
+      const leavingTarget = resolvedTargetId !== null;
+      const sameQuery = value === submittedQuery;
+      if (sameQuery) queryClient.invalidateQueries({ queryKey: ["patent", value] });
+      // Re-opening the record already on screen is not a navigation step — but
+      // *leaving a target scope* for it is, so that Back returns to the scope.
+      if (sameQuery && !leavingTarget) return;
       setSubmittedQuery(value);
-      // A new query is a navigation step: browser Back returns to the previous search.
+      // One step, one entry: leaving the target scope and opening the
+      // publication are the same navigation (B-43), so they are one push.
       updateUrl({ q: value, doc: null, c: null, t: null }, "push");
     },
     [queryClient, resolvedTargetId, submittedQuery, updateUrl],

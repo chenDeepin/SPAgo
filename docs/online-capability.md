@@ -592,5 +592,5 @@ The deployment is one app image plus one database. To roll back:
   mode. The screen-reader pass is recorded (B-44) and the keyboard model changed with it
   (B-46), but the reader half stays a manual, desktop-bound check; the keyboard
   measurements are repeatable through `npm run check:table-keyboard` and are not wired
-  into CI. Opening a patent from a target view pushes two history entries —
-  a polish defect with a press-Back-twice workaround (B-43).
+  into CI. Opening a patent from a target view is one history entry, so one
+  Back returns to the scope it left, its filter state intact (B-43, 2026-09-17).
