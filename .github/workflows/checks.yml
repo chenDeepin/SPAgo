@@ -1,16 +1,25 @@
-# B-14: CI running the existing check script — no duplicated check logic.
+# CI — the developer entry points, no duplicated check logic (B-14, B-35).
 #
-# Scope, deliberately minimal:
-#   * the pipeline calls `scripts/run_checks.sh --no-pg`, the same entry a
-#     developer runs by hand — the selected backend subset (chemistry, adapter
-#     contract, LLM contract, planner) plus the frontend typecheck and
-#     production build, which is the regression nobody should have to remember
-#     to run;
-#   * the database-dependent majority of the suite keeps its scratch-database
-#     behaviour (a machine with PostgreSQL + the RDKit cartridge). Providing a
-#     cartridge-bearing image for CI is a later decision, not silently assumed
-#     here, so this workflow states its coverage honestly: it does not run the
-#     full suite.
+# Two jobs:
+#
+#   checks       `scripts/run_checks.sh --no-pg` — the selected backend subset
+#                (chemistry, adapter contract, LLM contract, planner) plus the
+#                frontend typecheck and production build. Cheap, runs on every
+#                push and pull request.
+#
+#   full-stack   The same suite a developer with PostgreSQL + the RDKit
+#                cartridge runs (B-35): the shipped db image is built and
+#                started through docker compose, the full backend suite runs
+#                with SPAGO_REQUIRE_TEST_DATABASE=1 (unreachable or missing
+#                database FAILS instead of skipping), then the app image is
+#                built with its build identity (B-34), verified through
+#                /healthz by scripts/build_identity.py, and the existing
+#                browser smoke (B-17) runs against the seeded compose stack.
+#
+# Honest limits: fixture CI on synthetic data. It is not hosted user
+# acceptance, not live-source validation, and not a model-provider check
+# (the suite blanks SPAGO_LLM_* and makes no paid calls).
+#
 # Versions match the shipped container (docker/app/Dockerfile: python:3.12,
 # node:22).
 
@@ -59,3 +68,91 @@ jobs:
 
       - name: Run scripts/run_checks.sh --no-pg
         run: scripts/run_checks.sh --no-pg
+
+  full-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SPAGO_TEST_DATABASE_URL: postgresql+psycopg://spago:spago@127.0.0.1:5432/spago
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/core/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install backend (with dev extras)
+        run: |
+          python -m venv services/core/.venv
+          services/core/.venv/bin/pip install -e 'services/core[dev]'
+
+      # The shipped db image (Debian postgresql-15 + the RDKit cartridge) is
+      # the same one the supported install uses — not a CI-specific database.
+      - name: Build and start the database image
+        run: docker compose up -d --build db
+
+      - name: Wait for the database to be healthy
+        run: |
+          DB_CID="$(docker compose ps -q db)"
+          for i in $(seq 1 60); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' "$DB_CID" 2>/dev/null || true)
+            [ "$status" = "healthy" ] && echo "db healthy" && exit 0
+            sleep 5
+          done
+          echo "db did not become healthy" >&2
+          docker compose logs db >&2
+          exit 1
+
+      # The suite creates and drops its own scratch databases on this server;
+      # with SPAGO_REQUIRE_TEST_DATABASE=1 an unreachable database (or a
+      # missing cartridge) fails the run instead of skipping.
+      - name: Full backend suite (required database)
+        run: |
+          cd services/core
+          SPAGO_REQUIRE_TEST_DATABASE=1 .venv/bin/python -m pytest
+
+      # The app image builds the frontend and seeds the demo fixture on start;
+      # SPAGO_BUILD_ID stamps the exact revision into /healthz (B-34), and the
+      # recorder below fails the job if what is served does not match.
+      - name: Build and start the seeded app stack
+        run: |
+          BUILD_ID="$(git describe --always --dirty)"
+          echo "SPAGO_BUILD_ID=${BUILD_ID}" >> "$GITHUB_ENV"
+          SPAGO_BUILD_ID="${BUILD_ID}" docker compose up -d --build app
+
+      - name: Wait for the app and verify the served build identity
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/healthz >/dev/null 2>&1; then
+              python3 scripts/build_identity.py --expected "${SPAGO_BUILD_ID}" --require
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "app did not become healthy" >&2
+          docker compose logs app >&2
+          exit 1
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Install the Playwright browser
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      # The existing B-17 smoke against the seeded stack this job built: the
+      # same deployment shape a user runs, not a self-booted test server.
+      - name: Browser smoke (seeded compose stack)
+        working-directory: apps/web
+        env:
+          SPAGO_BASE_URL: http://127.0.0.1:8000
+        run: npm run test:e2e

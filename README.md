@@ -155,12 +155,16 @@ PostgreSQL with the RDKit cartridge, then the frontend typecheck and production 
 (`--no-pg` explicitly checks only the subset that needs no database). Recorded
 measurements and their method notes are indexed in
 [`benchmarks/README.md`](benchmarks/README.md). CI (`.github/workflows/checks.yml`)
-runs the same script in its `--no-pg` mode on every push and pull request, so the
-frontend/build regression no longer depends on someone remembering to run it; the
-database-dependent majority of the suite still runs where a PostgreSQL with the RDKit
-cartridge exists — CI does not run the full suite. One end-to-end browser smoke of the
-MVP loop (search → family → compound → structure filter → export) runs with
-`npm run test:e2e` in `apps/web` against the seeded compose stack
+runs two jobs on every push and pull request: `checks` runs the same script in its
+`--no-pg` mode, and `full-stack` builds the shipped database image through docker
+compose, runs the full backend suite with `SPAGO_REQUIRE_TEST_DATABASE=1` (an
+unreachable database or missing cartridge fails the run instead of skipping), builds
+the app image with its build identity, verifies what `/healthz` serves with
+`scripts/build_identity.py`, and runs the end-to-end browser smoke against the seeded
+compose stack — the same deployment shape a user runs, on synthetic data and with no
+paid model calls. One end-to-end browser smoke of the
+MVP loop (search → family → compound → structure filter → export) also runs locally
+with `npm run test:e2e` in `apps/web` against the seeded compose stack
 (`SPAGO_BASE_URL` overrides `http://127.0.0.1:8000`).
 
 ### Distinguishable builds

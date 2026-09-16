@@ -16,6 +16,7 @@ database is never touched.
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -41,6 +42,12 @@ def upgrade_engine():
             conn.execute(text(f"DROP DATABASE IF EXISTS {UPGRADE_DB} WITH (FORCE)"))
             conn.execute(text(f"CREATE DATABASE {UPGRADE_DB}"))
     except Exception as exc:  # pragma: no cover - environment dependent
+        if os.environ.get("SPAGO_REQUIRE_TEST_DATABASE") == "1":
+            # B-35: a required-database run (CI) must fail, not silently skip
+            # its upgrade coverage — the 0008 helper already follows conftest.
+            raise RuntimeError(
+                "Required PostgreSQL test database could not be prepared"
+            ) from exc
         pytest.skip(f"PostgreSQL not reachable; upgrade test skipped: {exc}")
 
     su = create_engine(
