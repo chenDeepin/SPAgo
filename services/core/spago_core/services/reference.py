@@ -16,7 +16,11 @@ to a model's paraphrase. The verdict is:
 - **Explicit about scope.** The default scope is small molecules and
   unclassified entities (the same labelled filter the candidate table uses), and
   potency actives that the scope excludes are *counted and reported*, never
-  dropped.
+  dropped. A second, orthogonal scope is supplement inclusion:
+  ``include_supplements=False`` recomputes the same counts over the sources' own
+  rows only, so "what the retrieved set supports" and "what this workspace (with
+  its hand-added rows) supports" are two stated verdicts, never one blended
+  number (B-32).
 - **Explicit about gaps.** Records that carried a value but no public structure
   (from the per-source retrieval records) are reported next to the counts, so a
   thin set is not read as a negative result (AGENTS.md §12/§22).
@@ -46,6 +50,7 @@ from spago_core.chemistry.activities import (
 )
 from spago_core.chemistry.modality import Modality
 from spago_core.domain import (
+    USER_SUPPLEMENT_SOURCE,
     ActiveCompound,
     EvidenceClass,
     ReferencePolicy,
@@ -201,6 +206,8 @@ def _rows(
     target_ids: Optional[Sequence[uuid.UUID]],
     cap: int,
     compound_ids: Optional[Sequence[uuid.UUID]] = None,
+    *,
+    exclude_supplements: bool = False,
 ) -> tuple[list[dict], bool]:
     """Measurement rows in candidate scope, bounded, with their owning target.
 
@@ -208,6 +215,11 @@ def _rows(
     interaction/complex targets the retrieval went through, minus retracted rows.
     A measurement of the same compound against an unrelated target is *not* in
     this target's verdict, drawer or export (migration 0015).
+
+    ``exclude_supplements`` drops hand-added rows (`user_supplement`) from the
+    read, which is how a source-only verdict is scoped (B-32): supplements are a
+    workspace fact, and a reader must be able to ask what the sources alone
+    support without re-deriving the count by hand.
     """
     params: dict = {"cap": cap + 1}
     scope = ""
@@ -223,6 +235,9 @@ def _rows(
             return [], False
         scope += " AND m.compound_id = ANY(:cids)"
         params["cids"] = ids
+    if exclude_supplements:
+        scope += " AND m.source_name <> :supplement"
+        params["supplement"] = USER_SUPPLEMENT_SOURCE
     with engine.connect() as conn:
         rows = conn.execute(
             text(
@@ -653,9 +668,19 @@ def reference_verdict(
     policy: ReferencePolicy,
     *,
     cap: int = MAX_VERDICT_MEASUREMENTS,
+    include_supplements: bool = True,
 ) -> ReferenceVerdict:
-    """Verdict for one target (a `ResolvedTarget` or any object with its fields)."""
-    rows, truncated = _rows(engine, [target.id], cap)
+    """Verdict for one target (a `ResolvedTarget` or any object with its fields).
+
+    ``include_supplements=False`` is the **source-only** verdict (B-32): hand-added
+    rows are neither counted nor described, so the verdict answers what the
+    retrieved sources alone support. The remark/withdrawn/unreviewed counts are
+    workspace facts and stay with the default (combined) verdict, which a caller
+    shows beside it — scoping a count must not hide the rows it excludes.
+    """
+    rows, truncated = _rows(
+        engine, [target.id], cap, exclude_supplements=not include_supplements
+    )
     return _verdict_for(
         target_id=target.id,
         target_key=target.target_key,
@@ -665,12 +690,20 @@ def reference_verdict(
         records_without_structure=_records_without_structure_many(engine, [target.id]).get(
             target.id, 0
         ),
-        supplement_remarks=_supplement_remark_count(engine, [target.id]).get(target.id, 0),
-        withdrawn_supplements=_withdrawn_supplement_count(engine, [target.id]).get(
-            target.id, 0
+        supplement_remarks=(
+            _supplement_remark_count(engine, [target.id]).get(target.id, 0)
+            if include_supplements
+            else 0
         ),
-        unreviewed_supplements=_unreviewed_supplement_count(engine, [target.id]).get(
-            target.id, 0
+        withdrawn_supplements=(
+            _withdrawn_supplement_count(engine, [target.id]).get(target.id, 0)
+            if include_supplements
+            else 0
+        ),
+        unreviewed_supplements=(
+            _unreviewed_supplement_count(engine, [target.id]).get(target.id, 0)
+            if include_supplements
+            else 0
         ),
         truncated=truncated,
     )
@@ -682,18 +715,26 @@ def reference_verdicts(
     policy: ReferencePolicy,
     *,
     cap: int = MAX_VERDICT_MEASUREMENTS,
+    include_supplements: bool = True,
 ) -> dict[uuid.UUID, ReferenceVerdict]:
-    """Verdicts for several targets from one bounded read (coverage matrix)."""
+    """Verdicts for several targets from one bounded read (coverage matrix).
+
+    ``include_supplements=False`` scopes every verdict in the batch to the
+    sources' own rows (B-32); see :func:`reference_verdict`.
+    """
     if not targets:
         return {}
-    rows, truncated = _rows(engine, [t.id for t in targets], cap * len(targets))
+    ids = [t.id for t in targets]
+    rows, truncated = _rows(
+        engine, ids, cap * len(targets), exclude_supplements=not include_supplements
+    )
     by_target: dict[uuid.UUID, list[_ClassifiedRow]] = {}
     for row in _classify(rows, policy):
         by_target.setdefault(row.target_id, []).append(row)
-    without = _records_without_structure_many(engine, [t.id for t in targets])
-    remarks = _supplement_remark_count(engine, [t.id for t in targets])
-    withdrawn = _withdrawn_supplement_count(engine, [t.id for t in targets])
-    unreviewed = _unreviewed_supplement_count(engine, [t.id for t in targets])
+    without = _records_without_structure_many(engine, ids)
+    remarks = _supplement_remark_count(engine, ids) if include_supplements else {}
+    withdrawn = _withdrawn_supplement_count(engine, ids) if include_supplements else {}
+    unreviewed = _unreviewed_supplement_count(engine, ids) if include_supplements else {}
     return {
         target.id: _verdict_for(
             target_id=target.id,

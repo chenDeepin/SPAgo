@@ -741,7 +741,7 @@ class TestTheHeadline:
         report = coverage_svc.audit_publications(world.engine, [CORPUS_DOC])
         text = " ".join(report.notes)
         assert "reads stored rows only" in text
-        assert "snapshot" in text  # the missing B-23 leg is stated, not implied
+        assert "snapshot" in text  # the no-snapshot-leg limit is stated, not implied
         assert "not_queried" in text
         assert "never an 'absent' verdict" in text
 

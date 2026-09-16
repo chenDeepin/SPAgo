@@ -39,9 +39,10 @@ matched instead of rewriting the request.
 
 What this audit cannot see, and says so in ``notes`` rather than implying otherwise:
 the loaded corpus is the documents that were imported (the family's true sibling set
-needs a bibliographic source, B-22), a licensed bulk snapshot is not configured in
-this build (B-23), and a legal/status register (grant, expiry, litigation) is not a
-chemistry source and stays out of scope.
+needs a bibliographic source, B-22), the operator's licensed bulk snapshot (B-23) is
+an access path this report has no per-publication leg for, and a legal/status
+register (grant, expiry, litigation) is not a chemistry source and stays out of
+scope.
 """
 from __future__ import annotations
 
@@ -749,8 +750,10 @@ _REPORT_NOTES = (
     "from it was not necessarily never loaded elsewhere; the family's full sibling set "
     "needs a bibliographic source (B-22), and the loaded dataset versions are listed on "
     "the corpus surface.",
-    "A licensed bulk snapshot (BindingDB or another operator dataset) is not configured "
-    "in this build, so the audit has no snapshot leg to report (B-23).",
+    "A licensed bulk snapshot (BindingDB or another operator dataset) is an operator "
+    "access path (B-23), not a leg of this audit: the report has no per-publication "
+    "snapshot read, so a snapshot hit is neither a corpus occurrence nor a complete "
+    "publication scan and is never reported as one.",
     "'not_queried' means nobody asked about that leg. It is not a statement that the "
     "publication has no compounds, and it is never an 'absent' verdict.",
 )
