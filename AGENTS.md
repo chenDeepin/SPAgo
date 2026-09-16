@@ -176,7 +176,11 @@ Do not silently upgrade `LLM_INFERRED` to `SOURCE_FACT`. Human correction must r
 A source refresh states what its release no longer contains, and its scope is exactly
 what the release *claims*: a corpus package retracts (never deletes) a source's
 mentions, evidence and measurements for the documents the package holds, and a
-complete activity release retracts for its whole source. Absence beyond that scope — a
+complete activity release retracts for its whole source. An online investigation's
+absence rule is the same principle at row level (B-30): only an ask that answered the
+whole question (`complete`, or `empty`) may retract, and only within the same target,
+source and *access path* — a REST re-ask never retracts snapshot rows, and rows with
+no recorded access path are never retracted. Absence beyond that scope — a
 document or target the operator never re-asked for — is not retraction, and a
 `failed`/partial ask establishes no absence at all. Every retracted row keeps its
 provenance, its reason and the version that dropped it; a later release that carries
@@ -428,7 +432,7 @@ For UI behavior or layout changes, verify the affected workflow in a browser ser
 
 For design-only or documentation-only changes, check references, scope and consistency against current files; label mockups as proposals. Browser execution is required when claiming implemented UI behavior, not merely to deliver a design draft.
 
-Checks must cover relevant loading, empty, unavailable-source, error and stale-response states as well as success. Scope browser locators to their owning surface and use visible controls rather than force-clicking hidden navigation. If browser or live-source checks cannot run, record that gap explicitly instead of marking them passed.
+Checks must cover relevant loading, empty, unavailable-source, error and stale-response states as well as success. Scope browser locators to their owning surface and use visible controls rather than force-clicking hidden navigation. A browser spec that reads *stored* investigation data must say loudly when the stack holds none (skip with the reason) instead of failing on absent data — and must never manufacture the data through live source calls, which a spec cannot honestly do. If browser or live-source checks cannot run, record that gap explicitly instead of marking them passed.
 
 ### Acceptance and deployment shape
 
