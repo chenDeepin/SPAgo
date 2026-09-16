@@ -160,6 +160,17 @@ export const api = {  // --- ONLINE-03: hosted access ---
   },
   analysis: (analysisId: string, signal?: AbortSignal) =>
     getJson<import("./types").AnalysisDetail>(`/api/v1/analyses/${analysisId}`, signal),
+  // --- B-29: a stored analysis as a project artifact ---
+  addAnalysisToProject: (
+    projectId: string,
+    analysisId: string,
+    signal?: AbortSignal,
+  ) =>
+    postJson<import("./types").ProjectAnalysisRef>(
+      `/api/v1/projects/${projectId}/analyses`,
+      { analysis_id: analysisId },
+      signal,
+    ),
   exportAnalysis: async (analysis: { analysis_id: string; scope: string }) => {
     await downloadGet(
       `/api/v1/analyses/${analysis.analysis_id}/export`,

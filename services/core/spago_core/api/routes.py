@@ -3049,8 +3049,25 @@ class ProjectItemResponse(BaseModel):
     evidence_class: Optional[str] = None
 
 
+class ProjectAnalysisResponse(BaseModel):
+    id: uuid.UUID
+    analysis_id: uuid.UUID
+    scope: str
+    scope_label: str
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    prompt_version: Optional[str] = None
+    dataset_version: Optional[str] = None
+    analysis_created_at: Optional[str] = None
+    added_at: str
+    #: The referenced analysis row is gone; the snapshot above is what renders
+    #: (the migration-0008 contract, applied to analyses by B-29).
+    analysis_missing: bool = False
+
+
 class ProjectDetailResponse(ProjectSummaryResponse):
     items: list[ProjectItemResponse]
+    analyses: list[ProjectAnalysisResponse] = []
 
 
 class CreateProjectRequest(BaseModel):
@@ -3114,12 +3131,59 @@ def get_project(
         summary, items = projects_svc.get_project(
             engine, project_id, auth_svc.owner_id_for(user)
         )
+        analyses = projects_svc.list_project_analyses(
+            engine, project_id, auth_svc.owner_id_for(user)
+        )
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ProjectDetailResponse(
         **summary.__dict__,
         items=[ProjectItemResponse(**i.__dict__) for i in items],
+        analyses=[ProjectAnalysisResponse(**a.__dict__) for a in analyses],
     )
+
+
+class AttachAnalysisRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    analysis_id: uuid.UUID
+
+
+@router.post("/projects/{project_id}/analyses", response_model=ProjectAnalysisResponse, status_code=201)
+def attach_analysis(
+    project_id: uuid.UUID,
+    body: AttachAnalysisRequest,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    """Reference a stored analysis from a project (B-29). Idempotent: attaching
+    an analysis the project already holds returns the existing reference."""
+    from spago_core.services import projects as projects_svc
+
+    try:
+        return projects_svc.attach_analysis(
+            engine, project_id, body.analysis_id, auth_svc.owner_id_for(user)
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except projects_svc.ProjectScopeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.delete("/projects/{project_id}/analyses/{ref_id}", status_code=204)
+def remove_project_analysis(
+    project_id: uuid.UUID,
+    ref_id: uuid.UUID,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    from spago_core.services import projects as projects_svc
+
+    try:
+        projects_svc.remove_project_analysis(
+            engine, project_id, ref_id, auth_svc.owner_id_for(user)
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/projects/{project_id}/items", response_model=SaveScopeResponse)

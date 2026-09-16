@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { AnalysisDetail, AnalysisEntry, CitationRef } from "../api/types";
 import { Modal } from "./Modal";
@@ -43,6 +43,17 @@ export function AnalysesDialog({ onClose, onOpenScope, onOpenCitation }: Analyse
   const [openId, setOpenId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [attachProject, setAttachProject] = useState<string>("");
+  const [attachOutcome, setAttachOutcome] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // Projects to attach an analysis to (B-29). Owner-scoped like every project
+  // read; empty simply disables the control.
+  const projectsQuery = useQuery({
+    queryKey: ["projects"],
+    queryFn: ({ signal }) => api.projects(signal),
+    staleTime: 15_000,
+  });
 
   const listQuery = useQuery({
     queryKey: ["analyses", scope, search],
@@ -65,6 +76,22 @@ export function AnalysesDialog({ onClose, onOpenScope, onOpenCitation }: Analyse
       await api.exportAnalysis(entry);
     } catch (err) {
       setActionError((err as Error).message || "The export failed.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const attachOne = async (entry: AnalysisEntry) => {
+    if (!attachProject) return;
+    setActionError(null);
+    setAttachOutcome(null);
+    setBusyId(entry.analysis_id);
+    try {
+      await api.addAnalysisToProject(attachProject, entry.analysis_id);
+      setAttachOutcome(`Attached to project.`);
+      queryClient.invalidateQueries({ queryKey: ["project", attachProject] });
+    } catch (err) {
+      setActionError((err as Error).message || "Attaching the analysis failed.");
     } finally {
       setBusyId(null);
     }
@@ -242,6 +269,37 @@ export function AnalysesDialog({ onClose, onOpenScope, onOpenCitation }: Analyse
                           (llm_inferred) to be checked against the cited records; export keeps the
                           scope, model and version header with it.
                         </p>
+                        {/* B-29: attach this stored analysis to a project, so the
+                            explanation travels with the selection it explains.
+                            Rendered only in the expanded entry (progressive
+                            disclosure), not on every row of the list. */}
+                        <div className="analyses-actions">
+                          <select
+                            className="select-input"
+                            aria-label={`Project for ${entry.scope_label}`}
+                            value={attachProject}
+                            onChange={(e) => setAttachProject(e.target.value)}
+                          >
+                            <option value="">Add to project…</option>
+                            {(projectsQuery.data ?? []).map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.item_count})
+                              </option>
+                            ))}
+                          </select>
+                          {attachProject && (
+                            <button
+                              className="btn btn-quiet"
+                              disabled={busyId === entry.analysis_id}
+                              onClick={() => void attachOne(entry)}
+                            >
+                              {busyId === entry.analysis_id ? "Attaching…" : "Add to project"}
+                            </button>
+                          )}
+                          {attachOutcome && busyId !== entry.analysis_id && (
+                            <span className="hint-note">{attachOutcome}</span>
+                          )}
+                        </div>
                       </>
                     ) : null}
                   </div>

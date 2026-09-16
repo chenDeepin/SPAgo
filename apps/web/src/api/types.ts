@@ -223,8 +223,26 @@ export interface ProjectItem {
   evidence_class?: string | null;
 }
 
+/** A stored analysis a project references (B-29): id plus the identity
+ * snapshot kept at attach time, so a vanished analysis leaves a readable,
+ * marked item. */
+export interface ProjectAnalysisRef {
+  id: string;
+  analysis_id: string;
+  scope: "family" | "document" | "target";
+  scope_label: string;
+  provider: string | null;
+  model: string | null;
+  prompt_version: string | null;
+  dataset_version: string | null;
+  analysis_created_at: string | null;
+  added_at: string;
+  analysis_missing: boolean;
+}
+
 export interface ProjectDetail extends ProjectSummary {
   items: ProjectItem[];
+  analyses: ProjectAnalysisRef[];
 }
 
 export interface SaveScopeResult {

@@ -18,6 +18,7 @@ import { FamilySidebar } from "./components/FamilySidebar";
 import { PlanCard } from "./components/PlanCard";
 import { SignInGate } from "./components/SignInGate";
 import { AnalysesDialog } from "./components/AnalysesDialog";
+import { ProjectAnalysesDialog } from "./components/ProjectAnalysesDialog";
 import { CorpusDialog } from "./components/CorpusDialog";
 import { ProjectsDialog } from "./components/ProjectsDialog";
 import { ResolutionState } from "./components/ResolutionState";
@@ -102,6 +103,9 @@ export function App() {
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [corpusOpen, setCorpusOpen] = useState(false);
   const [analysesOpen, setAnalysesOpen] = useState(false);
+  // B-29: the stored analyses an opened project references, read without a
+  // provider call.
+  const [projectAnalysesOpen, setProjectAnalysesOpen] = useState(false);
   const [openedProject, setOpenedProject] = useState<ProjectDetail | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
   // Selection restored by an opened project, applied once its family is on
@@ -521,6 +525,7 @@ export function App() {
     setOpenedProjectTargetId(null);
     setProjectError(null);
     setProjectSavedCompoundIds([]);
+    setProjectAnalysesOpen(false);
   }, [cancelProjectNavigation]);
 
   useEffect(() => () => projectNavigationAbort.current?.abort(), []);
@@ -1013,6 +1018,9 @@ export function App() {
     };
   }, [openedProject]);
 
+  // B-29: the analyses this project references, readable from either banner.
+  const openedProjectAnalyses = openedProject?.analyses ?? [];
+
   const loadMoreResults = useCallback(async () => {
     if (!searchSummary || !searchSummary.requestParams || structurePaging) return;
     const ctxFamily = searchSummary.familyId;
@@ -1221,6 +1229,14 @@ export function App() {
                   </label>
                 )}
                 <span className="spacer" />
+                {openedProjectAnalyses.length > 0 && (
+                  <button
+                    className="show-all-occ"
+                    onClick={() => setProjectAnalysesOpen(true)}
+                  >
+                    Saved analyses ({openedProjectAnalyses.length})
+                  </button>
+                )}
                 <button className="show-all-occ" onClick={closeProject} aria-label="Close project view">
                   Close project ×
                 </button>
@@ -1561,6 +1577,14 @@ export function App() {
                   </label>
                 )}
                 <span className="spacer" />
+                {openedProjectAnalyses.length > 0 && (
+                  <button
+                    className="show-all-occ"
+                    onClick={() => setProjectAnalysesOpen(true)}
+                  >
+                    Saved analyses ({openedProjectAnalyses.length})
+                  </button>
+                )}
                 <button
                   className="show-all-occ"
                   onClick={closeProject}
@@ -1814,6 +1838,14 @@ export function App() {
           onClose={() => setAnalysesOpen(false)}
           onOpenScope={(query) => { setAnalysesOpen(false); handleSearch(query); }}
           onOpenCitation={openAnalysisCitation}
+        />
+      )}
+
+      {projectAnalysesOpen && openedProject && (
+        <ProjectAnalysesDialog
+          projectName={openedProject.name}
+          analyses={openedProject.analyses ?? []}
+          onClose={() => setProjectAnalysesOpen(false)}
         />
       )}
 

@@ -59,6 +59,27 @@ class ProjectScopeError(ValueError):
 
 
 @dataclass(frozen=True)
+class ProjectAnalysisRef:
+    """A stored analysis a project references (B-29).
+
+    The identity snapshot is kept at attach time so a vanished analysis row
+    leaves a readable, marked item — the same contract migration 0008 set for
+    family and compound items.
+    """
+
+    id: uuid.UUID
+    analysis_id: uuid.UUID
+    scope: str
+    scope_label: str
+    provider: str | None
+    model: str | None
+    prompt_version: str | None
+    dataset_version: str | None
+    analysis_created_at: str | None
+    added_at: str
+    analysis_missing: bool = False
+
+@dataclass(frozen=True)
 class SaveResult:
     created_rows: int
     already_present_rows: int
@@ -652,3 +673,156 @@ def _candidate_evidence_class(conn, target_id: uuid.UUID, compound_id: uuid.UUID
         if candidate in rows:
             return candidate
     return "unspecified" if rows else None
+
+
+# --- B-29: stored analyses as project artifacts ------------------------------
+
+
+def attach_analysis(
+    engine: Engine,
+    project_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    owner_id: uuid.UUID | None = None,
+) -> ProjectAnalysisRef:
+    """Reference a stored analysis from a project, keeping an identity snapshot.
+
+    The analysis must exist and belong to the same owner as the project (the
+    local no-auth shape has one None owner). Attaching twice is idempotent: the
+    existing reference is returned, not duplicated — the same contract saving
+    scopes follows.
+    """
+    from spago_core.services.analyses import _scope_label
+
+    with engine.begin() as conn:
+        require_project(conn, project_id, owner_id)
+        analysis = conn.execute(
+            text(
+                """
+                SELECT a.id, a.scope_kind, a.provider, a.model, a.prompt_version,
+                       a.dataset_version, a.created_at, a.family_id, a.document_id,
+                       a.target_id, a.owner_id,
+                       f.family_key, d.publication_number AS document_number,
+                       t.target_key, t.name AS target_name
+                FROM ai_analyses a
+                LEFT JOIN patent_families f ON f.id = a.family_id
+                LEFT JOIN patent_documents d ON d.id = a.document_id
+                LEFT JOIN targets t ON t.id = a.target_id
+                WHERE a.id = :aid
+                """
+            ),
+            {"aid": analysis_id},
+        ).mappings().first()
+        if analysis is None:
+            raise NotFoundError(f"Analysis {analysis_id} not found")
+        if owner_id is not None and analysis["owner_id"] not in (None, owner_id):
+            raise NotFoundError(f"Analysis {analysis_id} not found")
+        label = _scope_label(analysis)
+        existing = conn.execute(
+            text(
+                "SELECT id FROM project_analyses "
+                "WHERE project_id = :pid AND analysis_id = :aid"
+            ),
+            {"pid": project_id, "aid": analysis_id},
+        ).scalar_one_or_none()
+        if existing is not None:
+            ref_id = existing
+        else:
+            ref_id = uuid.uuid4()
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO project_analyses (id, project_id, analysis_id, owner_id,
+                                                  scope, scope_label, provider, model,
+                                                  prompt_version, dataset_version,
+                                                  analysis_created_at)
+                    VALUES (:id, :pid, :aid, :owner, :scope, :label, :provider, :model,
+                            :prompt_version, :dataset_version, :created_at)
+                    """
+                ),
+                {
+                    "id": ref_id,
+                    "pid": project_id,
+                    "aid": analysis_id,
+                    "owner": owner_id,
+                    "scope": analysis["scope_kind"] or "family",
+                    "label": label,
+                    "provider": analysis["provider"],
+                    "model": analysis["model"],
+                    "prompt_version": analysis["prompt_version"],
+                    "dataset_version": analysis["dataset_version"],
+                    "created_at": analysis["created_at"],
+                },
+            )
+    return ProjectAnalysisRef(
+        id=ref_id,
+        analysis_id=analysis_id,
+        scope=analysis["scope_kind"] or "family",
+        scope_label=label,
+        provider=analysis["provider"],
+        model=analysis["model"],
+        prompt_version=analysis["prompt_version"],
+        dataset_version=analysis["dataset_version"],
+        analysis_created_at=analysis["created_at"].isoformat(),
+        added_at="",
+    )
+
+
+def list_project_analyses(
+    engine: Engine, project_id: uuid.UUID, owner_id: uuid.UUID | None = None
+) -> list[ProjectAnalysisRef]:
+    """The project's analysis references, with a live join only to detect that
+    a referenced analysis row is gone — the snapshot, not the live row, is what
+    renders."""
+    with engine.connect() as conn:
+        require_project(conn, project_id, owner_id)
+        rows = conn.execute(
+            text(
+                """
+                SELECT pa.id, pa.analysis_id, pa.scope, pa.scope_label, pa.provider,
+                       pa.model, pa.prompt_version, pa.dataset_version,
+                       pa.analysis_created_at, pa.added_at,
+                       (a.id IS NULL) AS analysis_missing
+                FROM project_analyses pa
+                LEFT JOIN ai_analyses a ON a.id = pa.analysis_id
+                WHERE pa.project_id = :pid
+                ORDER BY pa.added_at, pa.id
+                """
+            ),
+            {"pid": project_id},
+        ).mappings().all()
+    return [
+        ProjectAnalysisRef(
+            id=r["id"],
+            analysis_id=r["analysis_id"],
+            scope=r["scope"],
+            scope_label=r["scope_label"],
+            provider=r["provider"],
+            model=r["model"],
+            prompt_version=r["prompt_version"],
+            dataset_version=r["dataset_version"],
+            analysis_created_at=(
+                r["analysis_created_at"].isoformat() if r["analysis_created_at"] else None
+            ),
+            added_at=r["added_at"].isoformat(),
+            analysis_missing=r["analysis_missing"],
+        )
+        for r in rows
+    ]
+
+
+def remove_project_analysis(
+    engine: Engine,
+    project_id: uuid.UUID,
+    ref_id: uuid.UUID,
+    owner_id: uuid.UUID | None = None,
+) -> None:
+    """Remove a project's reference to an analysis. The analysis itself is
+    untouched — this removes the project's pointer, not the stored artifact."""
+    with engine.begin() as conn:
+        require_project(conn, project_id, owner_id)
+        result = conn.execute(
+            text("DELETE FROM project_analyses WHERE id = :id AND project_id = :pid"),
+            {"id": ref_id, "pid": project_id},
+        )
+        if result.rowcount == 0:
+            raise NotFoundError(f"Analysis reference {ref_id} not in project {project_id}")
