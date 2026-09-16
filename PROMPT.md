@@ -1,51 +1,58 @@
 # SPAgo — Product Contract and Current Handoff
 
-> **Current handoff — 2026-09-17, documentation and archival round (no product
-> change).** Every plan delivered in the 2026-09-16 rounds was re-checked against the
-> current checkout and moved to `docs/archive/`; [backlog
-> §1](docs/plans/backlog.md#1-priority-order) is the delivery record, and the durable
-> pages (capability, architecture, README) no longer name delivered items as open
-> gaps. `docs/plans/` holds this register plus the two active plans (B-21's decision
-> dossier, B-32's machine-half plan). The register gained **B-44** (the screen-reader
-> announcement pass B-19 left unperformed — the head of P2 and the one engineering
-> item the next round can start without an operator decision) and **B-45** (P3:
-> hermetic fixtures for the stored-data browser specs); **B-11**'s remaining half was
-> reclassified `LATER`/P3 — a second provider adds no capability the acceptance gate
-> asks for.
+> **Current handoff — 2026-09-17, implementation round 2 (product change).**
+> **B-44 delivered:** a real screen reader was driven over both virtualized tables and
+> the defect it found is fixed. `apps/web/scripts/at-pass.mjs` runs Orca 42.0 against
+> speech-dispatcher behind a silent (`dummy`-module) daemon, drives Chrome with
+> `--force-renderer-accessibility` by keyboard, and records every utterance per step
+> next to the accessibility tree Chrome exposed; `apps/web/scripts/x11-focus.py` gives
+> the driven window the session's activation, without which the reader announces
+> nothing at all (a session fault the first pass ran into and the record now names).
+> The tables announced **"table with 1 row 6 columns"** because no data cell carried
+> `role="cell"`: the platform table counted the header row alone and no cell object
+> existed. With the role added, the same view announces **"table with 11 rows 6
+> columns"**, cells carry content and column index, and the same-build before/after is
+> in `benchmarks/screen-reader-pass-2026-09-17.md` with the verbatim transcript beside
+> it. B-19's keyboard rules were re-verified through the reader in the same run.
+> **B-08 closed with a negative result:** no documented BindingDB path supplies a
+> source-declared assay description or variant context, and the capability page's
+> wording was corrected rather than the adapter — the `assay_description` on a
+> BindingDB REST row is a note SPAgo writes itself.
+>
+> **Two items were added from what these measured.** **B-46** (head of P2): the tables'
+> keyboard model — one tab stop per data row (30 further Tab presses stayed inside
+> rows; IL6 holds 157), no arrow-key cell navigation, and a focused row announces
+> nothing. It changes the keyboard model B-19 verified, so it needs its own keyboard
+> and reader passes. **B-47** (P3): the operator release's `pH` and `Temp (C)` columns
+> that no path maps, gated on a decision about whether an assay-condition field belongs
+> in the model.
 >
 > **Actual stage.** A locally implemented product with browser-verified workflow
 > correctness, a full CI gate (every push runs the whole backend suite against the
 > shipped PostgreSQL+RDKit image and the e2e smoke against the seeded compose stack),
 > and a prepared scientific cross-read pack. **Hosted acceptance, the invited
 > scientist and the independent human cross-read remain open and operator-gated (B-31,
-> B-32's second half).** A local rehearsal or a green CI run never closes them.
+> B-32's second half).** A local rehearsal, a green CI run or a pass on this desktop
+> never closes them.
 >
-> **Delivered in the 2026-09-16 rounds, per item with its evidence and stated
-> limits:** B-33 (target export/screen policy parity, browser-reproduced then fixed),
-> B-34 (distinguishable build identity in `/healthz` with a recorder that fails on
-> mismatch), B-35 (CI `full-stack` job), B-42 (short-viewport table collapse), B-36
-> (every saved scope of a mixed project reopens through one switcher), B-32's machine
-> half (the cohort pack: source-only vs combined verdicts, TSLP's historical
-> "1/2 vs 0/1" now machine-visible as one supplement row), B-37 (a citation opens the
-> exact record it names), B-30 (a complete refresh retracts what its release no longer
-> returned, scoped by target+source+access path, migration 0021), B-19's keyboard
-> half (table header ownership and nested-control keys), B-29 (stored analyses as
-> project artifacts, migration 0022), B-39 (target-view filters and policy travel in
-> the URL state), B-38 (browser regression for failures, stale responses and saved
-> work), B-11's ungated half (refusal class and retry budget in the 502 detail), and
-> B-21's feasibility decision document (the source/terms choice itself is the
-> operator's).
+> **Verified in this round:** `scripts/run_checks.sh` **831 passed** + frontend build
+> clean (before and after the change), `npm run test:e2e` **8 passed** on the rebuilt
+> stack, `/healthz` serving `9250b0c-dirty` with the identity recorder agreeing, and
+> the announcement pass on that build with its transcript committed.
 >
 > **Limits that matter to the product loop:**
+> - One reader (Orca 42.0), one browser, one platform, two views, one viewport. Orca's
+>   own Ctrl+Alt+arrow table commands are untested — it grabs them at the X level and
+>   synthetic keys never reach the grab — so "a reader moves cell by cell and hears the
+>   header" is not demonstrated; that is part of B-46.
 > - B-30's retraction needs a *complete* or *empty* ask; failed/partial asks and other
 >   access paths are provably untouched, and 155 legacy rows with no recorded access
 >   path are never retracted. Document-level corpus absence stays unclaimed.
 > - The cohort pack is machine-prepared evidence, not an independent review; B-31's
-> gate needs the human cross-read the pack is shaped for.
-> - The retraction run note was not browser-reproduced (the reason is in its plan).
->   The screen-reader announcement pass was **not** performed — it is now item
->   **B-44** — and B-43 (a patent search from a target view pushes two history
->   entries) is recorded with a workaround.
+>   gate needs the human cross-read the pack is shaped for.
+> - The retraction run note was not browser-reproduced (the reason is in its plan), and
+>   B-43 (a patent search from a target view pushes two history entries) is recorded
+>   with a workaround.
 > - One live model provider remains historically measured; second-provider evaluation
 >   stays gated on an explicit choice and budget. Claims text needs the operator's
 >   B-21 decision (OPS registration/terms) before any integration (B-22 stays P3).
@@ -57,14 +64,15 @@
 > `docs/online-capability.md` §6 — host/TLS, readiness, owner isolation, restore,
 > provider smoke, source coverage, latency/cost, invited scientist and independent
 > reader, now with the build-identity recorder and the cohort pack as its tooling.
-> Operator-only decisions stay explicit. 2. The next implementation round starts
-> with **B-44** (ungated, S) when it is authorized; the remaining register items are
-> operator-gated (B-21 decision, B-09 scientific review) or P3 as ranked — B-11's
-> second-provider half is now among the P3 group. The register records why.
+> Operator-only decisions stay explicit. 2. The next implementation round starts with
+> **B-46** (ungated, M, measured) when it is authorized; the remaining register items
+> are operator-gated (B-21 decision, B-09 scientific review) or P3 as ranked, and the
+> register records why. The next round's records go in `docs/plans/backlog.md` §1.
 >
 > **Evidence map:** scope and hosted gate `docs/online-capability.md`; operations
 > `docs/runbook.md` §H1–H10; per-item delivery records in `docs/plans/backlog.md`
-> with their plans and benchmarks under `docs/archive/`; the cohort pack
+> with their plans and benchmarks under `docs/archive/`; the announcement pass
+> `benchmarks/screen-reader-pass-2026-09-17.{md,txt}`; the cohort pack
 > `benchmarks/cohort-pack-2026-09-16.*`.
 > Older rounds in `docs/archive/` are historical records, not the current work queue.
 > The rest of this document is the standing product contract; aspirational capabilities

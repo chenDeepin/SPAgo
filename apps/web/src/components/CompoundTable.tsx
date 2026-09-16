@@ -143,6 +143,11 @@ export function CompoundTable({
           </div>
         </div>
 
+        {/* Every child of a data row carries role="cell": that is what makes
+            the table's own row/column accounting exist for assistive
+            technology. Without it the exposed table reports the header row as
+            its only row — a reader hears "table with 1 row" — and no cell
+            carries a column index (B-44). */}
         <div
           role="rowgroup"
           style={{ position: "relative", minWidth: MIN_TABLE_WIDTH, height: virtualizer.getTotalSize() }}
@@ -193,7 +198,7 @@ export function CompoundTable({
                   cursor: "pointer",
                 }}
               >
-                <div style={{ flex: `0 0 ${COL_CHECK}px`, padding: "0 8px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_CHECK}px`, padding: "0 8px" }}>
                   <input
                     type="checkbox"
                     aria-label={`Select compound ${compound.inchikey}`}
@@ -202,7 +207,7 @@ export function CompoundTable({
                     onChange={(e) => onToggleSelection(compound.id, e.target.checked)}
                   />
                 </div>
-                <div style={{ flex: `0 0 ${COL_STRUCTURE}px`, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_STRUCTURE}px`, padding: "0 12px" }}>
                   <button
                     className="structure-btn"
                     onClick={(e) => {
@@ -215,7 +220,7 @@ export function CompoundTable({
                     <MoleculeImage compoundId={compound.id} />
                   </button>
                 </div>
-                <div style={{ flex: 1, minWidth: 0, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: 1, minWidth: 0, padding: "0 12px" }}>
                   <div className="mono" title={compound.inchikey}>
                     {compound.inchikey.slice(0, 14)}…
                   </div>
@@ -240,7 +245,7 @@ export function CompoundTable({
                     </div>
                   )}
                 </div>
-                <div
+                <div role="cell"
                   className="cell-labels"
                   style={{ flex: `0 0 ${COL_LABELS}px`, minWidth: 0, padding: "0 12px" }}
                 >
@@ -263,7 +268,7 @@ export function CompoundTable({
                   )}
                   {row.mentions.length === 0 && <span className="not-provided">Not provided</span>}
                 </div>
-                <div style={{ flex: `0 0 ${COL_ACTIVITY}px`, minWidth: 0, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_ACTIVITY}px`, minWidth: 0, padding: "0 12px" }}>
                   {row.activity.length > 0 ? (
                     <span
                       style={{ fontSize: 12 }}
@@ -279,7 +284,7 @@ export function CompoundTable({
                     <span className="not-provided">none shown</span>
                   )}
                 </div>
-                <div style={{ flex: `0 0 ${COL_EVIDENCE}px`, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_EVIDENCE}px`, padding: "0 12px" }}>
                   <button
                     className="evidence-link"
                     onClick={(e) => {

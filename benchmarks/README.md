@@ -170,3 +170,15 @@ retrievals. The before-fix run refused 0/2 (4 refusals) and exposed a citation g
 that affected the whole target scope (defect D9: the prompt requires citing
 `reference:<id>`, which the validator did not allow); after the fix, 2/2 answered
 with text that does not read the empty set as a negative result.
+
+## Assistive-technology acceptance (not a latency benchmark)
+
+`screen-reader-pass-2026-09-17.md` (raw stream:
+`screen-reader-pass-2026-09-17-transcript.txt`) — the B-44 announcement pass: Orca
+42.0 reading the two virtualized tables in Chrome 142 on a 1600×1000 X11 desktop,
+with the reader's own utterances recorded per keyboard step. It records the defect
+the pass found (a table announced as "1 row"), the fix (`role="cell"` on data-row
+children) with a same-build before/after measured through the platform table
+interface, the B-19 keyboard rules re-verified on the same build, and the limits —
+including that Orca's own Ctrl+Alt+arrow table commands cannot be driven by
+synthetic keys and stay untested.

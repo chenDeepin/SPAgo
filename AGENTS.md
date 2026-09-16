@@ -368,6 +368,8 @@ Required categories: unit, chemistry correctness, adapter contract, database int
 
 Frontend interaction acceptance on a virtualized data table has two passes: keyboard operability (row/header semantics, nested controls) and an assistive-technology announcement pass. A role/ARIA change or a DOM assertion closes neither by itself; record which pass was performed, and keep an unperformed pass as an open register item rather than a delivered claim.
 
+An announcement pass names the reader and its version, the browser and the platform, and records the announcement stream verbatim — what was read, at which row, with which control. Prove the reader is speaking before reading silence as a result: a reader that announced *nothing* is a session fault (no active window, no speech server, a stale reader process), never evidence that the interface announces correctly, and a pass whose stream is empty is not a pass. The window the pass drives must hold the session's activation, since a reader speaks for the active window only. An accessibility-tree read (roles, names, indexes, through the platform interface or the browser's own tree) supports the record but does not replace the reader's announcements. A defect the pass finds is fixed in that round with its evidence or recorded as its own register item.
+
 Maintain sealed fixtures for known patent cases. Scientific correctness tests are as important as software tests.
 
 ---

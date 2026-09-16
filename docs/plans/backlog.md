@@ -7,7 +7,23 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-17 — documentation and archival round (no product change).
+Last updated: **2026-09-17, implementation round 2 — the announcement pass and the
+source-capability check (product change).** Two P2/P3 items were worked in this
+checkout: **B-44 delivered** — a real screen reader (Orca 42.0) was driven over both
+virtualized tables, its utterances recorded, and the defect it found fixed (`role="cell"`
+on data-row children: the table a reader hears went from "1 row" to "11 rows");
+**B-08 closed with a negative result** — no documented BindingDB path supplies a
+source-declared assay description or variant context, and the capability page's wording
+was corrected instead of the adapter. Two items were added from what they measured:
+**B-46** (the tables' keyboard model: one tab stop per row, no arrow-key cell
+navigation, a silent row focus) at the head of P2, and **B-47** (assay-condition facts
+the source supplies and SPAgo drops) at P3. `AGENTS.md` §27 gained the rule the round
+needed: an announcement pass names its reader and platform, records the stream
+verbatim, and treats an empty stream as a session fault rather than a clean result.
+Verified before and after: backend suite **831 passed**, frontend build clean, browser
+suite **8 passed**, served build identity `9250b0c-dirty`. Details: §1's delivered
+table, §2's items, §6's log.
+Previous update: **2026-09-17 — documentation and archival round (no product change).**
 Every plan delivered in the 2026-09-16 rounds was re-checked against the current
 checkout (`scripts/run_checks.sh`: backend suite **831 passed**, frontend build clean)
 and its completed plan moved to `docs/archive/` with this register as the delivery
@@ -65,12 +81,12 @@ next implementation round, when authorized, starts at the head of P2.
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
 | P0 | B-31 | Real hosted pilot acceptance | CORE | M + operator time | real host/TLS, provider/budget, invited scientist; B-32 evidence |
-| P2 | B-44 | Screen-reader announcement pass on the virtualized tables | NEXT | S | none — closes B-19's unperformed acceptance |
+| P2 | B-46 | Keyboard model of the virtualized tables (one tab stop per row, no arrow-key cell navigation, silent row focus) | NEXT | M | none — measured by B-44's pass (2026-09-17) |
 | P2 | B-21 | Claim-text source decision (feasibility prepared) | NEXT | decision | operator: OPS registration, credentials, fair-use terms acceptance |
 | P2 | B-09 | Reviewed target-scope catalog expansion | NEXT | M | scientific review |
 | P3 | B-43 | One patent search from a target view pushes two history entries | LATER | S | browser-reproduced 2026-09-16 during B-39's verification |
 | P3 | B-40 | Small cross-family SAR comparison with assay comparability | LATER | M–L | reviewed comparison task + matched assay context |
-| P3 | B-08 | BindingDB assay-context enrichment *(owner request group)* | LATER | M | source capability check |
+| P3 | B-47 | Assay-condition facts the source supplies and SPAgo drops (pH, temperature) | LATER | S–M | decision: does an assay-condition field belong in the model, or is its absence stated |
 | P3 | B-28 | Bounded multi-target snapshot run and change report | LATER | M | B-30 delivered; measured repeated-batch need |
 | P3 | B-27 | Structure review sheet (fixed-scale cards, scaffold folding, lossless PDF) | LATER | L | user workflow ask |
 | P3 | B-05 | Bulk analytical filtering surface (DuckDB/Parquet) | LATER | L | ADR + dataset + measured metadata-search need |
@@ -112,6 +128,22 @@ measures compatibility rather than adding anything a user can do (`AGENTS.md`
 §37/§38). No other rank changed; the delivered table below keeps its artifacts, now
 pointing at the archived plans.
 
+**What moved on 2026-09-17 after the announcement pass (round 2).** **B-44 is
+delivered** and leaves the table with its artifact; the pass found one defect, which
+this round fixed (`role="cell"`), and two more, which it did not — so **B-46** enters at
+the head of P2 carrying them: each data row is its own tab stop (30 further Tab presses
+stayed inside rows, and the IL6 investigation holds 157), there is no arrow-key cell
+navigation, and a focused row is silent while its cells now carry the content. It is
+ungated, its evidence is recorded, and it serves the same capability B-19/B-44 were
+about, which is why it takes the head rather than a P3 slot. **B-08 is closed with a
+negative result**: the source-capability check found no documented BindingDB path that
+supplies a source-declared assay description or variant context — the honest change was
+to the capability page's wording, not to the adapter — so the item leaves the table and
+**B-47** takes its place for the one thing the check did find: the operator release
+carries `pH` and `Temp (C)`, which no path maps, and the decision needed is whether an
+assay-condition field belongs in the model. B-43 keeps its P3 rank and its workaround;
+B-40 now has the assay-context link B-47 names. No other rank changed.
+
 **Delivered from this register (kept out of the table, with the artifact that closed
 it):**
 
@@ -146,6 +178,8 @@ it):**
 | B-11 | 2026-09-16 (ungated half) | The refusal detail names the class and the budget: a content rejection after the one allowed re-sample says "Both attempts were rejected … the retry budget for one request is used. A new request will be a new billed call; no automatic retry happens", a transport failure says the endpoint was never reached and nothing was returned or billed for the attempt, and a generic upstream failure (a tool-call violation) keeps its plain detail rather than a billing statement it cannot support. `_attach_observed_usage` now records `attempts` unconditionally (the budget statement must not depend on observed usage), and the AI panel renders the message beside an explicit Retry — the reader chooses the billed call. `tests/test_b11_refusal_detail.py` (6 cases) + the LLM cluster **81 passed**. The gated half (second-provider live evaluation) keeps its provider/budget gate and was reclassified LATER · P3 on 2026-09-17 (B-11 in §1). |
 | B-21 | 2026-09-16 (feasibility prepared) | The decision deliverable exists: `docs/plans/2026-09-16-claims-source-feasibility.md` records what each source actually offers (OPS `/published-data/publication/epo/{number}/claims` is the only authoritative claim-text source found — OAuth2, fair-use ≈1 Mbit/s and a ≈3.5–4 GB/week free tier with 403 quota bands; SureChEMBL bulk carries section-occurrence annotations but **cannot distinguish claimed from mentioned compounds** and ships no claim text), the evidence mapping into the existing typed model (`source_type='claim'`, claim number/paragraph/jurisdiction/language, `claims_assessed` flipping without UI redesign), and a bounded sample design with success/failure criteria that kill the integration honestly. **The decision itself stays with the operator** (EPO registration, credentials, terms acceptance); no source chosen, no adapter, no claims UI — B-22 stays P3 behind it. |
 | B-38 | 2026-09-16 | Five spec files in the existing runner (`stale-response` ×2, `unavailable-source` ×2, `source-retry`, `save-reopen`, `export-contents`): a slow response cannot overwrite a newer scope or selection; a failed candidates fetch is an error with Retry — never an empty success; the per-source retry asks exactly that source and leaves the other chips untouched; save/reload/reopen restores the selection; and a filtered export's CSV rows equal the menu's claim with the overridden policy in every row. Bounded injection is labelled in each spec; row locators survive both table structures. **The round found and fixed a real defect**: a failed coverage fetch rendered "No retrieval has been run for this target yet." — a false authoritative statement (AGENTS §22); `TargetHeader` now renders the failure with a retry and a new spec variant pins it. Full suite **8 passed** on the rebuilt stack (`50caf8f-dirty`), coordinator-verified; the first CI run failed honestly (the two stored-data specs met a freshly seeded stack), and both now skip loudly on a bare stack — final hosted run **35126623060 green**: build_id `9c1d29c` matched, browser suite 6 passed + 2 loud skips, full backend suite within the job. Not proven: live sources, hosted mode. Plan: `docs/archive/2026-09-16-browser-regression.md`. |
+| B-44 | 2026-09-17 | The announcement pass is performed, not asserted: `apps/web/scripts/at-pass.mjs` drives the app in Chrome with `--force-renderer-accessibility`, starts Orca 42.0 against speech-dispatcher 0.11.1 (a private instance whose default module is `dummy`, so the pass makes no sound), and records every utterance Orca produced per keyboard step alongside the accessibility tree Chrome exposed (`benchmarks/screen-reader-pass-2026-09-17.md` + its transcript). **It found a defect and the round fixed it**: no data cell carried `role="cell"`, so a reader was told the compound table was **"table with 1 row 6 columns"** (the header was the only row the platform table counted, `nRows=1`) and no cell object existed at all — with `role="cell"` the same view announces **"table with 11 rows 6 columns"**, cells carry their column index and content, and a same-build runtime reproduction (the attribute stripped in the page) shows `cell` count 70 → 0 and data-row children `cell` ×7 → `generic`/`none`. B-19's keyboard rules were re-verified on the same build through the reader (`Space` on a row checkbox: inspector not opened, exactly one box checked; `Enter` on the row: the Evidence inspector dialog opens). Also recorded, and **not** fixed — they are now **B-46**: every data row is its own tab stop (30 further Tab presses stayed inside rows; IL6 holds 157), there is no arrow-key cell navigation, and focusing a row announces nothing. Verified after the change: `scripts/run_checks.sh` 831 passed + frontend build, `npm run test:e2e` 8 passed, `/healthz` build_id `9250b0c-dirty`. Not proven: Orca's own Ctrl+Alt+arrow commands (grabbed at the X level, so synthetic keys never reach them), other readers/platforms, hosted mode. Record: `docs/archive/2026-09-17-screen-reader-announcement-pass.md`. |
+| B-08 | 2026-09-17 | Closed with a **negative result**, not built: a bounded, read-only source-capability check (worker-run, coordinator-recorded) read the REST adapter's full stored-field set, made two calls to the adapter's own documented endpoint (`getLigandsByUniprot`, IL-6 `P05231` and trypsin `P07477`), read BindingDB's documented REST reference, and inspected the operator release's 640-column header plus a 5 000-row population sample. Every affinity row of the live payload carries exactly four keys (monomer id, SMILES, affinity type, affinity); neither the documented output nor the release schema has an assay-text or variant/mutation column, and `PubChem AID` is the only assay link, which is a different source and B-07's subject. The item's premise needed one correction and got it: `assay_description` is **not** empty on a BindingDB REST row — it holds a note SPAgo writes itself, which the capability page now says, together with the fact that species is covered by the B-23 snapshot path and that pH/temperature are mapped nowhere (**B-47**). Artifact: the corrected §8 of `docs/online-capability.md`. |
 
 ## 2. Items
 
@@ -311,12 +345,25 @@ ChEMBL's own rows. The recovery path and that defect are the same fix.
 
 ### B-08 — BindingDB assay-context enrichment *(owner request group)*
 
+**Closed 2026-09-17 with a negative result** (§1's delivered table carries the check
+and its artifact: the corrected `docs/online-capability.md` §8). The item statement is
+kept as the record of what was asked, with one correction the check produced:
+`assay_description` is not empty for a BindingDB REST row — it holds a note SPAgo
+writes itself, which a reader could have mistaken for a source's assay text.
+
 - **Problem.** Capability §8: the REST path supplies no assay description, species or
   variant context, so those fields are empty for BindingDB records.
 - **Scope if built.** Check whether another documented BindingDB path or a different
   field set supplies the context; if yes, map it through the adapter and say where it
   came from. If no, record the negative result and close the item.
-- **Class LATER · P3 · M.**
+- **Outcome.** No documented path supplies a source-declared assay description or
+  variant context: the live REST payload's affinity rows carry monomer id, SMILES,
+  affinity type and value; the documented output describes the same four; the operator
+  release's 640 columns hold no assay-text or variant column; `PubChem AID` is the one
+  assay link and belongs to a different source (B-07). Species is already covered by
+  the B-23 snapshot path. The one thing left over — the release's `pH` and `Temp (C)`
+  columns — is a *condition* fact, not the context this item named, and is **B-47**.
+- **Class LATER · P3 · M — closed.**
 
 ### B-09 — Reviewed target-scope catalog expansion
 
@@ -1039,6 +1086,16 @@ at 1280×720 and 1600×1000 on the rebuilt stack, family smoke unchanged.
 
 ### B-44 — Screen-reader announcement pass on the virtualized tables
 
+**Delivered 2026-09-17** (§1's delivered table carries the pass and its fix; the record
+is `benchmarks/screen-reader-pass-2026-09-17.md` with its transcript, and the plan is
+`docs/archive/2026-09-17-screen-reader-announcement-pass.md`). The item statement is
+kept as the record of what was asked. What the pass added to it: an announcement pass
+is a *session*, not an assertion — it needs an active window and a speech server that
+answers, and a reader that says nothing is a fault to diagnose, not a clean result
+(now `AGENTS.md` §27). The pass found three defects; one was fixed here
+(`role="cell"`: a table announced as "1 row" now announces "11 rows" with real cells),
+and the two keyboard-model ones are **B-46**.
+
 - **Evidence.** B-19 moved `role="table"`, the header row and `columnheader` cells into
   the scroll container and gave nested controls their keys (browser-verified), but the
   assistive-technology half of its acceptance — announced headers/cells/row counts,
@@ -1051,8 +1108,33 @@ at 1280×720 and 1600×1000 on the rebuilt stack, family smoke unchanged.
   (what was read, at which row, with which control); keyboard pass re-run against the
   same build so the two are not mixed; any defect found is either fixed with a spec or
   recorded as its own item.
-- **Class NEXT · P2 · S.** The only unperformed acceptance check left by the 2026-09-16
-  rounds.
+- **Class NEXT · P2 · delivered · S.**
+
+### B-46 — Keyboard model of the virtualized tables
+
+- **Evidence (measured by B-44's pass, 2026-09-17, build `9250b0c-dirty`).** Every data
+  row carries `tabIndex={0}`, so Tab crosses the table one row at a time — the pass
+  recorded "30 further Tab press(es) still landed inside rows" after the first row, and
+  the IL6 investigation holds 157 rows with a checkbox and a structure button inside
+  each. There is no arrow-key movement between rows or cells, and focusing a data row
+  announces **nothing** (the row has no accessible name; only its cells now carry the
+  content). Entering the candidate table announced the select-all checkbox without the
+  table's own description in that run, which the compound table did announce.
+- **User gain / scope.** A keyboard or reader user reaches a row and reads it with the
+  keys a table implies, in the existing layout (`PROMPT.md` §2.5; `AGENTS.md` §3): the
+  ARIA grid pattern — one tab stop for the table, roving tabindex, arrow keys inside,
+  cells that announce with their column header. It changes the keyboard model B-19
+  verified, so it needs its own keyboard pass and its own reader pass; do not bundle it
+  with unrelated table work.
+- **Acceptance.** From the table's single tab stop, arrow keys move between rows and
+  cells, the focused cell announces its column header and content, and Tab leaves the
+  table after one stop. B-19's rules still hold (Space on a checkbox selects without
+  inspecting, Enter on a row inspects) and virtual scrolling keeps focus on a live row.
+  Record the reader's utterances, not only the DOM, and measure the tab-stop count
+  before and after. The candidate table's missing table description is answered or
+  recorded.
+- **Class NEXT · P2 · M.** The head of P2 because it is ungated, measured, and it is the
+  operability of the product's main object rather than a new capability.
 
 ### B-45 — Hermetic resolve fixtures for the stored-data browser specs
 
@@ -1069,6 +1151,30 @@ at 1280×720 and 1600×1000 on the rebuilt stack, family smoke unchanged.
   change expected.
 - **Class LATER · P3 · S.** Gate: measured CI flakiness or a no-network runner;
   §34 keeps the fixture small, synthetic and provenance-recorded.
+
+### B-47 — Assay-condition facts the source supplies and SPAgo drops
+
+- **Evidence (found by B-08's source-capability check, 2026-09-17).** The operator's
+  BindingDB release carries per-row `pH` (2 763 of 5 000 sampled rows) and `Temp (C)`
+  (2 488 of 5 000); `spago_core` has no field for either, so the snapshot adapter
+  neither maps them nor mentions them in the note it writes. ChEMBL's own assay
+  conditions are likewise not carried beyond what the adapter already declares.
+- **Why it is not B-08.** B-08 asked for an assay *description* and target context; this
+  is a measurement *condition*, a different fact with a different home in the model.
+- **User gain / scope, if built.** Two measurements of one compound at different pH or
+  temperature are not obviously comparable, and the cross-family comparison B-40 wants
+  to make cannot say why two values disagree today (`PROMPT.md` §2.4; `AGENTS.md` §11
+  keeps a value and the class of a value apart — a condition is a third thing). Scope
+  would be one nullable condition field per measurement or assay, populated only by the
+  snapshot path that actually supplies it, displayed beside the value and never used to
+  rank.
+- **Decision needed first.** Whether an assay-condition field belongs in the domain
+  model (a migration, a claim in the capability page, an export column) or whether the
+  honest answer is a stated absence. The item stays closed until that is decided: an
+  unused nullable column is worse than a sentence saying the source supplies it and
+  SPAgo does not carry it.
+- **Class LATER · P3 · S–M.** Ranked beside B-40, which it serves; not before the
+  keyboard/evidence work the pilot needs.
 
 ## 3. Historical review — what the `BindingDB_IO` implementation changed (2026-09-16)
 
@@ -1213,3 +1319,4 @@ the present proposal order; a previous “no remaining work” statement is not 
 | 2026-09-16 | **B-19, B-29 and B-39 delivered** (the P2 group's ungated engineering items). B-19 as a subagent round reviewed by the coordinator (the cross-workstream smoke-locator catch was fixed before commit); B-29 as the coordinator's round (the attach control moved into the expanded entry for progressive disclosure before commit); B-39 with reload/invalid/Back-Forward browser evidence. **B-43 added** (P3/S): the double history push when opening a patent from a target view, found and reproduced during B-39's verification. Remaining table: **B-31 (operator), B-38 (in flight), B-21/B-09/B-11 (gated), P3 as ranked.** |
 | 2026-09-16 | **B-38 delivered** (subagent implementation, coordinator verification and two coordinator follow-ups: the false-empty coverage fix's spec variant, and the fresh-stack gating the first CI run demanded — hosted run 35126623060 green with 6 passed + 2 loud skips) **with a real defect found and fixed in the same round** — a failed coverage fetch rendered as the false "No retrieval has been run" (AGENTS §22); fixed in `TargetHeader` + `App.tsx` and pinned by a new spec variant. **B-11's refusal half and B-21's feasibility decision document delivered earlier in the same sitting.** The register's ungated engineering queue is now empty: what remains is B-31 (P0, operator-only), the gated halves of B-21/B-09/B-11/B-32, and the P3 group as ranked. |
 | 2026-09-17 | **Documentation and archival round (owner-authorized; no product code changed).** *Verified first:* `scripts/run_checks.sh` on this checkout — backend suite **831 passed** in 253.7 s, frontend build clean (chunk-size warning only), exit 0, at HEAD `232080a` with only documentation files dirty after it. *Archived:* all 24 plans delivered by the 2026-09-16 rounds moved from `docs/plans/` to `docs/archive/` (09-15 online-llm and bindingdb-io-port; 09-16 analysis-history, asset-compression, bindingdb-snapshot, browser-regression, build-identity, citation-navigation, corpus-scale-up, e2e-smoke, export-policy-parity, hosted-acceptance-rehearsal, import-refresh-completeness, mixed-project-scopes, patent-coverage-audit, patent-source-compounds, per-source-rerun, product-review-qa, refresh-retraction, reproducible-target-state, source-declared-linkage, supplement-bundle-import, table-keyboard-and-project-analyses, tolerant-publication-lookup), each with an archive banner, and every reference repointed **backlog §1 is the delivery record**; `docs/plans/` now holds this register, B-21's decision dossier and B-32's machine-half plan. *Stale claims corrected:* `docs/online-capability.md`, `docs/architecture/overview.md` and `README.md` no longer name delivered items as open gaps; two benchmark artifacts and the archived cross-references were repointed to the moved files. *Register re-sorted, with the moves stated in §1:* **B-44 added at the head of P2** (the screen-reader announcement pass B-19 left unperformed — the one unperformed acceptance check a delivered item left, ungated and S, now required separately by AGENTS.md §27), **B-45 added at P3** (hermetic resolve fixtures for the stored-data browser specs), **B-11's remaining half moved P2/NEXT → P3/LATER** (a second provider adds no capability the §6 gate asks for), B-28's gate line updated (B-30 delivered). *Rules:* `AGENTS.md` §0 gained the plan-lifecycle rule (a plan leaves `docs/plans/` only in the change that removes its register item; an unperformed acceptance remaining after delivery becomes a named item first; delivering an item corrects every durable page that still calls it a gap) and §27 gained the two-pass frontend-acceptance rule (keyboard pass and assistive-technology pass recorded separately). *Vision check:* every item in the table serves `PROMPT.md` §1/§2 or the §6 gate; nothing was promoted that only adds features — B-44 restores a claimed capability's verification, B-45 is test hygiene, and B-11 was demoted rather than queued. *Not checked in this round:* no browser run, no live-source call, no hosted acceptance — this was a documentation round; the running stack still serves the pre-round image, so the browser evidence stays that of the rounds named above. |
+| 2026-09-17 | **Implementation round 2 (owner-authorized queue).** *Evidence refreshed first on this checkout:* `scripts/run_checks.sh` — backend suite **831 passed** in 234.9 s, frontend build clean, exit 0. **B-44 delivered — the announcement pass is performed, not asserted.** `apps/web/scripts/at-pass.mjs` starts Orca 42.0 (speech-dispatcher 0.11.1 behind a private `dummy`-module instance, so the pass is silent), drives Chrome 142 with `--force-renderer-accessibility` through both tables by keyboard, and records every utterance the reader produced together with the accessibility tree Chrome exposed. Two session faults had to be solved and are now part of the record: `Page.bringToFront` left `_NET_ACTIVE_WINDOW` at `0x0` and Orca dropped 137 focus events while the log looked clean (`apps/web/scripts/x11-focus.py` gives the window the activation, re-asserted per step), and a wedged speech-dispatcher made Orca block before its main loop. **The pass found and this round fixed a real defect:** no data cell carried `role="cell"`, so the platform table counted the header row alone — a reader heard **"table with 1 row 6 columns"** for a ten-row table, and data-row children were `generic`/`none` with no cell objects at all. After the fix, the same view announces **"table with 11 rows 6 columns"**, cells carry content and index, and the candidate table's tree holds 70 cells; a same-build runtime reproduction (attribute stripped in the page) shows `cell` 70 → 0. B-19's keyboard rules were re-verified through the reader on the same build. Verified after: `npm run test:e2e` **8 passed**, `/healthz` build_id `9250b0c-dirty`. **B-08 closed with a negative result** (bounded read-only check: the live REST payload's affinity rows carry monomer id/SMILES/type/value; neither the documented output nor the operator release's 640 columns has an assay-text or variant column; `PubChem AID` is the one link and belongs to B-07) — with one correction to the item's premise, so the capability page now says the `assay_description` on a BindingDB REST row is SPAgo's own note, not a source's text. *Re-sorted, with the moves stated in §1:* **B-44 leaves the table as delivered**, **B-46 enters at the head of P2** (the keyboard model the pass measured: one tab stop per row, no arrow-key cell navigation, a silent row focus — ungated, measured, and the operability of the product's main object), **B-08 leaves the table closed** and **B-47 enters at P3** for the release's `pH`/`Temp (C)` columns that no path maps, gated on a decision about whether an assay-condition field belongs in the model. *Rules:* `AGENTS.md` §27 gained the announcement-pass rule — name the reader and platform, record the stream verbatim, treat an empty stream as a session fault, and note that the driven window must hold activation. *Vision check:* both worked items serve the existing loop (`PROMPT.md` §1/§2.5) — B-44 restores a claimed capability's verification, B-08's outcome is a corrected statement rather than a new surface, and B-46/B-47 were added only with the measurement that justifies them. *Not checked in this round:* no hosted acceptance, no live-source run other than the two documented BindingDB calls B-08's check made, and Orca's own Ctrl+Alt+arrow table commands (grabbed at the X level, unreachable by synthetic keys) remain untested. |

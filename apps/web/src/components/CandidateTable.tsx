@@ -122,6 +122,11 @@ export function CandidateTable({
           </div>
         </div>
 
+        {/* Every child of a data row carries role="cell": that is what makes
+            the table's own row/column accounting exist for assistive
+            technology. Without it the exposed table reports the header row as
+            its only row — a reader hears "table with 1 row" — and no cell
+            carries a column index (B-44). */}
         <div
           role="rowgroup"
           style={{ position: "relative", minWidth: MIN_TABLE_WIDTH, height: virtualizer.getTotalSize() }}
@@ -164,7 +169,7 @@ export function CandidateTable({
                   cursor: "pointer",
                 }}
               >
-                <div style={{ flex: `0 0 ${COL_CHECK}px`, padding: "0 8px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_CHECK}px`, padding: "0 8px" }}>
                   <input
                     type="checkbox"
                     aria-label={`Select candidate ${row.inchikey}`}
@@ -173,12 +178,12 @@ export function CandidateTable({
                     onChange={(e) => onToggleSelection(row.compound_id, e.target.checked)}
                   />
                 </div>
-                <div style={{ flex: `0 0 ${COL_STRUCTURE}px`, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_STRUCTURE}px`, padding: "0 12px" }}>
                   <span className="structure-btn" aria-label={`Structure for ${row.inchikey}`}>
                     <MoleculeImage compoundId={row.compound_id} />
                   </span>
                 </div>
-                <div style={{ flex: 1, minWidth: 0, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: 1, minWidth: 0, padding: "0 12px" }}>
                   <div className="mono" title={row.inchikey}>
                     {row.inchikey.slice(0, 14)}…
                   </div>
@@ -200,7 +205,7 @@ export function CandidateTable({
                     </div>
                   )}
                 </div>
-                <div style={{ flex: `0 0 ${COL_ACTIVITY}px`, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_ACTIVITY}px`, padding: "0 12px" }}>
                   <span className={`badge badge-activity-${row.activity_class}`}>
                     {activityClassLabel(row.activity_class)}
                   </span>
@@ -208,17 +213,17 @@ export function CandidateTable({
                     {row.potency_label ?? "no potency value for this threshold"}
                   </div>
                 </div>
-                <div style={{ flex: `0 0 ${COL_MODALITY}px`, padding: "0 12px" }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_MODALITY}px`, padding: "0 12px" }}>
                   <span className={`badge badge-${row.modality}`}>{modalityLabel(row.modality)}</span>
                   <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                     {row.modality_source ?? ""}
                     {row.modality_rule ? ` · ${row.modality_rule.split(";")[0]}` : ""}
                   </div>
                 </div>
-                <div style={{ flex: `0 0 ${COL_EVIDENCE}px`, padding: "0 12px", fontSize: 12 }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_EVIDENCE}px`, padding: "0 12px", fontSize: 12 }}>
                   {evidenceClassLabel(row.evidence_class)}
                 </div>
-                <div style={{ flex: `0 0 ${COL_PATENT}px`, padding: "0 12px", fontSize: 12 }}>
+                <div role="cell" style={{ flex: `0 0 ${COL_PATENT}px`, padding: "0 12px", fontSize: 12 }}>
                   {row.patent_occurrences > 0 ? (
                     <span title={row.patent_labels.join("; ")}>
                       {row.patent_occurrences} occurrence

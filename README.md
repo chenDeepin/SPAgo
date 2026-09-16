@@ -173,6 +173,17 @@ plus failed-source, stale-response, per-source retry, save/reopen and export-con
 specs; the two stored-data specs skip loudly on a bare stack instead of failing on
 absent data (`SPAGO_BASE_URL` overrides `http://127.0.0.1:8000`).
 
+The assistive-technology half of table acceptance is a separate, manual pass:
+`node scripts/at-pass.mjs` in `apps/web` drives the app in Chrome with
+`--force-renderer-accessibility`, captures what a real screen reader (Orca) announces
+for each keyboard step, and writes the transcript to `AT_OUT`. It needs a desktop
+session: a running reader, a speech server that answers, `DISPLAY`, and — because a
+reader speaks for the active window only — `scripts/x11-focus.py`, which gives the
+driven window the session's activation. Read
+[`benchmarks/screen-reader-pass-2026-09-17.md`](benchmarks/screen-reader-pass-2026-09-17.md)
+for the prerequisites in full, what the reader announced and what such a pass does not
+prove. It is not part of CI.
+
 ### Distinguishable builds
 
 `docker compose up --build` needs no extra setup and serves an explicit

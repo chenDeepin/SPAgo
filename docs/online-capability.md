@@ -544,10 +544,17 @@ The deployment is one app image plus one database. To roll back:
   the planner is not allowed to turn text into an identifier (AGENTS.md §12).
 - PubChem contributes screening context only; a CID→AID measurement path is not
   implemented (it would require unbounded BioAssay harvesting).
-- BindingDB's REST path supplies no assay description, species or variant context,
-  so those fields are empty for that access path (stated on the retrieval, not
-  presented as a property of every BindingDB record). The operator snapshot can
-  retain organism and chain context; its coverage must be identified separately.
+- BindingDB's REST path supplies no **source-declared** assay description, species or
+  variant context, so those fields stay empty for that access path (stated on the
+  retrieval, not presented as a property of every BindingDB record). The
+  `assay_description` a BindingDB REST row carries is a note SPAgo writes itself
+  ("BindingDB affinity for UniProt …, unit assumed nM by the service's documented
+  convention"), not a source's assay text. This is B-08's source-capability result
+  (2026-09-17), not an assumption: the documented REST output lists only monomer id,
+  SMILES, affinity type and value, and the operator release's 640 columns contain no
+  assay-text and no variant/mutation column. The operator snapshot can retain organism,
+  chain and curation context; its coverage must be identified separately. The release
+  also carries `pH` and `Temp (C)`, which no path maps today — recorded as B-47.
 - **Assay construct is not part of the contract.** No adapter in this build can map
   a protein construct, so no construct field is declared and none is displayed: a
   construct described in prose by a source is not carried into SPAgo, which is a
@@ -562,18 +569,24 @@ The deployment is one app image plus one database. To roll back:
   full metadata scan when the indexed lookup misses — measured at 155 ms on a
   50 000-document corpus (`benchmarks/tolerant-lookup-2026-09-16.md`) — which is why
   it runs only after the exact miss and is unmeasured above that corpus size.
-- **Evidence continuity is delivered, with two named residuals.** Mixed projects
+- **Evidence continuity is delivered, with one named residual.** Mixed projects
   reopen every saved scope (B-36), a citation opens the exact record it names (B-37),
   and a target view's evidence class, modality and threshold travel in the URL (B-39);
   structure-search snapshots in the URL are a later scope decision, not bundled there.
-  Unperformed: an assistive-technology announcement pass on the virtualized tables
-  (B-44; the keyboard/header pass is browser-verified), and hermetic fixtures for the
-  stored-data browser specs, which resolve IL-6 through the live (free) UniProt
-  endpoint today (B-45).
+  The assistive-technology pass is performed and recorded (B-44, 2026-09-17):
+  `apps/web/scripts/at-pass.mjs` drives Orca over the two tables in Chrome and
+  `benchmarks/screen-reader-pass-2026-09-17.md` holds what the reader announced. A
+  reader is now told the tables' true shape ("table with 11 rows 6 columns", not
+  "1 row"); the remaining keyboard-model gap (one tab stop per row, no arrow-key cell
+  navigation, a silent row-focus) is B-46. Hermetic fixtures for the stored-data
+  browser specs, which resolve IL-6 through the live (free) UniProt endpoint today,
+  remain open (B-45).
 - **Regression scope.** CI now runs the full backend suite against the shipped
   PostgreSQL+RDKit image and the browser smoke against the seeded compose stack
   (B-35), and the specs cover failed sources, stale responses, per-source retry,
   save/reopen and export-content parity (B-38); two stored-data specs skip loudly on
-  a bare stack instead of failing on absent data. Not covered: live sources, hosted
-  mode, and the screen-reader pass (B-44). Opening a patent from a target view pushes
-  two history entries — a polish defect with a press-Back-twice workaround (B-43).
+  a bare stack instead of failing on absent data. Not covered: live sources and hosted
+  mode. The screen-reader pass is now recorded (B-44) but is a manual, desktop-bound
+  check — it is not part of the automated suite, which is what B-46's keyboard model
+  change would need. Opening a patent from a target view pushes two history entries —
+  a polish defect with a press-Back-twice workaround (B-43).
