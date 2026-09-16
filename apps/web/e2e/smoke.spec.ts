@@ -31,7 +31,9 @@ test("a number opens a family, compounds filter by structure, results export", a
   await expect(page.locator(".a11y-status")).toContainText("Family DEMO-FAMILY-1 loaded");
   const table = page.getByRole("table", { name: /Compounds in family DEMO-FAMILY-1/ });
   await expect(table).toBeVisible();
-  const firstRow = table.getByRole("row").first();
+  // B-19 put the header row inside the table container, so data rows are
+  // scoped to the rowgroup — the first row of the table is the header.
+  const firstRow = table.getByRole("rowgroup").getByRole("row").first();
   await expect(firstRow).toBeVisible();
 
   // Compound: opening a row inspects its evidence — the record's citations are
@@ -53,7 +55,7 @@ test("a number opens a family, compounds filter by structure, results export", a
     name: /Compounds in family DEMO-FAMILY-1 \(structure search\)/,
   });
   await expect(filtered).toBeVisible();
-  await expect(filtered.getByRole("row").first()).toBeVisible();
+  await expect(filtered.getByRole("rowgroup").getByRole("row").first()).toBeVisible();
 
   // Export: the filtered result set exports as a CSV download.
   await page.getByRole("button", { name: "Export ▾" }).click();

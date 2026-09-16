@@ -66,7 +66,13 @@ export function CandidateTable({
 
   return (
     <div className="table-panel">
-      <div className="table-scroll" ref={scrollRef}>
+      <div
+        className="table-scroll"
+        ref={scrollRef}
+        role="table"
+        aria-label={`Candidate compounds for ${scopeLabel}`}
+        aria-rowcount={page.total}
+      >
         <div
           role="row"
           aria-rowindex={1}
@@ -85,7 +91,7 @@ export function CandidateTable({
             zIndex: 1,
           }}
         >
-          <div style={{ flex: `0 0 ${COL_CHECK}px`, padding: "0 8px" }}>
+          <div role="columnheader" style={{ flex: `0 0 ${COL_CHECK}px`, padding: "0 8px" }}>
             <input
               type="checkbox"
               aria-label="Select all loaded candidates"
@@ -96,18 +102,28 @@ export function CandidateTable({
               onChange={(e) => onToggleSelectAll(e.target.checked)}
             />
           </div>
-          <div style={{ flex: `0 0 ${COL_STRUCTURE}px`, padding: "0 12px" }}>Structure</div>
-          <div style={{ flex: 1 }}>Candidate</div>
-          <div style={{ flex: `0 0 ${COL_ACTIVITY}px`, padding: "0 12px" }}>Activity</div>
-          <div style={{ flex: `0 0 ${COL_MODALITY}px`, padding: "0 12px" }}>Modality</div>
-          <div style={{ flex: `0 0 ${COL_EVIDENCE}px`, padding: "0 12px" }}>Evidence class</div>
-          <div style={{ flex: `0 0 ${COL_PATENT}px`, padding: "0 12px" }}>Patent linkage</div>
+          <div role="columnheader" style={{ flex: `0 0 ${COL_STRUCTURE}px`, padding: "0 12px" }}>
+            Structure
+          </div>
+          <div role="columnheader" style={{ flex: 1 }}>
+            Candidate
+          </div>
+          <div role="columnheader" style={{ flex: `0 0 ${COL_ACTIVITY}px`, padding: "0 12px" }}>
+            Activity
+          </div>
+          <div role="columnheader" style={{ flex: `0 0 ${COL_MODALITY}px`, padding: "0 12px" }}>
+            Modality
+          </div>
+          <div role="columnheader" style={{ flex: `0 0 ${COL_EVIDENCE}px`, padding: "0 12px" }}>
+            Evidence class
+          </div>
+          <div role="columnheader" style={{ flex: `0 0 ${COL_PATENT}px`, padding: "0 12px" }}>
+            Patent linkage
+          </div>
         </div>
 
         <div
-          role="table"
-          aria-label={`Candidate compounds for ${scopeLabel}`}
-          aria-rowcount={page.total}
+          role="rowgroup"
           style={{ position: "relative", minWidth: MIN_TABLE_WIDTH, height: virtualizer.getTotalSize() }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
@@ -125,6 +141,9 @@ export function CandidateTable({
                 ref={virtualizer.measureElement}
                 onClick={() => onSelectCandidate(row.compound_id)}
                 onKeyDown={(e) => {
+                  // Nested interactive controls (checkbox) own their keys:
+                  // one keypress, one action.
+                  if (e.target !== e.currentTarget) return;
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     onSelectCandidate(row.compound_id);
