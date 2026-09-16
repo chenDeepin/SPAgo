@@ -58,6 +58,11 @@ measurable — they are **not** capacity claims for bulk datasets.
   record counts, per-source `latency_ms` (0.7–50.9 s) and the potency verdict under
   `potency-gate-v1`. Supersedes `online00-coverage-2026-09-15.md` for the cohort; both
   are kept because the earlier one is the record the 2026-09-15 claims were made on.
+- `cohort-coverage-2026-09-16-accept.md` (raw: `...-accept.json`) — the same cohort
+  re-recorded on the **hosted-shape rehearsal stack** (`spago-accept`, seed `none`,
+  auth required, real provider) for `docs/online-capability.md` §6 criterion 5. Same
+  nine source rows and the same 10 µM threshold; the difference is the environment,
+  and it is the matrix the 2026-09-16 rehearsal record cites.
 - `online08-structure-editor-2026-09-16.md` — the embedded Ketcher editor: what the
   first open of the structure dialog transfers (20.3 MB raw / 4.95 MB gzip, the entry
   bundle 0.33 MB), time from the click to a usable editor (0.83–0.86 s on loopback),

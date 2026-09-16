@@ -68,7 +68,12 @@ def _usage_outcome(exc: AIError) -> str:
         return "rate_limited"
     if isinstance(exc, LLMTimeoutError):
         return "timeout"
-    if isinstance(exc, LLMUpstreamError):
+    if isinstance(exc, LLMOutputRejectedError):
+        # The only upstream failure where an answer arrived and SPAgo refused
+        # its content (and the only one that is re-sampled once). Everything
+        # else that is not auth/rate-limit/timeout — an unreachable endpoint,
+        # an HTTP status, an unreadable envelope — stays generic `failed`, so
+        # the ledger does not claim content was reviewed when it never was.
         return "invalid_output"
     return "failed"
 
@@ -118,8 +123,22 @@ MAX_LLM_ATTEMPTS = 2
 #: is told the same contract that validation enforces. Live finding 2026-09-15:
 #: without the stated cap, 3/3 DeepSeek calls returned 6–9 limitation strings
 #: and every summary was rejected (see docs/archive/2026-09-15-llm-live-smoke.md).
+#: Live finding 2026-09-16 (hosted-acceptance rehearsal): a target-scope answer
+#: legitimately carries more caveats than a family or document answer — empty
+#: source, excluded records, screening-only source, evidence-class mix, bounded
+#: selection, absence of corpus occurrences — and 6 such strings were refused
+#: twice in a row against a cap of 5, turning a complete, billed answer into a
+#: 502. The cap is now 8, the instructions state it (they interpolate this
+#: constant), and the refusal names the bound it broke.
 MAX_PARAGRAPHS = 12
-MAX_LIMITATIONS = 5
+MAX_LIMITATIONS = 8
+
+#: The two bounded lists of the answer schema, as `field: (min, max)`. Kept next
+#: to the caps so a refusal can say which bound broke (see `_bound_violation_detail`).
+_BOUNDED_LISTS = {
+    "paragraphs": (1, MAX_PARAGRAPHS),
+    "limitations": (0, MAX_LIMITATIONS),
+}
 
 INPUT_NOTE = "Bounded fact selection: whole items only; omitted items are reported in coverage."
 
@@ -131,6 +150,15 @@ class AIError(Exception):
 
     status_code = 502
     detail = "AI summary failed."
+
+    #: What the provider billed for the calls this failure consumed, when the
+    #: provider reported it. A completed-but-refused answer is billed like any
+    #: other call, so the usage ledger records these tokens instead of leaving
+    #: only the pre-call reservation (measured 2026-09-16: two refused target
+    #: answers billed ~11k tokens each while the row kept 2k reserved tokens,
+    #: which lets repeated refusals outrun the quota). None means unknown —
+    #: a transport failure never reports usage — and keeps the reservation.
+    usage: dict | None = None
 
     def __init__(self, message: str | None = None) -> None:
         # Instance messages (e.g. the specific validation failure) surface to
@@ -163,6 +191,18 @@ class LLMAuthError(AIError):
 class LLMUpstreamError(AIError):
     status_code = 502
     detail = "The model response failed validation."
+
+
+class LLMTransportError(LLMUpstreamError):
+    """The endpoint could not be reached or did not answer at the HTTP layer.
+
+    Kept distinct from the failures that produced a response SPAgo could read,
+    because the operator-facing outcome and the billing expectation differ:
+    nothing was returned, so nothing was billed and there is no answer to
+    re-sample. Measured 2026-09-16 during the H8 drill: a `ConnectError` was
+    settled as `invalid_output`, which tells an operator the model's *content*
+    was refused when the endpoint was never reached.
+    """
 
 
 class LLMOutputRejectedError(LLMUpstreamError):
@@ -1560,7 +1600,19 @@ def summarize(
             summary_text = accepted.text
         except AIError as exc:
             if reserved:
-                usage_svc.settle(engine, usage_id, outcome=_usage_outcome(exc), error=exc.detail)
+                # A refused answer was still billed; settle with what the
+                # provider reported so the quota reflects the real spend, and
+                # fall back to the reservation when usage is unknown.
+                observed = exc.usage or {}
+                usage_svc.settle(
+                    engine,
+                    usage_id,
+                    outcome=_usage_outcome(exc),
+                    error=exc.detail,
+                    prompt_tokens=observed.get("prompt_tokens"),
+                    completion_tokens=observed.get("completion_tokens"),
+                    total_tokens=observed.get("total_tokens"),
+                )
             raise
         except Exception as exc:  # never leave a reservation unexplained
             if reserved:
@@ -1703,11 +1755,19 @@ def _generate_accepted(provider, snapshot: dict) -> _AcceptedSummary:
         try:
             result = provider.generate(snapshot)
             output = _validate_llm_output(result, snapshot)
-        except LLMOutputRejectedError:
+        except LLMOutputRejectedError as exc:
             usages.append(getattr(result, "usage", None))
+            _attach_observed_usage(exc, usages, attempts=attempt)
             if attempt == MAX_LLM_ATTEMPTS:
                 raise
             continue
+        except LLMUpstreamError as exc:
+            # Protocol failures raised after a completed response (a tool-call
+            # attempt, say) were billed too; a transport failure carries no
+            # usage and leaves the caller with the reservation.
+            usages.append(getattr(result, "usage", None))
+            _attach_observed_usage(exc, usages, attempts=attempt)
+            raise
         usages.append(getattr(result, "usage", None))
         return _AcceptedSummary(
             output=output,
@@ -1716,6 +1776,18 @@ def _generate_accepted(provider, snapshot: dict) -> _AcceptedSummary:
             usages=usages,
         )
     raise AssertionError("unreachable: the attempt loop returns or raises")
+
+
+def _attach_observed_usage(exc: AIError, usages: list[dict | None], *, attempts: int) -> None:
+    """Record the billed usage on a failure, when every attempt reported it.
+
+    `_combine_usage` returns None unless each attempt's usage is known: a
+    partial sum would understate a real invoice, and the usage row keeps its
+    reservation in that case (usage.py documents why the reservation stands).
+    """
+    observed = _combine_usage(usages, attempts=attempts)
+    if observed is not None:
+        exc.usage = observed
 
 
 def _combine_usage(usages: list[dict | None], *, attempts: int) -> dict | None:
@@ -1736,6 +1808,34 @@ def _combine_usage(usages: list[dict | None], *, attempts: int) -> dict | None:
     if attempts > 1:
         totals["attempts"] = attempts
     return totals or None
+
+
+def _bound_violation_detail(content: str, problems: list) -> str:
+    """`paragraphs: 13 returned, at most 12 allowed.` for a length refusal, else "".
+
+    Deliberately limited to the two declared list bounds: it exists so an
+    operator can tell a paragraph overflow from a limitation overflow without
+    re-running a billed call (2026-09-16), and it never echoes model text.
+    """
+    for problem in problems:
+        kind = problem.get("type")
+        if kind not in ("too_long", "too_short"):
+            continue
+        loc = problem.get("loc") or ()
+        field = str(loc[0]) if loc else ""
+        if field not in _BOUNDED_LISTS:
+            continue
+        try:
+            parsed = json.loads(content)
+        except (TypeError, ValueError):
+            return ""
+        value = parsed.get(field) if isinstance(parsed, dict) else None
+        if not isinstance(value, list):
+            return ""
+        low, high = _BOUNDED_LISTS[field]
+        if kind == "too_long":
+            return f" {field}: {len(value)} returned, at most {high} allowed."
+        return f" {field}: {len(value)} returned, at least {low} required."
 
 
 def _validate_llm_output(llm_result, snapshot: dict) -> LlmSummaryOutput:
@@ -1761,8 +1861,9 @@ def _validate_llm_output(llm_result, snapshot: dict) -> LlmSummaryOutput:
         # detail now say which rule broke. No model text is included.
         problems = exc.errors()
         first = problems[0]["type"] if problems else "unknown"
+        detail = _bound_violation_detail(llm_result.content, problems)
         raise LLMOutputRejectedError(
-            f"Model output failed JSON/schema validation ({first})."
+            f"Model output failed JSON/schema validation ({first}).{detail}"
         ) from exc
     allowed = allowed_refs(snapshot)
     for p in output.paragraphs:

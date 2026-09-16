@@ -67,9 +67,13 @@ def build_summary_content(user_prompt: str) -> str:
 
 
 class Handler(BaseHTTPRequestHandler):
-    #: Fault-injection budget for `mock-reject-once`: the first request is
-    #: refused by SPAgo's validation, the automatic re-sample then succeeds.
-    rejections_left = 1
+    #: Fault-injection budgets for the rejection modes: the first N requests per
+    #: model are refused by SPAgo's validation, later requests answer normally.
+    #: Two modes exist so both halves of the bounded re-sample can be exercised:
+    #: the automatic second attempt succeeding (`mock-reject-once`) and both
+    #: attempts being refused, which must settle as one failed row that still
+    #: accounts both billed calls (`mock-reject-twice` — the runbook §H8 drill).
+    rejections_left = {"mock-reject-once": 1, "mock-reject-twice": 2}
 
     def _send_json(self, status: int, payload: dict) -> None:
         encoded = json.dumps(payload).encode("utf-8")
@@ -95,10 +99,14 @@ class Handler(BaseHTTPRequestHandler):
         # "mock-rate-limit" → 429 with a Retry-After header (LLM-07);
         # "mock-rate-limit-bad-header" → 429 with an unusable Retry-After;
         # "mock-reject-once" → the first request is refused by SPAgo's citation
-        # validation, later requests answer normally (one re-sample is allowed).
+        # validation, later requests answer normally (one re-sample is allowed);
+        # "mock-reject-twice" → the first two requests are refused, so the
+        # bounded re-sample is exhausted and the request fails as 502 while both
+        # billed attempts are accounted (runbook §H8).
         model = body.get("model", "mock-model")
-        if model == "mock-reject-once" and Handler.rejections_left > 0:
-            Handler.rejections_left -= 1
+        budget = Handler.rejections_left.get(model)
+        if budget:
+            Handler.rejections_left[model] = budget - 1
             rejected = {
                 "paragraphs": [
                     {"text": "Rejected on purpose.", "fact_refs": ["family:not-a-real-ref"]}

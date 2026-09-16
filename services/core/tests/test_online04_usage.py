@@ -201,11 +201,19 @@ class TestQuotaOnTheSummaryPath:
             get_settings.cache_clear()
 
     def test_a_failed_call_records_why(self, online_engine):
-        """The outcome vocabulary keeps failures distinguishable in the log."""
+        """The outcome vocabulary keeps failures distinguishable in the log.
+
+        `invalid_output` means one specific thing: an answer arrived and SPAgo
+        refused its *content*. A transport failure is `failed` (2026-09-16: the
+        H8 drill recorded a `ConnectError` as `invalid_output`, which reads as
+        "the model's answer was rejected" when the endpoint was never
+        reached)."""
         assert ai._usage_outcome(ai.LLMAuthError()) == "auth_failed"
         assert ai._usage_outcome(ai.LLMTimeoutError()) == "timeout"
         assert ai._usage_outcome(ai.LLMUpstreamRateLimitError(5)) == "rate_limited"
-        assert ai._usage_outcome(ai.LLMUpstreamError()) == "invalid_output"
+        assert ai._usage_outcome(ai.LLMOutputRejectedError()) == "invalid_output"
+        assert ai._usage_outcome(ai.LLMTransportError()) == "failed"
+        assert ai._usage_outcome(ai.LLMUpstreamError()) == "failed"
         assert ai._usage_outcome(ai.AIError()) == "failed"
 
     def test_a_rejected_answer_settles_the_reservation(self, online_engine):
@@ -248,7 +256,11 @@ class TestQuotaOnTheSummaryPath:
         assert len(rows) == 1
         assert rows[0]["outcome"] == "invalid_output"
         assert rows[0]["settled_at"] is not None
-        assert rows[0]["total_tokens"] is None  # no invented usage for a rejected answer
+        # The provider reported usage on both billed attempts, so the refused
+        # pair settles with their sum (2 × 42) rather than only the reservation
+        # — measured 2026-09-16: keeping the reservation let repeated refusals
+        # under-count real spend on a target-sized prompt.
+        assert rows[0]["total_tokens"] == 84
         # ...and the operator-facing report counts it as a failure.
         report = usage.report(
             online_engine, window="month", user_limit=200_000,
@@ -364,7 +376,9 @@ class TestBoundedRetry:
         assert len(rows) == 1
         assert rows[0]["outcome"] == "invalid_output"
         assert rows[0]["settled_at"] is not None
-        assert rows[0]["total_tokens"] is None  # a rejected pair has no settled sum
+        # The same provider answer (usage 100) was billed twice, so the refused
+        # run settles with the measured 200 — not the pre-call reservation.
+        assert rows[0]["total_tokens"] == 200
         with online_engine.connect() as conn:
             analyses_after = conn.execute(text("SELECT count(*) FROM ai_analyses")).scalar_one()
         assert analyses_after == analyses_before, "a rejected answer is never persisted"

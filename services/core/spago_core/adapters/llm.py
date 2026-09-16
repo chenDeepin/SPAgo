@@ -40,6 +40,7 @@ from spago_core.services.ai import (
     LLMAuthError,
     LLMOutputRejectedError,
     LLMTimeoutError,
+    LLMTransportError,
     LLMUpstreamError,
     LLMUpstreamRateLimitError,
     MAX_LIMITATIONS,
@@ -343,7 +344,11 @@ class OpenAICompatibleSummaryProvider:
         except httpx.TimeoutException as exc:
             raise LLMTimeoutError("Model endpoint connection/read timed out.") from exc
         except httpx.HTTPError as exc:
-            raise LLMUpstreamError(f"Model endpoint request failed: {type(exc).__name__}") from exc
+            # Transport-level failure (DNS, refused connection, TLS, a broken
+            # read): no response was read, so this is not a content rejection.
+            raise LLMTransportError(
+                f"Model endpoint request failed: {type(exc).__name__}"
+            ) from exc
 
         try:
             if response.status_code == 401 or response.status_code == 403:

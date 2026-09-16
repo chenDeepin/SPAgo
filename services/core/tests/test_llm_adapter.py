@@ -323,6 +323,32 @@ class TestGenerate:
         with pytest.raises(LLMUpstreamError):
             provider.generate(SNAPSHOT)
 
+    def test_transport_failure_is_its_own_error_class(self):
+        """An unreachable endpoint is not a rejected answer.
+
+        The ledger labels outcomes from the error class, so a connection
+        failure must not arrive as the generic upstream error that means
+        "SPAgo read the model's content and refused it" (measured 2026-09-16:
+        a `ConnectError` settled as `invalid_output` during the H8 drill).
+        """
+        from spago_core.services.ai import LLMOutputRejectedError, LLMTransportError
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("connection refused", request=request)
+
+        provider = _provider_with_handler(handler)
+        with pytest.raises(LLMTransportError) as exc:
+            provider.generate(SNAPSHOT)
+        assert "ConnectError" in str(exc.value)
+        assert issubclass(LLMTransportError, LLMUpstreamError), "still a 502 to the client"
+        assert not issubclass(LLMTransportError, LLMOutputRejectedError), (
+            "never re-sampled: nothing was read, so nothing was billed"
+        )
+        from spago_core.services.ai import _usage_outcome
+
+        assert _usage_outcome(exc.value) == "failed"
+        assert _usage_outcome(LLMOutputRejectedError()) == "invalid_output"
+
 
 class TestOutputValidation:
     def _result(self, content, **kw):
@@ -366,15 +392,35 @@ class TestOutputValidation:
         with pytest.raises(LLMUpstreamError, match=r"schema validation \(json_invalid\)"):
             _validate_llm_output(self._result(malformed), SNAPSHOT)
 
-        # A well-formed answer that breaks a declared bound says so too.
+        # A well-formed answer that breaks a declared bound says so too, and names
+        # the bound it broke (2026-09-16: a live target answer was refused with a
+        # bare `too_long`, which needed a manual re-run to attribute).
         too_long = json.dumps(
             {
                 "paragraphs": [{"text": "T.", "fact_refs": ["family:abc"]}],
-                "limitations": ["a.", "b.", "c.", "d.", "e.", "f."],
+                "limitations": ["x."] * (ai_svc.MAX_LIMITATIONS + 1),
             }
         )
-        with pytest.raises(LLMUpstreamError, match=r"schema validation \(too_long\)"):
+        with pytest.raises(
+            LLMUpstreamError,
+            match=r"schema validation \(too_long\)\. limitations: \d+ returned, at most \d+ allowed\.",
+        ):
             _validate_llm_output(self._result(too_long), SNAPSHOT)
+
+        # The paragraph cap is reported the same way, not as a generic failure.
+        too_many_paragraphs = json.dumps(
+            {
+                "paragraphs": [
+                    {"text": "T.", "fact_refs": ["family:abc"]}
+                ] * (ai_svc.MAX_PARAGRAPHS + 1),
+                "limitations": [],
+            }
+        )
+        with pytest.raises(
+            LLMUpstreamError,
+            match=r"schema validation \(too_long\)\. paragraphs: \d+ returned, at most \d+ allowed\.",
+        ):
+            _validate_llm_output(self._result(too_many_paragraphs), SNAPSHOT)
 
     def test_valid_refs_pass(self):
         good = json.dumps(

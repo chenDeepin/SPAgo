@@ -339,6 +339,15 @@ psql -h <host> -d spago_restore -c \
 psql -h <host> -d spago_restore -c \
   "SELECT u.email, count(p.id) FROM users u LEFT JOIN projects p ON p.owner_id = u.id
    GROUP BY u.email ORDER BY u.email;"
+
+# Chemistry must survive too. The RDKit column is named `m` (type `mol`), not
+# `mol` — a query written against the wrong name fails, it does not silently
+# pass. Counting non-NULL values proves the structures came across; a search
+# proves RDKit itself works in the restored database:
+psql -h <host> -d spago_restore -c \
+  "SELECT count(*) AS with_structure, count(*) FILTER (WHERE m IS NULL) AS without FROM compounds;"
+psql -h <host> -d spago_restore -c \
+  "SELECT count(*) FROM compounds WHERE m @> 'c1ccccc1'::mol LIMIT 1;"
 ```
 
 A restore that loses ownership would either hide everyone's work (all rows
@@ -357,7 +366,7 @@ compound structures.
 | projects | 3 total: 1 unowned (legacy) + 1 Ada + 1 Bob |
 | analyses | 2 total, 0 unowned, 2 distinct owners |
 | saved project items | 2 |
-| compound rows with an RDKit `mol` value | 10 (chemistry intact) |
+| compound rows with a non-NULL RDKit `m` value | 10 (chemistry intact; re-verified 2026-09-16 on the acceptance rehearsal's 2,639-row database) |
 
 Findings from the drill, now reflected above:
 
@@ -372,9 +381,9 @@ Findings from the drill, now reflected above:
 
 | Failure | Expected behaviour | How to verify |
 | --- | --- | --- |
-| Model endpoint down | Search, evidence and target discovery keep working; summaries report a provider failure (502/504), never an empty success. | `curl` the summary route with the endpoint pointed at a black hole. |
+| Model endpoint down | Search, evidence and target discovery keep working; summaries report a provider failure (502/504), never an empty success. The usage row is `failed` (transport), not `invalid_output` — no answer was read, so nothing was refused and nothing was billed. | `curl` the summary route with the endpoint pointed at a black hole. |
 | Provider rate limit | 429 with `Retry-After` only when the endpoint supplied a usable value; never re-sampled automatically. | Point the endpoint at a stub returning 429. |
-| Model answer rejected by validation (bad JSON, unknown fact ref) | One automatic re-sample of the identical request; if the second answer is rejected too, 502 with the validation reason and a usage row at outcome `invalid_output`. Token accounting sums both billed attempts. | Point the endpoint at `scripts/mock_llm_endpoint.py` in a mock mode that returns invalid JSON twice. |
+| Model answer rejected by validation (bad JSON, unknown fact ref) | One automatic re-sample of the identical request; if the second answer is rejected too, 502 with the validation reason and a usage row at outcome `invalid_output`. Token accounting sums both billed attempts. | Point the endpoint at `scripts/mock_llm_endpoint.py` with the model set to `mock-reject-twice` (the first two requests are refused on purpose). When SPAgo runs in a container, start the mock with `--host 0.0.0.0`; a loopback-only mock is unreachable from the container even though it answers `curl` on the host — that difference is itself the transport case above. |
 | Database unavailable | `/healthz` reports `database: down`; API calls fail with 5xx rather than returning empty data. | Stop the db container. |
 | External source down | The affected source's coverage row says `failed`; the rest of the investigation still returns. | Block the source's host. |
 | Session expired mid-use | 401 on the next request; the UI returns to the sign-in view. | Delete the session row. |
