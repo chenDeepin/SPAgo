@@ -17,11 +17,17 @@
  *      itself, which is exactly what the side panel reads.
  *   5. `sidepanel.html` renders that stored value ("Detected: US…"), so the
  *      panel's read-and-render path is exercised with real extension storage.
+ *   6. The panel behavior the toolbar click relies on is *verified as set* in
+ *      the running worker (`chrome.sidePanel.getPanelBehavior()` →
+ *      `openPanelOnActionClick: true`) — a setup failure there would otherwise
+ *      only ever be a silent `console.error`, and the click would do nothing.
  *
- * What it does **not** verify (recorded rather than implied): the toolbar
- * click, `openPanelOnActionClick`, and the side panel *surface* — those need a
- * headed browser and a user gesture. A pass here must never be reported as
- * "the extension workflow works".
+ * What it does **not** verify (recorded rather than implied): the physical
+ * toolbar click and Chrome's own side panel surface chrome. Synthesizing a
+ * browser-toolbar user gesture needs OS-level input injection (or a keyboard
+ * shortcut added to the manifest for the test's sake); neither exists in this
+ * checkout, so the click itself stays uncovered — and a pass here must never
+ * be reported as "the extension workflow works".
  *
  * Browser choice: branded Google Chrome (137+) refuses `--load-extension`
  * ("not allowed in Google Chrome"), so this script prefers an unbranded
@@ -315,6 +321,22 @@ async function main() {
       console.error(`FAIL: side panel did not render the detected number ${PATENT}`);
       failures++;
     }
+
+    // The toolbar click opens the panel only while the worker's
+    // `setPanelBehavior` actually took effect. Read it back from the running
+    // worker instead of trusting a promise nobody observed (B-18).
+    const behavior = await cdpEvaluate(
+      worker.webSocketDebuggerUrl,
+      "chrome.sidePanel.getPanelBehavior().then((b) => ({ open: !!(b && b.openPanelOnActionClick) }))",
+    ).catch((err) => ({ error: err.message }));
+    if (behavior && behavior.open === true) {
+      console.log("panel behavior: openPanelOnActionClick=true (read back from the running worker)");
+    } else {
+      console.error(
+        `FAIL: expected the running worker's sidePanel behavior openPanelOnActionClick=true, got ${JSON.stringify(behavior)}`,
+      );
+      failures++;
+    }
   } catch (err) {
     console.error(`FAIL: ${err.message}`);
     failures++;
@@ -328,8 +350,9 @@ async function main() {
 
   if (failures === 0) {
     console.log(
-      "companion browser check: load, service worker, detection, handoff and panel render verified." +
-        " Toolbar click and the side panel surface itself are not covered by this script.",
+      "companion browser check: load, service worker, detection, handoff, panel render and " +
+        "panel-behavior flag verified." +
+        " The physical toolbar click and the side panel surface itself are not covered by this script.",
     );
     return 0;
   }

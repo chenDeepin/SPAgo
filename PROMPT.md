@@ -39,8 +39,11 @@
 > - The **MV3 companion** was loaded unpacked in a real browser and its handoff verified
 >   from the extension's own `storage.session` (`apps/chrome-extension/verify-in-chrome.js`);
 >   behind it: branded Chrome 137+ refuses `--load-extension`, so an unbranded
->   Chromium / Chrome for Testing build is required. Toolbar click and side-panel surface
->   are **not** covered. Latency/cost targets are the operator's to fill in:
+>   Chromium / Chrome for Testing build is required. The B-18 round (2026-09-16) added
+>   the panel-behavior flag to that script's verified set — `openPanelOnActionClick` is
+>   read back from the running worker, not assumed. The physical toolbar click and
+>   side-panel surface chrome are **not** covered (no browser-chrome user gesture can be
+>   synthesized here). Latency/cost targets are the operator's to fill in:
 >   `docs/runbook.md` §H9.
 >
 > **Delivered after that baseline (2026-09-16 backlog rounds, each with its plan file,
@@ -782,11 +785,14 @@ existing SPAgo session.
 Exit: installation is optional, SPAgo works identically without it, no Espacenet
 automation or CAPTCHA bypass exists.
 **State: thin bridge implemented and verified in a real browser** —
-`apps/chrome-extension/verify-in-chrome.js` loads the unpacked extension, opens a
-page under the content-script match pattern, and reads the handoff back out of the
-worker's `chrome.storage.session` and the rendered side-panel page. The headed
-toolbar click and the side-panel surface itself are not covered by that script, and
-are not claimed.
+`apps/chrome-extension/verify-in-chrome.js` loads the unpacked extension in an
+unbranded Chromium, opens a page under the content-script match pattern, reads the
+handoff back out of the worker's `chrome.storage.session` and the rendered side-panel
+page, and reads `chrome.sidePanel.getPanelBehavior()` back from the running worker so
+the `openPanelOnActionClick` flag the toolbar click relies on is verified as set (B-18,
+2026-09-16). The physical toolbar click and the side-panel surface chrome are not
+covered by that script — no browser-chrome user gesture can be synthesized in this
+checkout — and are not claimed.
 
 ## Milestone 5 — Evidence-Grounded AI
 

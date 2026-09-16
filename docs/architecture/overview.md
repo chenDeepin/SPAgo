@@ -43,11 +43,13 @@ No Redis, queue, search engine, or additional database exists
 URL-only publication-number detection → side panel → `?q=` deep link. It is checked
 twice: `apps/chrome-extension/check.js` (manifest, syntax, the URL detection contract)
 and `apps/chrome-extension/verify-in-chrome.js`, which loads the unpacked extension in
-an unbranded Chrome/Chromium build, opens a page under the match pattern, and reads the
+an unbranded Chrome/Chromium build, opens a page under the match pattern, reads the
 handoff back out of the worker's `chrome.storage.session` and the rendered side-panel
-page. Branded Google Chrome 137+ ignores `--load-extension`, so that script reports the
-browser refusal instead of a broken extension; the toolbar click and the side-panel
-surface need a headed browser and are not claimed.
+page, and reads `chrome.sidePanel.getPanelBehavior()` back from the running worker so
+`openPanelOnActionClick` is verified as set rather than assumed. Branded Google Chrome
+137+ ignores `--load-extension`, so that script reports the browser refusal instead of a
+broken extension; the physical toolbar click and the side-panel surface chrome need a
+browser-chrome user gesture this checkout cannot synthesize, and are not claimed.
 
 ## Implemented workload separation (PROMPT.md §11)
 
