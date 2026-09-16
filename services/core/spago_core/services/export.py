@@ -367,6 +367,7 @@ def collect_candidate_export_rows(
     *,
     compound_ids: list[uuid.UUID] | None = None,
     include_all_modalities: bool = True,
+    evidence_class: str | None = None,
     policy=None,
 ) -> list[ExportRow]:
     """Export target candidates, including compounds with no patent mapping.
@@ -376,6 +377,11 @@ def collect_candidate_export_rows(
     occur in the loaded patent corpus, so a patent-free candidate exports as
     patent-free rather than as an empty string that could be misread. Publication
     numbers the *source* declared are a separate column (ONLINE-06).
+
+    `evidence_class` narrows the results scope exactly as the candidate table's
+    filter does (B-33): the same ``current_measurements`` existence clause, so
+    "current candidates" in a file means the set the screen showed. An explicit
+    selection is not re-filtered — the caller names its rows.
 
     `policy` adds the potency class per compound and the target's verdict, both
     computed by :mod:`spago_core.services.reference` with the same rule the API
@@ -410,8 +416,17 @@ def collect_candidate_export_rows(
                     "the export was not created."
                 )
             scope_clause += " AND tc.compound_id = ANY(:ids)"
-        elif not include_all_modalities:
-            scope_clause += " AND (c.modality IS NULL OR c.modality IN ('small_molecule','unclassified'))"
+        else:
+            if not include_all_modalities:
+                scope_clause += " AND (c.modality IS NULL OR c.modality IN ('small_molecule','unclassified'))"
+            if evidence_class:
+                # The same existence clause `list_candidates` applies, so the
+                # exported set is the set the screen's filter produced.
+                scope_clause += (
+                    " AND EXISTS (SELECT 1 FROM current_measurements m2 "
+                    "WHERE m2.compound_id = c.id AND m2.evidence_class = :evidence_class)"
+                )
+                params["evidence_class"] = evidence_class
 
         total = int(
             conn.execute(

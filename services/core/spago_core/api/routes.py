@@ -3178,6 +3178,17 @@ class ExportRequest(BaseModel):
     # `reference_*` columns. A workspace that changed the threshold exports under
     # that same threshold, so the file matches the table it came from.
     activity_threshold_nm: Optional[float] = Field(default=None, gt=0, le=1e9)
+    # B-33: the screen's evidence-class selection is part of the scope the user
+    # is looking at, so "current results" must mean the same set the table
+    # shows. Applied to the results scope only — an explicit selection wins
+    # over filters, the same contract modality follows above.
+    evidence_class: Optional[str] = Field(
+        default=None,
+        pattern=(
+            "^(measured_direct_binding|interaction_disruption|functional_effect"
+            "|screening_assay|unspecified)$"
+        ),
+    )
     format: str = Field(pattern="^(csv|sdf)$")
 
 
@@ -3204,6 +3215,14 @@ def export_scope(
             status_code=422,
             detail="Provide exactly one export scope: family_id or target_id.",
         )
+    if body.family_id is not None and body.evidence_class is not None:
+        # A family/document scope has no evidence-class filter; accepting and
+        # ignoring it here would let a filtered-looking request export an
+        # unfiltered family — the exact defect B-33 closes.
+        raise HTTPException(
+            status_code=422,
+            detail="evidence_class applies to target candidate exports only.",
+        )
 
     structure_query = None
     if body.structure_query is not None and body.compound_ids is None:
@@ -3225,6 +3244,11 @@ def export_scope(
                 body.target_id,
                 compound_ids=body.compound_ids,
                 include_all_modalities=body.include_all_modalities,
+                # A filter is a way to construct the current-results scope; an
+                # explicit selection names its own rows and is not re-filtered.
+                evidence_class=(
+                    None if body.compound_ids is not None else body.evidence_class
+                ),
                 policy=_potency_override(
                     settings, body.activity_threshold_nm, None, body.include_all_modalities
                 ),

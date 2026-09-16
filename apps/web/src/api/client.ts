@@ -281,6 +281,12 @@ export const api = {  // --- ONLINE-03: hosted access ---
       smiles: string;
       threshold?: number | null;
     } | null;
+    /** B-33: the policy the screen computed its classes under (nM), so the
+     * file's `reference_*` columns match the table it came from. */
+    activity_threshold_nm?: number | null;
+    /** B-33: the screen's evidence-class selection, applied to the
+     * current-results scope only (an explicit selection names its own rows). */
+    evidence_class?: string | null;
     format: "csv" | "sdf";
   }) => {
     const ext = body.format;

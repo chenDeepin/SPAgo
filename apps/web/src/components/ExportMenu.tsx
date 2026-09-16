@@ -9,6 +9,15 @@ interface ExportMenuProps {
   targetId?: string;
   /** The candidate table's labelled modality filter, passed through as-is. */
   includeAllModalities?: boolean;
+  /** B-33: the potency policy the screen's classes were computed under (nM).
+   * It governs the file's `activity_class`/`reference_*` columns for both
+   * scopes — the selection exports under the same rule the user is looking
+   * at, not the deployment default. */
+  activityThresholdNanomolar?: number | null;
+  /** B-33: the screen's evidence-class selection. Applied to the
+   * current-results scope only; an explicit selection names its own rows and
+   * is not re-filtered. */
+  evidenceClass?: string | null;
   documentId?: string | null;
   selectedIds: string[];
   /** Total of the plain list in the current family/document/target scope. */
@@ -35,6 +44,8 @@ export function ExportMenu({
   familyId,
   targetId,
   includeAllModalities = false,
+  activityThresholdNanomolar = null,
+  evidenceClass = null,
   documentId = null,
   selectedIds,
   resultsTotal,
@@ -71,6 +82,11 @@ export function ExportMenu({
                 threshold: structureFilter.mode === "similarity" ? structureFilter.threshold : null,
               }
             : null,
+        // B-33: both travel with the file — the threshold as the policy behind
+        // its class columns (any scope), the evidence-class filter as the
+        // definition of "current results" (results scope only).
+        activity_threshold_nm: targetId ? activityThresholdNanomolar : null,
+        evidence_class: targetId && scope === "results" ? evidenceClass : null,
         format,
       });
       setOpen(false);
@@ -144,7 +160,7 @@ export function ExportMenu({
             {structureFilter
               ? "The structure query is re-run on the server, so the export covers every match, not just the loaded rows."
               : targetId
-                ? "Candidate exports carry the target scope, modality, evidence class and source versions; a candidate with no patent mapping exports with empty patent columns rather than being dropped."
+                ? "Current candidates export under the active evidence-class filter and threshold, so the file and the table state one rule. A selection exports exactly the chosen compounds under the same threshold, even when a filter would exclude them; a candidate with no patent mapping exports with empty patent columns rather than being dropped."
                 : "Exports keep patent numbers, labels, evidence references, and dataset version."}
           </p>
         </div>

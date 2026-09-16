@@ -1135,6 +1135,8 @@ export function App() {
                       <ExportMenu
                         targetId={resolvedTargetId as string}
                         includeAllModalities={allModalities}
+                        activityThresholdNanomolar={referenceThresholdNanomolar}
+                        evidenceClass={evidenceClassFilter}
                         selectedIds={Array.from(selectedIds)}
                         resultsTotal={candidateTotal}
                         structureFilter={null}
