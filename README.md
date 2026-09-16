@@ -144,7 +144,11 @@ reload against the compose `db` service, Vite dev server on :5173).
 PostgreSQL with the RDKit cartridge, then the frontend typecheck and production build
 (`--no-pg` explicitly checks only the subset that needs no database). Recorded
 measurements and their method notes are indexed in
-[`benchmarks/README.md`](benchmarks/README.md).
+[`benchmarks/README.md`](benchmarks/README.md). CI (`.github/workflows/checks.yml`)
+runs the same script in its `--no-pg` mode on every push and pull request, so the
+frontend/build regression no longer depends on someone remembering to run it; the
+database-dependent majority of the suite still runs where a PostgreSQL with the RDKit
+cartridge exists — CI does not run the full suite.
 
 ### Loading real patent data
 

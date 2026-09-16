@@ -1,0 +1,61 @@
+# B-14: CI running the existing check script — no duplicated check logic.
+#
+# Scope, deliberately minimal:
+#   * the pipeline calls `scripts/run_checks.sh --no-pg`, the same entry a
+#     developer runs by hand — the selected backend subset (chemistry, adapter
+#     contract, LLM contract, planner) plus the frontend typecheck and
+#     production build, which is the regression nobody should have to remember
+#     to run;
+#   * the database-dependent majority of the suite keeps its scratch-database
+#     behaviour (a machine with PostgreSQL + the RDKit cartridge). Providing a
+#     cartridge-bearing image for CI is a later decision, not silently assumed
+#     here, so this workflow states its coverage honestly: it does not run the
+#     full suite.
+# Versions match the shipped container (docker/app/Dockerfile: python:3.12,
+# node:22).
+
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/core/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      # The script expects the core interpreter at services/core/.venv — the
+      # same path the development setup uses.
+      - name: Install backend (with dev extras)
+        run: |
+          python -m venv services/core/.venv
+          services/core/.venv/bin/pip install -e 'services/core[dev]'
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Run scripts/run_checks.sh --no-pg
+        run: scripts/run_checks.sh --no-pg
