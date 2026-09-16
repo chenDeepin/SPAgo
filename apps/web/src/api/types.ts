@@ -369,6 +369,11 @@ export interface SourceRetrieval {
   records_kept: number;
   records_excluded: number;
   rejection_counts: Record<string, number>;
+  /** B-02: how the source-declared document reference resolved over this
+   * retrieval's kept records — disjoint buckets whose sum is `records_kept`
+   * (`spago_core/domain/document_refs.py`). Empty means the run predates the
+   * tally, which is not "nothing declared". */
+  reference_counts: Record<string, number>;
   latency_ms: number | null;
   warnings: string[];
   checksum: string | null;

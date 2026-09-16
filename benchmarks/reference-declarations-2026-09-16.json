@@ -1,0 +1,162 @@
+{
+  "generated_at": "2026-09-16T06:57:50+00:00",
+  "api_version": "0.1.0",
+  "mode": "declarations",
+  "requested_cohort": [
+    "TSLP",
+    "CD40LG",
+    "IL6",
+    "IL6R",
+    "EGFR"
+  ],
+  "bounds": {
+    "max_activities_per_target": 2000,
+    "max_document_lookups": 8
+  },
+  "targets": {
+    "TSLP": {
+      "status": "measured",
+      "target_key": "TSLP",
+      "target_name": "Thymic stromal lymphopoietin",
+      "uniprot_accession": "Q969D9",
+      "chembl_target_ids": [
+        "CHEMBL3712931"
+      ],
+      "source": "chembl",
+      "source_statuses": [
+        "complete"
+      ],
+      "pages_fetched": 1,
+      "records_seen": 114,
+      "records_kept": 111,
+      "records_excluded": 3,
+      "reference_counts": {
+        "doi_only": 111
+      },
+      "warnings": [],
+      "bounds": {
+        "max_activities_per_target": 2000,
+        "max_document_lookups": 8
+      }
+    },
+    "CD40LG": {
+      "status": "measured",
+      "target_key": "CD40LG",
+      "target_name": "CD40 ligand",
+      "uniprot_accession": "P29965",
+      "chembl_target_ids": [
+        "CHEMBL3580491",
+        "CHEMBL4106121",
+        "CHEMBL4106122"
+      ],
+      "source": "chembl",
+      "source_statuses": [
+        "complete",
+        "empty",
+        "complete"
+      ],
+      "pages_fetched": 3,
+      "records_seen": 46,
+      "records_kept": 21,
+      "records_excluded": 25,
+      "reference_counts": {
+        "doi_only": 21
+      },
+      "warnings": [],
+      "bounds": {
+        "max_activities_per_target": 2000,
+        "max_document_lookups": 8
+      }
+    },
+    "IL6": {
+      "status": "measured",
+      "target_key": "IL6",
+      "target_name": "Interleukin-6",
+      "uniprot_accession": "P05231",
+      "chembl_target_ids": [
+        "CHEMBL1795129"
+      ],
+      "source": "chembl",
+      "source_statuses": [
+        "complete"
+      ],
+      "pages_fetched": 3,
+      "records_seen": 412,
+      "records_kept": 166,
+      "records_excluded": 246,
+      "reference_counts": {
+        "patent_declared": 135,
+        "doi_only": 31
+      },
+      "warnings": [],
+      "bounds": {
+        "max_activities_per_target": 2000,
+        "max_document_lookups": 8
+      }
+    },
+    "IL6R": {
+      "status": "measured",
+      "target_key": "IL6R",
+      "target_name": "Interleukin-6 receptor subunit alpha",
+      "uniprot_accession": "P08887",
+      "chembl_target_ids": [
+        "CHEMBL2364155",
+        "CHEMBL3137266"
+      ],
+      "source": "chembl",
+      "source_statuses": [
+        "complete",
+        "empty"
+      ],
+      "pages_fetched": 2,
+      "records_seen": 5,
+      "records_kept": 1,
+      "records_excluded": 4,
+      "reference_counts": {
+        "doi_only": 1
+      },
+      "warnings": [],
+      "bounds": {
+        "max_activities_per_target": 2000,
+        "max_document_lookups": 8
+      }
+    },
+    "EGFR": {
+      "status": "measured",
+      "target_key": "EGFR",
+      "target_name": "Epidermal growth factor receptor",
+      "uniprot_accession": "P00533",
+      "chembl_target_ids": [
+        "CHEMBL203",
+        "CHEMBL2111431",
+        "CHEMBL2363049"
+      ],
+      "source": "chembl",
+      "source_statuses": [
+        "partial",
+        "complete",
+        "complete"
+      ],
+      "pages_fetched": 15,
+      "records_seen": 2598,
+      "records_kept": 2397,
+      "records_excluded": 200,
+      "reference_counts": {
+        "doi_only": 1187,
+        "document_unknown_to_source": 1210
+      },
+      "warnings": [
+        "Activity retrieval stopped at the configured bound of 2000 records for CHEMBL203; the target has more."
+      ],
+      "bounds": {
+        "max_activities_per_target": 2000,
+        "max_document_lookups": 8
+      }
+    }
+  },
+  "totals": {
+    "patent_declared": 135,
+    "doi_only": 1351,
+    "document_unknown_to_source": 1210
+  }
+}

@@ -56,6 +56,7 @@ from spago_core.domain import (
     ResolvedTarget,
     RetrievalStatus,
     SourceRetrieval,
+    document_reference_counts,
 )
 from spago_core.services.compound_store import (
     COMPOUND_NAMESPACE,
@@ -176,6 +177,7 @@ class TargetDiscoveryService:
         if "chembl" in source_list and accession:
             started = datetime.now(timezone.utc)
             outcome = self._run_chembl(target, accession, target_chembl_id, max_activities)
+            self._tally_references(outcome)
             report.retrievals.append(outcome.retrieval)
             collected.extend(outcome.records)
             normalized.update(outcome.normalized)
@@ -197,6 +199,7 @@ class TargetDiscoveryService:
         # --- BindingDB -------------------------------------------------------
         if "bindingdb" in source_list and accession:
             outcome = self._run_bindingdb(target, accession)
+            self._tally_references(outcome)
             report.retrievals.append(outcome.retrieval)
             collected.extend(outcome.records)
             normalized.update(outcome.normalized)
@@ -214,6 +217,7 @@ class TargetDiscoveryService:
         # --- PubChem (identity + screening context) --------------------------
         if "pubchem" in source_list:
             outcome = self._run_pubchem(target)
+            self._tally_references(outcome)
             report.retrievals.append(outcome.retrieval)
             report.warnings.extend(outcome.retrieval.warnings)
         else:
@@ -250,6 +254,19 @@ class TargetDiscoveryService:
         return report
 
     # -- per-source runners ---------------------------------------------------
+
+    @staticmethod
+    def _tally_references(outcome: "TargetDiscoveryService._SourceOutcome") -> None:
+        """B-02: record how each kept record's document reference resolved.
+
+        Computed here, over the records this investigation actually kept, for
+        every source alike — so the stored tally means one thing regardless of
+        which adapter produced the rows, and a source that states no reference
+        at all is reported as exactly that rather than as "not recorded". It runs
+        after the per-source de-duplication, so a measurement reachable through
+        two target definitions is counted once.
+        """
+        outcome.retrieval.reference_counts = document_reference_counts(outcome.records)
 
     @dataclass
     class _SourceOutcome:
@@ -531,19 +548,21 @@ class TargetDiscoveryService:
                 INSERT INTO source_retrievals (id, target_id, source_name, query, status,
                                                dataset_version, source_version, pages_fetched,
                                                records_seen, records_kept, records_excluded,
-                                               rejection_counts, latency_ms, warnings,
+                                               rejection_counts, reference_counts,
+                                               latency_ms, warnings,
                                                checksum, retrieved_at)
                 VALUES (:id, :target_id, :source_name, CAST(:query AS jsonb), :status,
                         :dataset_version, :source_version, :pages_fetched,
                         :records_seen, :records_kept, :records_excluded,
-                        CAST(:rejection_counts AS jsonb), :latency_ms,
-                        CAST(:warnings AS jsonb), :checksum, :retrieved_at)
+                        CAST(:rejection_counts AS jsonb), CAST(:reference_counts AS jsonb),
+                        :latency_ms, CAST(:warnings AS jsonb), :checksum, :retrieved_at)
                 ON CONFLICT (id) DO UPDATE
                   SET status = EXCLUDED.status,
                       records_seen = EXCLUDED.records_seen,
                       records_kept = EXCLUDED.records_kept,
                       records_excluded = EXCLUDED.records_excluded,
                       rejection_counts = EXCLUDED.rejection_counts,
+                      reference_counts = EXCLUDED.reference_counts,
                       warnings = EXCLUDED.warnings,
                       latency_ms = EXCLUDED.latency_ms,
                       retrieved_at = EXCLUDED.retrieved_at
@@ -562,6 +581,7 @@ class TargetDiscoveryService:
                 "records_kept": retrieval.records_kept,
                 "records_excluded": retrieval.records_excluded,
                 "rejection_counts": json.dumps(retrieval.rejection_counts),
+                "reference_counts": json.dumps(retrieval.reference_counts),
                 "latency_ms": retrieval.latency_ms,
                 "warnings": json.dumps(retrieval.warnings),
                 "checksum": retrieval.checksum,
@@ -936,6 +956,7 @@ class TargetDiscoveryService:
         kept: int = 0,
         excluded: int = 0,
         rejection_counts: Optional[dict[str, int]] = None,
+        reference_counts: Optional[dict[str, int]] = None,
         warnings: Optional[list[str]] = None,
         latency_ms: Optional[int] = None,
         extra: Optional[dict] = None,
@@ -959,6 +980,7 @@ class TargetDiscoveryService:
             records_kept=kept,
             records_excluded=excluded,
             rejection_counts=rejection_counts or {},
+            reference_counts=reference_counts or {},
             latency_ms=latency_ms,
             warnings=warnings or [],
             checksum=checksum,
@@ -1126,8 +1148,8 @@ def list_source_retrievals(engine: Engine, target_id: uuid.UUID) -> list[SourceR
                 """
                 SELECT id, target_id, source_name, query, status, dataset_version,
                        source_version, pages_fetched, records_seen, records_kept,
-                       records_excluded, rejection_counts, latency_ms, warnings,
-                       checksum, retrieved_at
+                       records_excluded, rejection_counts, reference_counts,
+                       latency_ms, warnings, checksum, retrieved_at
                 FROM source_retrievals
                 WHERE target_id = :tid
                 ORDER BY source_name
@@ -1149,6 +1171,7 @@ def list_source_retrievals(engine: Engine, target_id: uuid.UUID) -> list[SourceR
             records_kept=r["records_kept"],
             records_excluded=r["records_excluded"],
             rejection_counts=_json(r["rejection_counts"]) or {},
+            reference_counts=_json(r["reference_counts"]) or {},
             latency_ms=r["latency_ms"],
             warnings=list(_json(r["warnings"]) or []),
             checksum=r["checksum"],
@@ -1481,6 +1504,7 @@ def coverage_matrix(engine: Engine) -> list[dict]:
                        t.uniprot_accession, t.target_type, t.organism,
                        r.source_name, r.status, r.query, r.records_seen,
                        r.records_kept, r.records_excluded, r.rejection_counts,
+                       r.reference_counts,
                        r.dataset_version, r.source_version, r.latency_ms,
                        r.retrieved_at, r.warnings,
                        (SELECT count(DISTINCT tc.compound_id) FROM target_candidates tc
@@ -1512,6 +1536,7 @@ def coverage_matrix(engine: Engine) -> list[dict]:
             "records_kept": r["records_kept"],
             "records_excluded": r["records_excluded"],
             "rejection_counts": _json(r["rejection_counts"]) or {},
+            "reference_counts": _json(r["reference_counts"]) or {},
             "candidates": int(r["candidates"] or 0),
             "small_molecule_candidates": int(r["small_molecule_candidates"] or 0),
             "dataset_version": r["dataset_version"],

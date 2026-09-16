@@ -31,8 +31,7 @@ file.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-02 | Live source-declared patent linkage + candidate→corpus match display | NEXT | M | upstream source behaviour |
-| P2 | B-24 | Patent-led compound discovery via ChEMBL patent search | NEXT | M | upstream source behaviour |
+| P1 | B-24 | Patent-led compound discovery via ChEMBL patent search | NEXT | M | upstream source behaviour |
 | P2 | B-25 | Literature supplement bundle import (agent-produced rows) | NEXT | M | — |
 | P2 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning |
 | P2 | B-26 | Patent coverage audit (corpus / snapshot / ChEMBL / supplement / absent) | NEXT | M | — |
@@ -70,6 +69,7 @@ it):**
 | --- | --- | --- |
 | B-01 | 2026-09-16 | `scripts/corpus_batch.py` (chunked extract → import with resumable `STATE.json`, per-chunk status, non-zero exit and an explicit missing-number list when the corpus does not hold the requested set); `spago_core.corpus_status` (terminal surface; `--patents` exits non-zero and prints every number that is not loaded) and `GET /api/v1/corpus` behind the top-bar dataset badge (`CorpusDialog.tsx`) — counts read from the corpus tables, per dataset version, with failed/interrupted imports and unregistered versions reported. |
 | B-10 | 2026-09-16 | Read path over `ai_analyses`: `GET /api/v1/analyses` (owner-scoped list with scope label, model, prompt/policy version, tokens, staleness reasons), `GET /api/v1/analyses/{id}` (stored text + citations + the exact input-fingerprint check), `GET /api/v1/analyses/{id}/export` (Markdown whose header states scope, provider, model, prompt, policy, data version and citations), and the top-bar **Analyses** dialog (`AnalysesDialog.tsx`) that reopens them without a provider call. |
+| B-02 | 2026-09-16 | A disjoint per-retrieval tally of how each kept record's document reference resolved (`source_retrievals.reference_counts`, migration 0016; vocabulary in `spago_core/domain/document_refs.py`), served by `GET /targets/{id}/coverage` and rendered in the target header's **Source notes and reference coverage** disclosure together with the source notes that were previously stored and never shown; `scripts/cohort_coverage.py --declarations` measures it live and read-only, recorded in `benchmarks/reference-declarations-2026-09-16.{md,json}` (135 of IL6's 166 kept records carry a source-declared patent — the live linkage the handoff could not previously point at). |
 | B-13 | 2026-09-16 | `scripts/restore_check.sh` (dumps, restores, compares the §H7 counts, fails non-zero on mismatch, verified against the rehearsal stack and against a deliberate mismatch) and the §H2 ingress-duty table (compression, TLS, throttling, logs, backup schedule) in `docs/runbook.md`. |
 
 ## 2. Items
@@ -98,6 +98,13 @@ corpus tables on every request instead of maintaining a counter.
 - **Class NEXT · P1 · M.** Depends on B-04 at large N.
 
 ### B-02 — Live source-declared patent linkage and candidate→corpus match
+
+**Delivered 2026-09-16** (`docs/plans/2026-09-16-source-declared-linkage.md`). The three
+gaps it closed: nothing counted what happened to a record's document reference; the
+retrieval's own warnings were stored and served but rendered nowhere in the UI; and the
+live declaration coverage had never been measured on the acceptance cohort. The display
+and export halves already kept `patent_numbers` and `source_declared_patents` apart — they
+are now verified on live data rather than assumed.
 
 - **Problem.** The headline "patent linkage" claim is only half proven live. The
   ChEMBL document lookup is implemented and bounded (`adapters/chembl_discovery.py`,
@@ -570,8 +577,8 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
    what was imported".
 3. **B-10** — *delivered 2026-09-16:* let a scientist keep and find the analysis they
    already paid for.
-4. **B-02** — prove the patent-linkage claim on live data, or state exactly how far it
-   reaches.
+4. **B-02** — *delivered 2026-09-16:* prove the patent-linkage claim on live data, and say
+   exactly how far it reaches.
 
 ## 5. Deliberately out (do not treat as queued)
 
@@ -594,4 +601,5 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 | 2026-09-16 | Second planning-only stage. `BindingDB_IO` reviewed read-only; §3 added with the adopt/defer/reject argument; new items B-23 (local snapshot search), B-24 (patent-led ChEMBL compounds), B-25 (supplement bundle import), B-26 (patent coverage audit), B-27 (review sheet, LATER) and the B-28 note recorded; priority table and P2 order updated. `AGENTS.md` gained the snapshot, agent-retrieval, repository-hygiene and acceptance/verifier rules; `docs/online-capability.md` §6 gained the hosted-acceptance definition and success criteria. No application code changed. |
 | 2026-09-16 | **B-13 delivered** after the hosted-acceptance rehearsal: `scripts/restore_check.sh` (scripted §H7 rehearsal; verified against the rehearsal stack and against a deliberate mismatch) and the §H2 "ingress duties" table (TLS, compression with the measured 20.3 MB → 4.95 MB figure, throttling, logs, backup schedule). The rehearsal also produced `docs/plans/2026-09-16-hosted-acceptance-rehearsal.md` and five defect fixes (target-summary bounds, rejected-call token accounting, transport-failure outcome, drill mode, §H7 column name). |
 | 2026-09-16 | **B-01 delivered** (`scripts/corpus_batch.py`, `spago_core.corpus_status`, `GET /api/v1/corpus` + `CorpusDialog.tsx`). No re-sorting needed: the priority order below is unchanged, and B-10 is now the top P1 item. Two scope notes recorded: the batch loop is an operator-side chunker (no queue service, §6/§22), and the corpus counts are computed per request rather than maintained — the measured cost is in the plan file, and a corpus large enough to need counters is a measured problem, not a guess. |
+| 2026-09-16 | **B-02 delivered** (`source_retrievals.reference_counts` + migration 0016, `spago_core/domain/document_refs.py`, the `--declarations` live measurement, and the target header's *Source notes and reference coverage* disclosure). Re-sorted: **B-24 is now the top P1 item**; B-02 leaves the table. The delivery answered the item's blocker with a live number instead of an assumption — 135 of IL6's 166 kept records carry a source-declared patent number, and EGFR's are 1,187 DOI-only plus 1,210 whose cited document the source does not return — and it surfaced a defect it did not set out to find: every retrieval's `warnings` (including "the lookup bound was reached") was persisted, served and rendered nowhere in the UI. Three scope notes: the tally is computed by the service over the records it kept, not by each adapter, so it means one thing for every source; a record already excluded for a missing structure or value is counted in `rejection_counts`, never in this tally; and no new dependency was added. |
 | 2026-09-16 | **B-10 delivered** (`services/analyses.py`, `GET /api/v1/analyses`, `/analyses/{id}`, `/analyses/{id}/export`, `AnalysesDialog.tsx`). Re-sorted: **B-02 is now the top P1 item**; B-10 leaves the table. One new backlog item recorded from building it — **B-29** (attach a stored analysis to a project, and cite it from the project view), `LATER · M`: the capability statement already promises that saved work reopens, and an analysis is now an artifact a project can point at, but no reviewed workflow asks for it yet. |

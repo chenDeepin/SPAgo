@@ -22,18 +22,25 @@ weakest reading the structured fields support.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from spago_core.adapters.bioactivity_base import ActivityRecord, ActivityResult
 from spago_core.adapters.http import SourceClient, SourceUnavailableError
 from spago_core.domain import (
+    ACTIVITY_WITHOUT_DOCUMENT,
+    DOCUMENT_NOT_RETRIEVED_BOUND,
+    DOCUMENT_NOT_RETRIEVED_FAILURE,
+    DOCUMENT_UNKNOWN_TO_SOURCE,
     EvidenceClass,
     RetrievalStatus,
     SourceEnvelope,
     TargetCandidateEntry,
     TargetLookupResult,
     TargetType,
+    declared_reference_status,
+    document_reference_counts,
 )
 from spago_core.domain.patent_numbers import normalize_patent_number
 
@@ -151,6 +158,21 @@ def classify_evidence(
 def _relation(value: Optional[str]) -> str:
     text = (value or "").strip()
     return text if text in {"=", "<", ">", "~", "<=", ">="} else "="
+
+
+@dataclass(frozen=True)
+class DocumentLookups:
+    """What a bounded document-metadata lookup resolved, and what it did not.
+
+    ``metadata`` holds only documents that answered; ``unresolved`` maps every
+    other requested id to the reason it is unresolved (``unknown_to_source``,
+    ``bound`` or ``failure``), so a caller never has to infer "no patent" from a
+    missing key (B-02).
+    """
+
+    metadata: dict[str, dict] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    unresolved: dict[str, str] = field(default_factory=dict)
 
 
 class ChEMBLDiscoveryAdapter:
@@ -285,7 +307,7 @@ class ChEMBLDiscoveryAdapter:
 
     # -- 3. document references (patent / DOI / PMID) -------------------------
 
-    def documents(self, document_ids: Iterable[str]) -> tuple[dict[str, dict], list[str]]:
+    def documents(self, document_ids: Iterable[str]) -> DocumentLookups:
         """Bounded, cached document metadata for ChEMBL document ids.
 
         The activity payload carries `document_chembl_id` only, so without this
@@ -294,8 +316,11 @@ class ChEMBLDiscoveryAdapter:
         batched and bounded; a failure returns what was already collected plus a
         warning, never a fabricated identifier.
 
-        Returns ``(metadata_by_id, warnings)``. Only documents that answered are
-        present in the mapping: a missing key means "unknown", not "no patent".
+        :class:`DocumentLookups` separates the three outcomes a caller must keep
+        apart: documents that answered (``metadata``), the bound or failure that
+        stopped the lookup (``warnings``), and each unresolved id with its reason
+        (``unresolved``) — so a caller can say *why* a record has no reference
+        instead of implying the source declared none (B-02).
         """
         wanted = [str(doc) for doc in document_ids if doc]
         unique: list[str] = []
@@ -309,9 +334,14 @@ class ChEMBLDiscoveryAdapter:
         missing = [doc for doc in unique if doc not in self._document_cache]
         warnings: list[str] = []
         requests_made = 0
+        #: Why a document in `missing` was never attempted. Only ever "bound" or
+        #: "failure"; anything cached is resolved by definition (a `None` cache
+        #: entry means the source does not know the id).
+        unattempted_reason = "failure"
 
         for start in range(0, len(missing), DOCUMENT_BATCH):
             if requests_made >= self.max_document_lookups:
+                unattempted_reason = "bound"
                 warnings.append(
                     f"Document metadata lookup stopped at the configured bound of "
                     f"{self.max_document_lookups} request(s); patent/DOI references for "
@@ -352,30 +382,58 @@ class ChEMBLDiscoveryAdapter:
             cached = self._document_cache.get(doc_id)
             if cached:
                 metadata[doc_id] = cached
-        return metadata, warnings
+
+        unresolved: dict[str, str] = {}
+        for doc_id in unique:
+            if doc_id in metadata:
+                continue
+            if doc_id in self._document_cache:
+                # Cached with no metadata: the source answered and does not know it.
+                unresolved[doc_id] = "unknown_to_source"
+            else:
+                unresolved[doc_id] = unattempted_reason
+        return DocumentLookups(metadata=metadata, warnings=warnings, unresolved=unresolved)
 
     def _attach_document_references(
         self, records: list[ActivityRecord], warnings: list[str]
     ) -> None:
-        """Fill patent/DOI/PMID on each record from its document's metadata."""
+        """Fill patent/DOI/PMID on each record and stamp what happened (B-02).
+
+        Every record leaves this method with a
+        `document_reference_status` in the shared vocabulary, so the retrieval can
+        report how many records carry a reference and why the rest do not.
+        """
         document_ids = [record.document_ref for record in records if record.document_ref]
-        if not document_ids:
-            return
-        metadata, doc_warnings = self.documents(document_ids)
-        warnings.extend(doc_warnings)
-        if not metadata:
-            return
+        if document_ids:
+            lookups = self.documents(document_ids)
+            warnings.extend(lookups.warnings)
+            metadata = lookups.metadata
+            unresolved = lookups.unresolved
+        else:
+            metadata = {}
+            unresolved = {}
         for record in records:
             document = metadata.get(record.document_ref or "")
-            if not document:
+            if document:
+                record.document_patent_number = (
+                    normalize_patent_number(document.get("patent_id")) or None
+                )
+                record.document_doi = document.get("doi") or None
+                record.document_pmid = (
+                    str(document["pubmed_id"]) if document.get("pubmed_id") else None
+                )
+                record.document_reference_status = declared_reference_status(record)
                 continue
-            record.document_patent_number = (
-                normalize_patent_number(document.get("patent_id")) or None
-            )
-            record.document_doi = document.get("doi") or None
-            record.document_pmid = (
-                str(document["pubmed_id"]) if document.get("pubmed_id") else None
-            )
+            if not record.document_ref:
+                record.document_reference_status = ACTIVITY_WITHOUT_DOCUMENT
+                continue
+            reason = unresolved.get(record.document_ref)
+            if reason == "bound":
+                record.document_reference_status = DOCUMENT_NOT_RETRIEVED_BOUND
+            elif reason == "failure":
+                record.document_reference_status = DOCUMENT_NOT_RETRIEVED_FAILURE
+            else:
+                record.document_reference_status = DOCUMENT_UNKNOWN_TO_SOURCE
 
     # -- 4. activities --------------------------------------------------------
 
@@ -479,6 +537,10 @@ class ChEMBLDiscoveryAdapter:
             records_seen=seen,
             records_excluded=excluded,
             rejection_counts=rejection_counts,
+            # B-02: how many of the kept records carry a source-declared patent,
+            # DOI or PMID — and why the rest do not. Excluded records never reach
+            # document resolution; they are counted by `rejection_counts`.
+            document_reference_counts=document_reference_counts(records),
         )
 
     def _to_record(self, activity: dict, target_type, reject) -> Optional[ActivityRecord]:

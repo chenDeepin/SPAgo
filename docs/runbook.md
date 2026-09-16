@@ -112,6 +112,36 @@ recorded per row by a source lookup rather than imported as a package. Counts ar
 read from the corpus tables on the request (measured 5.8–6.5 ms on the local
 database, 1,907 bytes), so the view cannot disagree with the data it describes.
 
+### 2.3 How far a source's data can be linked to a patent
+
+Each target investigation records, per source, how every kept record's
+source-declared document reference resolved — a patent number, a DOI, a PubMed id,
+or one of the reasons none was attached (the document declares no identifier, the
+source does not know the cited document, the lookup bound was reached, the lookup
+failed, the record cites no document). The target header's **Source notes and
+reference coverage** disclosure renders it next to the retrieval's own notes.
+
+To measure it live on a deployed build, without writing anything to the database:
+
+```bash
+docker compose run --rm -v "$PWD/scripts:/app/scripts:ro" app \
+    python /app/scripts/cohort_coverage.py TSLP CD40LG IL6 IL6R EGFR \
+    --declarations --out - > benchmarks/reference-declarations-<date>.md
+```
+
+It reads the ChEMBL target ids each stored investigation used (so the measurement
+covers the scope this deployment actually retrieved, not a freshly planned one),
+calls the source, and reports per target: records returned, excluded, kept, and the
+per-bucket counts. `--json` emits the machine record; `--max-activities` lowers the
+per-target bound. It refuses to run together with `--investigate`, because a caller
+must not be left thinking rows were written.
+
+A bucket of `document_not_retrieved_bound` or `document_not_retrieved_failure` is a
+fact about *this retrieval*: those compounds may well be patented, the lookup stopped
+before it could say. Never read it as "no patent", and never add
+`reference_counts` to `rejection_counts` — the first covers kept records, the second
+covers records the source returned without a usable structure or value.
+
 ## 3. Backup
 
 Backs up everything scientific: projects, saved items, evidence, source

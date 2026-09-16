@@ -1506,6 +1506,10 @@ class RetrievalResponse(BaseModel):
     records_kept: int = 0
     records_excluded: int = 0
     rejection_counts: dict = {}
+    #: B-02: how the source-declared document reference resolved over the kept
+    #: records (disjoint buckets; sum = `records_kept`). Empty means the run
+    #: predates the tally and must not be read as "none declared".
+    reference_counts: dict = {}
     latency_ms: Optional[int] = None
     warnings: list[str] = []
     checksum: Optional[str] = None
@@ -1688,6 +1692,7 @@ def discover_target(
                 records_kept=r.records_kept,
                 records_excluded=r.records_excluded,
                 rejection_counts=r.rejection_counts,
+                reference_counts=r.reference_counts,
                 latency_ms=r.latency_ms,
                 warnings=r.warnings,
                 checksum=r.checksum,
@@ -1872,6 +1877,7 @@ def target_coverage(target_id: uuid.UUID, request: Request, engine=Depends(get_e
             records_kept=r.records_kept,
             records_excluded=r.records_excluded,
             rejection_counts=r.rejection_counts,
+            reference_counts=r.reference_counts,
             latency_ms=r.latency_ms,
             warnings=r.warnings,
             checksum=r.checksum,
@@ -2256,6 +2262,10 @@ class CoverageMatrixRow(BaseModel):
     records_kept: int = 0
     records_excluded: int = 0
     rejection_counts: dict = {}
+    #: B-02: how the source-declared document reference resolved over this
+    #: retrieval's kept records (disjoint buckets; sum = `records_kept`). Empty
+    #: means the run predates the tally — not "nothing was declared".
+    reference_counts: dict = {}
     candidates: int = 0
     small_molecule_candidates: int = 0
     dataset_version: Optional[str] = None

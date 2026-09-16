@@ -1322,6 +1322,29 @@ button.dataset-badge:hover {
   color: var(--text-2);
 }
 
+/* B-02: one block per source inside the collapsed "Source notes and reference
+   coverage" disclosure, so the reference tally and the retrieval's own notes
+   stay readable without turning the header into a report. */
+.reference-coverage + .reference-coverage {
+  margin-top: 8px;
+  border-top: var(--border-w) solid var(--border);
+  padding-top: 6px;
+}
+
+.reference-coverage p {
+  margin: 6px 0 0;
+}
+
+.reference-coverage details {
+  margin-top: 4px;
+}
+
+.reference-coverage details summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--accent-strong);
+}
+
 .coverage-strip {
   display: flex;
   flex-wrap: wrap;

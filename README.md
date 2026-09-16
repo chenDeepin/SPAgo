@@ -169,6 +169,19 @@ Markdown whose header carries those fields plus the citations, and an entry whos
 or potency policy moved since it was generated is labelled out of date instead of being
 shown as current.
 
+**Where a source's own patent reference comes from — and where it stops.** A target's
+header carries a *Source notes and reference coverage* disclosure: for each retrieval,
+the source's notes (including "the document lookup bound was reached"), and a disjoint
+count of how each kept record's source-declared reference resolved — patent number, DOI,
+PubMed id, or the reason none was attached (the document declares none, the source does
+not know the cited document, the bound was reached, the lookup failed, the record cites
+no document). Measured live on the acceptance cohort
+([`benchmarks/reference-declarations-2026-09-16.md`](benchmarks/reference-declarations-2026-09-16.md)):
+135 of IL-6's 166 kept records carry a source-declared patent, TSLP's 111 carry only
+DOIs, and 1,210 of EGFR's 2,397 cite a document ChEMBL does not return. A bound or a
+failed lookup is reported as a fact about that retrieval — never as "no patent", and
+never as an occurrence in SPAgo's corpus, which stays a separate labelled fact.
+
 ---
 
 ## How it works

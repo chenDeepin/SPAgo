@@ -482,15 +482,21 @@ class TestAdapterDocumentMetadata:
             client=StubSourceClient({"document.json": load_fixture("chembl_documents_TSLP.json")}),
             max_document_lookups=1,
         )
-        metadata, warnings = adapter.documents(
-            [f"CHEMBL_NOT_REAL_{n}" for n in range(120)]
-        )
+        lookups = adapter.documents([f"CHEMBL_NOT_REAL_{n}" for n in range(120)])
         # Only the documents the source actually answered for are returned, the
         # request stayed inside the bound, and the gap is stated rather than
         # reported as "this activity has no patent".
-        assert set(metadata) == {"CHEMBL3638439", "CHEMBL4043230"}
-        assert any("configured bound" in w for w in warnings)
+        assert set(lookups.metadata) == {"CHEMBL3638439", "CHEMBL4043230"}
+        assert any("configured bound" in w for w in lookups.warnings)
         assert len([1 for url, _ in adapter.client.calls if "document.json" in url]) == 1
+        # B-02: every unresolved id carries its reason, so the retrieval can count
+        # "the source answered and does not know it" (50 ids in the one batch that
+        # was spent) separately from "the bound stopped us before asking" (the
+        # remaining 70).
+        assert len(lookups.unresolved) == 120
+        reasons = list(lookups.unresolved.values())
+        assert reasons.count("unknown_to_source") == 50
+        assert reasons.count("bound") == 70
 
     def test_a_failed_document_lookup_is_not_reported_as_no_patent(self):
         from spago_core.adapters.http import SourceUnavailableError
@@ -500,9 +506,10 @@ class TestAdapterDocumentMetadata:
                 {"document.json": SourceUnavailableError("chembl", "HTTP 503")}
             )
         )
-        metadata, warnings = adapter.documents(["CHEMBL4043230"])
-        assert metadata == {}
-        assert any("unavailable" in w for w in warnings)
+        lookups = adapter.documents(["CHEMBL4043230"])
+        assert lookups.metadata == {}
+        assert any("unavailable" in w for w in lookups.warnings)
+        assert lookups.unresolved == {"CHEMBL4043230": "failure"}
 
 
 class TestMatrixProjection:

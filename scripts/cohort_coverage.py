@@ -33,6 +33,12 @@ Run (operator tooling):
     # populate a target first (billed upstream, not by a model)
     docker compose run --rm -v "$PWD/scripts:/app/scripts:ro" app \
         python /app/scripts/cohort_coverage.py CD40LG --investigate --yes
+
+    # measure live how much of a source's data links to a document (B-02): reads
+    # the stored ChEMBL scope, calls the source, writes nothing to the database
+    docker compose run --rm -v "$PWD/scripts:/app/scripts:ro" app \
+        python /app/scripts/cohort_coverage.py TSLP CD40LG EGFR --declarations \
+        --out - > benchmarks/reference-declarations-<date>.md
 """
 from __future__ import annotations
 
@@ -41,9 +47,23 @@ import json
 import sys
 from datetime import datetime, timezone
 
+from sqlalchemy import text
+
 from spago_core import __version__
+from spago_core.adapters.chembl_discovery import (
+    DEFAULT_MAX_ACTIVITIES,
+    ChEMBLDiscoveryAdapter,
+)
 from spago_core.config import get_settings
 from spago_core.db.engine import make_engine
+from spago_core.domain import (
+    DOCUMENT_REFERENCE_MEANINGS,
+    DOCUMENT_REFERENCE_STATUSES,
+    DOI_ONLY,
+    PATENT_DECLARED,
+    PMID_ONLY,
+    document_reference_counts,
+)
 from spago_core.services import discovery as discovery_svc
 from spago_core.services import targets as targets_svc
 from spago_core.services.discovery import EXTERNAL_SOURCES
@@ -54,6 +74,16 @@ from spago_core.services.reference import policy_from_settings, reference_verdic
 #: that must return a large set, so an empty acceptance target cannot be mistaken
 #: for a broken adapter.
 DEFAULT_COHORT = ("TSLP", "CD40LG", "IL-6", "IL-6R", "EGFR")
+
+
+def _write_or_print(text_out: str, out: str | None) -> None:
+    """One place for the output contract: `-`/absent prints, a path writes."""
+    if out == "-" or out is None:
+        print(text_out)
+        return
+    with open(out, "w", encoding="utf-8") as handle:
+        handle.write(text_out if text_out.endswith("\n") else text_out + "\n")
+    _log(f"wrote {out}")
 
 
 def _log(message: str = "") -> None:
@@ -101,6 +131,190 @@ def _investigate(engine, queries, sources) -> dict[str, dict]:
         )
         _log(f"  {query:12s} {state}; {kept}")
     return outcomes
+
+
+def _stored_chembl_scope(engine, target) -> list[str]:
+    """The ChEMBL target ids the stored investigation retrieved through.
+
+    Read from the retrieval's own recorded query rather than re-planned, so the
+    declaration measurement answers for exactly the scope this deployment
+    investigated (and spends the same upstream requests it did).
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT query FROM source_retrievals
+                WHERE target_id = :tid AND source_name = 'chembl'
+                ORDER BY retrieved_at DESC
+                """
+            ),
+            {"tid": target.id},
+        ).all()
+    for (query,) in rows:
+        payload = query if isinstance(query, dict) else json.loads(query or "{}")
+        ids = [str(value) for value in (payload.get("target_chembl_ids") or []) if value]
+        if ids:
+            return ids
+    return []
+
+
+def _declarations(engine, queries, max_activities: int) -> dict[str, dict]:
+    """Live, read-only: how many records a source can link to a document (B-02).
+
+    For each query it takes the ChEMBL target ids the stored investigation used,
+    fetches bounded activities through the shipped adapter, and tallies what
+    happened to each *kept* record's document reference. Nothing is written and no
+    row is created: this measures the source, it does not re-run the product.
+
+    A record reachable through two target definitions (a single protein and an
+    interaction) is counted once, by activity id — the same rule the service
+    applies when it de-duplicates.
+    """
+    resolution = targets_svc.TargetResolutionService()
+    adapter = ChEMBLDiscoveryAdapter(max_activities=max_activities)
+    outcomes: dict[str, dict] = {}
+    for query in queries:
+        target = resolution.find_target(engine, query)
+        if target is None:
+            outcomes[query] = {
+                "status": "not investigated",
+                "note": (
+                    "No stored target, so the scope to measure is unknown. Run "
+                    "--investigate first; this is not a zero-declaration result."
+                ),
+            }
+            _log(f"  {query:12s} not investigated — no stored scope to measure")
+            continue
+        scope = _stored_chembl_scope(engine, target)
+        if not scope:
+            outcomes[query] = {
+                "status": "no stored ChEMBL scope",
+                "target_key": target.target_key,
+                "note": (
+                    "The stored investigations recorded no ChEMBL target id "
+                    "(the source was empty or failed); there is nothing to measure."
+                ),
+            }
+            _log(f"  {query:12s} no stored ChEMBL scope")
+            continue
+
+        by_activity: dict[str, object] = {}
+        seen = excluded = pages = 0
+        warnings: list[str] = []
+        statuses: list[str] = []
+        for chembl_id in scope:
+            result = adapter.activities(chembl_id)
+            seen += result.records_seen
+            excluded += result.records_excluded
+            pages += result.pages_fetched
+            warnings.extend(result.warnings)
+            statuses.append(result.status)
+            for record in result.records:
+                by_activity.setdefault(record.source_record_id, record)
+        counts = document_reference_counts(by_activity.values())
+        outcomes[query] = {
+            "status": "measured",
+            "target_key": target.target_key,
+            "target_name": target.name,
+            "uniprot_accession": target.uniprot_accession,
+            "chembl_target_ids": scope,
+            "source": "chembl",
+            "source_statuses": statuses,
+            "pages_fetched": pages,
+            "records_seen": seen,
+            "records_kept": len(by_activity),
+            "records_excluded": excluded,
+            "reference_counts": counts,
+            "warnings": warnings,
+            "bounds": {
+                "max_activities_per_target": adapter.max_activities,
+                "max_document_lookups": adapter.max_document_lookups,
+            },
+        }
+        patent = counts.get(PATENT_DECLARED, 0)
+        _log(
+            f"  {query:12s} {len(by_activity)} kept record(s); "
+            f"{patent} carry a source-declared patent"
+        )
+    return outcomes
+
+
+def _declaration_totals(measured: dict[str, dict]) -> dict[str, int]:
+    totals: dict[str, int] = {}
+    for outcome in measured.values():
+        for status, count in (outcome.get("reference_counts") or {}).items():
+            totals[status] = totals.get(status, 0) + count
+    return {status: totals[status] for status in DOCUMENT_REFERENCE_STATUSES if status in totals}
+
+
+def _render_declarations(measured, generated_at, build, bounds) -> str:
+    """Markdown for the live declaration measurement, one section per query."""
+    totals = _declaration_totals(measured)
+    kept = sum(int(o.get("records_kept") or 0) for o in measured.values() if o.get("status") == "measured")
+    lines = [
+        "# Source-declared document references — live measurement",
+        "",
+        f"Measured {generated_at} from the running build (`api_version` {build}) by",
+        "`scripts/cohort_coverage.py --declarations` through the shipped ChEMBL",
+        "adapter. Live upstream calls; nothing was written to the database.",
+        "",
+        f"Bounds in force: {bounds['max_activities_per_target']} activities per ChEMBL",
+        f"target id, {bounds['max_document_lookups']} document-metadata request(s).",
+        "",
+        "A record's document reference is what the source declared. It is **not**",
+        "evidence that the compound occurs in that document in SPAgo's corpus, and it",
+        "is not a statement about patent coverage either way.",
+        "",
+        "## Totals",
+        "",
+        f"{kept} kept record(s) measured.",
+        "",
+        "| Outcome | Records | Meaning |",
+        "| --- | --- | --- |",
+    ]
+    for status, count in totals.items():
+        lines.append(f"| `{status}` | {count} | {DOCUMENT_REFERENCE_MEANINGS.get(status, '')} |")
+    lines.append("")
+    for query, outcome in measured.items():
+        lines += [f"## {query}", ""]
+        if outcome.get("status") != "measured":
+            lines += [f"**Not measured** — {outcome.get('note')}", ""]
+            continue
+        counts = outcome["reference_counts"]
+        linked = sum(counts.get(key, 0) for key in (PATENT_DECLARED, DOI_ONLY, PMID_ONLY))
+        lines += [
+            f"{outcome.get('target_key')} — {outcome.get('target_name') or 'unnamed'} · "
+            f"UniProt {outcome.get('uniprot_accession') or '—'}",
+            "",
+            f"ChEMBL target ids: {', '.join(outcome['chembl_target_ids'])} · "
+            f"status {', '.join(outcome['source_statuses'])} · "
+            f"{outcome['pages_fetched']} page(s)",
+            "",
+            f"{outcome['records_seen']} record(s) returned, {outcome['records_excluded']} "
+            f"excluded (no structure or no numeric value), **{outcome['records_kept']} kept**; "
+            f"{linked} of them linked to a document.",
+            "",
+            "| Outcome | Records |",
+            "| --- | --- |",
+        ]
+        for status in DOCUMENT_REFERENCE_STATUSES:
+            if counts.get(status):
+                lines.append(f"| `{status}` | {counts[status]} |")
+        lines.append("")
+        for warning in outcome.get("warnings") or []:
+            lines.append(f"> {warning}")
+        if outcome.get("warnings"):
+            lines.append("")
+    lines += [
+        "---",
+        "",
+        "`document_not_retrieved_bound` and `document_not_retrieved_failure` are facts about",
+        "this retrieval, not about the compounds: the lookup stopped before those documents",
+        "were resolved. They must never be rendered as \"no patent\".",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def _build_rows(engine):
@@ -199,6 +413,30 @@ def _render(rows, queries, resolution, generated_at, build) -> str:
             )
         verdict = head.get("reference")
         lines.append("")
+        # B-02: how much of what this source returned can be linked to a document,
+        # and why the rest cannot. A retrieval recorded before the tally existed
+        # says so instead of showing a zero.
+        for row in sorted(rows_for, key=lambda r: r["source_name"]):
+            counts = row.get("reference_counts") or {}
+            if not counts:
+                lines.append(
+                    f"Reference coverage — {row['source_name']}: not recorded for this "
+                    "run (it predates the tally); that is not \"none declared\"."
+                )
+                continue
+            linked = sum(
+                counts.get(key, 0) for key in ("patent_declared", "doi_only", "pmid_only")
+            )
+            parts = ", ".join(
+                f"{count} {status.replace('_', ' ')}"
+                for status, count in counts.items()
+                if count
+            )
+            lines.append(
+                f"Reference coverage — {row['source_name']}: {linked} of "
+                f"{row['records_kept']} kept record(s) linked to a document ({parts})."
+            )
+        lines.append("")
         if verdict:
             lines += [
                 f"Verdict: **{'qualifies' if verdict['qualifies'] else 'does not qualify'}** — "
@@ -243,15 +481,67 @@ def main() -> int:
         help=f"repeatable; default all of {', '.join(EXTERNAL_SOURCES)}",
     )
     parser.add_argument("--yes", action="store_true", help="required with --investigate")
+    parser.add_argument(
+        "--declarations",
+        action="store_true",
+        help=(
+            "live, read-only: measure how many of each target's kept records carry a "
+            "source-declared document reference, and why the rest do not (B-02). Writes "
+            "nothing to the database; spends upstream requests."
+        ),
+    )
+    parser.add_argument(
+        "--max-activities",
+        type=int,
+        default=DEFAULT_MAX_ACTIVITIES,
+        help="activity records to fetch per ChEMBL target id in --declarations",
+    )
     args = parser.parse_args()
 
     queries = tuple(args.queries) if args.queries else DEFAULT_COHORT
     if args.investigate and not args.yes:
         _log("refusing to write rows and spend upstream requests without --yes.")
         return 2
+    if args.investigate and args.declarations:
+        _log(
+            "refusing --investigate with --declarations: the measurement is read-only, and a "
+            "caller must not be left thinking rows were written. Run the investigation first."
+        )
+        return 2
     sources = tuple(args.source) if args.source else EXTERNAL_SOURCES
 
     engine = make_engine()
+    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    # The build identity `/healthz` reports, read from the same constant the app
+    # serves, so the record names the build it was taken from without a network
+    # call (the operator's binary may sit behind a proxy this tool cannot see).
+    build = __version__
+
+    if args.declarations:
+        _log(f"measuring document-reference coverage for {len(queries)} target(s), live")
+        max_activities = max(1, args.max_activities)
+        measured = _declarations(engine, queries, max_activities)
+        bounds = {
+            "max_activities_per_target": max_activities,
+            "max_document_lookups": ChEMBLDiscoveryAdapter().max_document_lookups,
+        }
+        record = {
+            "generated_at": generated_at,
+            "api_version": build,
+            "mode": "declarations",
+            "requested_cohort": list(queries),
+            "bounds": bounds,
+            "targets": measured,
+            "totals": _declaration_totals(measured),
+        }
+        text_out = (
+            json.dumps(record, ensure_ascii=False, indent=2)
+            if args.json
+            else _render_declarations(measured, generated_at, build, bounds)
+        )
+        _write_or_print(text_out, args.out)
+        return 0
+
     resolution: dict[str, dict] = {}
     if args.investigate:
         _log(f"investigating {len(queries)} target(s) from {', '.join(sources)}")
@@ -267,12 +557,6 @@ def main() -> int:
             }
 
     rows, _targets = _build_rows(engine)
-    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    # The build identity `/healthz` reports, read from the same constant the app
-    # serves, so the record names the build it was taken from without a network
-    # call (the operator's binary may sit behind a proxy this tool cannot see).
-    build = __version__
-
     record = {
         "generated_at": generated_at,
         "api_version": build,
@@ -281,18 +565,12 @@ def main() -> int:
         "resolution": resolution,
         "rows": rows,
     }
-    text = (
+    text_out = (
         json.dumps(record, ensure_ascii=False, indent=2)
         if args.json
         else _render(rows, queries, resolution, generated_at, build)
     )
-
-    if args.out == "-" or args.out is None:
-        print(text)
-    else:
-        with open(args.out, "w", encoding="utf-8") as handle:
-            handle.write(text if text.endswith("\n") else text + "\n")
-        _log(f"wrote {args.out}")
+    _write_or_print(text_out, args.out)
 
     missing = [
         q

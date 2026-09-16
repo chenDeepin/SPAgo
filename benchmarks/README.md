@@ -72,6 +72,15 @@ measurable — they are **not** capacity claims for bulk datasets.
   literature rows: the import write path (normalization + compound upsert + per-row
   outcome), the remark listing, and the verdict/candidate reads after an import.
   An import makes no upstream call, so this record has no external-latency table.
+- `reference-declarations-2026-09-16.md` (raw: `...json`) — B-02: how far the
+  source's own document reference reaches, measured live and read-only over the
+  acceptance cohort through the shipped ChEMBL adapter (39 s for all five targets,
+  2,696 kept records). Per target it reports the records returned, excluded and kept,
+  and a disjoint tally of the kept records' reference outcomes. The honest headline:
+  only IL-6 yields patent numbers (135 of its 166 kept records, the rest DOI-only),
+  while 1,210 of EGFR's 2,397 cite a document the source does not return and
+  CHEMBL203 stopped at the 2,000-activity bound. Nothing was written to the database,
+  so these are retrieval-scoped facts, not corpus occurrences.
 
 ## Reproduce
 

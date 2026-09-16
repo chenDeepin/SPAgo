@@ -62,6 +62,12 @@ class ActivityRecord(BaseModel):
     document_patent_number: str | None = None
     document_doi: str | None = None
     document_pmid: str | None = None
+    #: ONLINE-06 / B-02: what happened when this record's document reference was
+    #: resolved — one of the buckets in `DOCUMENT_REFERENCE_STATUSES`. `None`
+    #: means the adapter did not attempt document resolution at all, which is a
+    #: third state and must not be read as "no patent". It is an outcome of the
+    #: *retrieval*, so it is not stored on the measurement row; the tally is.
+    document_reference_status: str | None = None
     source_url: str | None = None
     assay_type_name: str | None = None
     #: Modality as declared by the source for this ligand, if any.
@@ -94,6 +100,12 @@ class ActivityResult(BaseModel):
     records_seen: int = 0
     records_excluded: int = 0
     rejection_counts: dict[str, int] = Field(default_factory=dict)
+    #: B-02: how many of the *kept* records carry a source-declared patent, DOI or
+    #: PMID, and why the others do not. Disjoint buckets over `records`; the
+    #: codes are `DOCUMENT_REFERENCE_STATUSES`. Excluded records (no structure or
+    #: no numeric value) never reach document resolution and are counted in
+    #: `rejection_counts` instead, so the two tallies describe different sets.
+    document_reference_counts: dict[str, int] = Field(default_factory=dict)
 
 
 @runtime_checkable

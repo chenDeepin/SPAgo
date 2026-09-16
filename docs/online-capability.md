@@ -75,6 +75,18 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   patent number (normalized), DOI and PMID for a discovered compound. Those are
   labelled *declared by the source* and kept in a separate column from a
   *corpus occurrence*, which is what SPAgo's patent linkage means.
+- **How far that linkage actually reaches, per retrieval.** Each retrieval stores a
+  disjoint tally over the records it kept — `patent_declared`, `doi_only`,
+  `pmid_only`, and the reasons a reference is missing (`the document declares no
+  identifier`, `the source row carried no reference`, `the source does not know the
+  cited document`, `the lookup bound was reached first`, `the lookup failed`,
+  `the record cites no document`) — shown in the target header's *Source notes and
+  reference coverage* disclosure together with the retrieval's own notes. A bound or
+  a lookup failure is reported as a fact about the retrieval, never rendered as
+  "no patent". Measured live on 2026-09-16
+  (`benchmarks/reference-declarations-2026-09-16.md`): 135 of IL6's 166 kept records
+  carry a source-declared patent, TSLP's 111 carry only DOIs, and 1,210 of EGFR's
+  2,397 cite a document the source does not return.
 - **Hand-added literature rows per target.** A thin or empty retrieved set can be
   supplemented by hand from a paper or a patent. Each row carries a required note
   (its provenance), goes through the same RDKit normalization, modality

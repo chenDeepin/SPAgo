@@ -21,6 +21,37 @@ const STATUS_TITLE: Record<SourceRetrieval["status"], string> = {
 
 const RELATED_MEMBER_ROLES = ["ligand", "receptor", "signalling_component", "pathway"];
 
+/** B-02: why a kept record does or does not carry a source-declared document
+ * reference. The codes are the server's shared vocabulary
+ * (`spago_core/domain/document_refs.py`); the labels are the reader's. */
+const REFERENCE_STATUS_ORDER = [
+  "patent_declared",
+  "doi_only",
+  "pmid_only",
+  "no_reference_on_document",
+  "no_reference_from_source",
+  "document_unknown_to_source",
+  "document_not_retrieved_bound",
+  "document_not_retrieved_failure",
+  "activity_without_document",
+] as const;
+
+const REFERENCE_STATUS_LABEL: Record<string, string> = {
+  patent_declared: "with a source-declared patent",
+  doi_only: "DOI only, no patent",
+  pmid_only: "PubMed id only",
+  no_reference_on_document: "the document declares no identifier",
+  no_reference_from_source: "the source row carried no reference",
+  document_unknown_to_source: "the source does not know the cited document",
+  document_not_retrieved_bound: "the lookup bound was reached first",
+  document_not_retrieved_failure: "the lookup failed before this document",
+  activity_without_document: "the record cites no document",
+};
+
+/** The three buckets that mean "a reference was attached". */
+const REFERENCE_FOUND = ["patent_declared", "doi_only", "pmid_only"];
+
+
 /** DOM id of the coverage chip for one source. A `source:<name>` citation and
  * the chip share this one convention, so the citation click can focus the
  * record it refers to without a second lookup table. */
@@ -213,6 +244,64 @@ export function TargetHeader({
           {". "}
           {discovery.coverage_note}
         </p>
+      )}
+
+      {/* B-02: what the retrieval could and could not link to a document, and the
+          source notes that used to be stored and never shown. A retrieval whose
+          lookup bound was reached says so here instead of leaving the reader to
+          read "no patent mapping" as a fact about the compound. */}
+      {(coverage.some((entry) => Object.keys(entry.reference_counts ?? {}).length > 0) ||
+        coverage.some((entry) => (entry.warnings ?? []).length > 0)) && (
+        <details className="target-notes">
+          <summary>Source notes and reference coverage</summary>
+          {coverage.map((entry) => {
+            const counts = entry.reference_counts ?? {};
+            const recorded = Object.keys(counts).length > 0;
+            const linked = REFERENCE_FOUND.reduce((total, key) => total + (counts[key] ?? 0), 0);
+            // Three different states, said differently: records were tallied,
+            // there were no records to tally, or the run predates the tally (a
+            // stored row from before migration 0016). None of them is "zero
+            // references declared".
+            const coverageLine = recorded
+              ? `${linked} linked to a document`
+              : entry.records_kept === 0
+                ? "no kept record to resolve a reference for"
+                : "reference coverage not recorded for this run (it predates the tally; that is not zero)";
+            return (
+              <div key={entry.source_name} className="reference-coverage">
+                <p className="fineprint">
+                  <strong>{entry.source_name}</strong> · {entry.records_kept} kept record
+                  {entry.records_kept === 1 ? "" : "s"} · {coverageLine}
+                </p>
+                {recorded && (
+                  <ul>
+                    {REFERENCE_STATUS_ORDER.filter((status) => (counts[status] ?? 0) > 0).map(
+                      (status) => (
+                        <li key={status}>
+                          {counts[status]} {REFERENCE_STATUS_LABEL[status] ?? status}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                )}
+                {(entry.warnings ?? []).length > 0 && (
+                  <details>
+                    <summary>{entry.warnings.length} source note(s)</summary>
+                    <ul>
+                      {entry.warnings.map((warning, index) => (
+                        <li key={index}>{warning}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            );
+          })}
+          <p className="fineprint">
+            A document reference is what the source declared, not proof that the compound occurs
+            in that document; the candidate table keeps the two apart.
+          </p>
+        </details>
       )}
     </div>
   );

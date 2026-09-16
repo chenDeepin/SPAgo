@@ -37,3 +37,19 @@ from spago_core.domain.models import (  # noqa: F401
     WithdrawalResult,
     WithdrawnSupplement,
 )
+from spago_core.domain.document_refs import (  # noqa: F401
+    ACTIVITY_WITHOUT_DOCUMENT,
+    DOCUMENT_NOT_RETRIEVED_BOUND,
+    DOCUMENT_NOT_RETRIEVED_FAILURE,
+    DOCUMENT_REFERENCE_MEANINGS,
+    DOCUMENT_REFERENCE_STATUSES,
+    DOCUMENT_UNKNOWN_TO_SOURCE,
+    DOI_ONLY,
+    MISSING_REFERENCE_STATUSES,
+    NO_REFERENCE_FROM_SOURCE,
+    NO_REFERENCE_ON_DOCUMENT,
+    PATENT_DECLARED,
+    PMID_ONLY,
+    declared_reference_status,
+    document_reference_counts,
+)

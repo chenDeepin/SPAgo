@@ -437,6 +437,12 @@ class SourceRetrieval(BaseModel):
     records_kept: int = 0
     records_excluded: int = 0
     rejection_counts: dict[str, int] = Field(default_factory=dict)
+    #: B-02: how the source-declared document reference resolved for this
+    #: retrieval, over the kept records — a disjoint tally whose sum is
+    #: `records_kept`. Empty means "not recorded for this run" (a retrieval stored
+    #: before migration 0016), which must not be rendered as zero. Codes are in
+    #: `spago_core.domain.document_refs`.
+    reference_counts: dict[str, int] = Field(default_factory=dict)
     latency_ms: Optional[int] = None
     warnings: list[str] = Field(default_factory=list)
     checksum: Optional[str] = None
