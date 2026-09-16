@@ -2080,6 +2080,31 @@ button.dataset-badge:hover {
   border-style: dashed;
 }
 
+/* --- B-06: retrying one source, and what it costs -------------------------------- */
+
+/* The retry sits in the strip beside the chip it answers for, because that is
+   where the failure is read. It is offered only when the source's own ask failed
+   or stopped early — the all-source "Refresh sources" stays the control for
+   every other case, so the same action never appears twice. */
+.coverage-retry {
+  font-size: 12px;
+  padding: 2px 10px;
+}
+
+/* Cost and scope of a retry, stated before it runs: this is the last run's own
+   numbers, not an estimate, and the line says what a retry does not touch. */
+.coverage-cost {
+  margin: 6px 0 0;
+  color: var(--text-2);
+}
+
+/* What the last run did when it asked a subset, so a one-source run is never
+   read as the target's totals. */
+.coverage-note {
+  margin: 6px 0 0;
+  color: var(--text-2);
+}
+
 
 /* --- B-25: a bundle of literature rows, and the review that admits it ------------ */
 

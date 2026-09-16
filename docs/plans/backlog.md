@@ -7,15 +7,18 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 (B-26 delivered; B-06 promoted to P1)** — the priority table was
-re-sorted when B-26 landed: the P1 group is empty again, so **B-06 (per-source re-run for
-target investigations) takes the top** — it is the last recovery gap the beta's own workflow
-can hit live (one source fails → the investigation is only complete after re-running all of
-them), it is ungated, `S–M`, and the per-source status machine it needs is already served.
-**B-23 stays the first P2 with its operator/file gate unchanged** — the B-26 report now says
-in every note that it has no snapshot leg, which makes the gap visible but does not change
-that it needs the snapshot's terms and §25 versioning before engineering can finish it. See
-the update log at the end of this file and §4 for the one-sentence arguments.
+Last updated: **2026-09-16 (B-06 delivered; B-23 promoted to P1)** — the priority table was
+re-sorted when B-06 landed: the P1 group was empty again, so **B-23 (local BindingDB snapshot
+search) takes the top**. It is the one P1-sized gap whose *engineering* is unblocked while its
+*finish* is not: the snapshot terms and the §25 versioning stay with the operator, but the
+thinner online path B-06 just made recoverable still costs a live BindingDB ask per target,
+and the snapshot adapter is the item the beta's own cohort needs before it can be re-run
+without the network. **It is recorded as P1 with its gate explicitly intact** — the
+engineering starts, the gate closes it. B-15 moves up behind it (served-asset compression is
+ungated, `S–M`, and the first Ketcher open is the one measured cost a beta user feels), and
+**B-30 joins the register as LATER** (a source refresh that retracts what its release no
+longer contains), with the reason it is not part of B-06 in §B-30. See the update log at the
+end of this file and §4 for the one-sentence arguments.
 
 ## 0. Standing constraints for everything below
 
@@ -35,8 +38,7 @@ the update log at the end of this file and §4 for the one-sentence arguments.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-06 | Per-source re-run for target investigations *(owner request group)* | NEXT | S–M | — |
-| P2 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning |
+| P1 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning (finish only) |
 | P2 | B-15 | Compress served assets (Ketcher first open) | NEXT | S–M | deployment proxy or image config |
 | P2 | B-04 | Import refresh completeness and interrupted-import resume | NEXT | M | — |
 | P2 | B-14 | CI running the existing check script | NEXT | S | repo hosting decision |
@@ -49,6 +51,7 @@ the update log at the end of this file and §4 for the one-sentence arguments.
 | P3 | B-05 | Bulk analytical filtering surface (DuckDB/Parquet) | LATER | L | ADR + dataset |
 | P3 | B-07 | PubChem BioAssay bounded CID→AID path *(owner request group)* | LATER | M–L | bounded design |
 | P3 | B-08 | BindingDB assay-context enrichment *(owner request group)* | LATER | M | source capability check |
+| P3 | B-30 | A source refresh that retracts what its release no longer contains | LATER | M | absence rule needs its own design |
 | P3 | B-27 | Structure review sheet (fixed-scale cards, scaffold folding, lossless PDF) | LATER | L | user workflow ask |
 | P3 | B-16 | Operator usage visibility (decide: docs-only or small admin view) | LATER | S | — |
 | P3 | B-19 | Accessibility pass on the virtualized table and dialogs | LATER | M | — |
@@ -74,7 +77,8 @@ it):**
 | B-24 | 2026-09-16 | The patent-led read path: `ChEMBLDiscoveryAdapter.declared_compounds` (body-search rule `chembl-document-patent-body-v1`, exact-normalization verification, near matches listed and excluded), `services/patent_sources.py` + migration 0017 (`patent_source_lookups` / `patent_source_compounds`, no `compound_mentions` row ever written), `POST`/`GET /api/v1/patents/{number}/source-compounds` and `/export?format=csv|sdf`, `SourceDeclaredCompounds.tsx` (under the patent view and on a publication the corpus does not hold, where the 404 used to be a dead end), and `scripts/patent_source_lookup.py`; live record `benchmarks/patent-source-declarations-2026-09-16.{md,json}` (US10508115 → 134 declared records for 73 compounds out of 402 seen, 5 states kept apart). |
 | B-03 | 2026-09-16 | Tolerant publication entry: `domain/patent_numbers.py` `looks_like_publication_number` + `MATCH_RULE` (`publication-number-tolerant-v1`, one pattern mirrored in `apps/web/src/state/url.ts` and kept in step by a parity test), `services.find_patent` exact-first then one normalized comparison, `PatentLookup` + `AmbiguousError` (409 with the candidates named), `PatentMatch` in the response, the `match-note` in the table heading, and the same rule in `planner.py` / `plan_execution.py`; `services/core/tests/test_b03_tolerant_lookup.py` (48 cases, suite 595 → 643) and `benchmarks/tolerant-lookup-2026-09-16.{md,json}` (exact 1.35 ms unchanged; a tolerant hit or miss costs one metadata scan, 155 ms at 50 000 documents). |
 | B-25 | 2026-09-16 | The bundle path: `domain/models.py` `SupplementBundle` / `SupplementImportReport` / `SupplementConfirmation` / `SuppliedRowState`, `services/supplements.py` (`map_bundle_record` alias table + contradiction refusals, `import_supplement_bundle`, `confirm_supplement_import`, provenance-preserving upserts), migrations 0018 (`supplement_imports` — the run, its per-row answers including refusals, and who confirmed it) and 0019 (remark provenance constraint widened to the five states), `POST /targets/{id}/supplements/bundle` + `GET …/supplement-imports` + `POST …/supplement-imports/{id}/confirm`, `unreviewed_supplements` on the verdict, `SupplementDialog`'s bundle pane and `ReferenceStrip`'s review control; `tests/test_b25_supplement_bundle.py` (34 cases, suite 643 → 677). Browser-verified end to end on the local stack (import → report → confirm → verdict/candidates → withdraw → re-import → read back), which found and fixed three defects the unit tests could not (duplicate rendering of the fresh report, a re-posted remark not counted as an update, `repeated_of` not derived on read-back). |
-| B-26 | 2026-09-16 | The coverage audit: `CoverageAnswer` / `CoverageLeg` / `PublicationCoverage` / `CoverageReport` + `COVERAGE_RULE = patent-coverage-v1`, `services/coverage.py` (`audit_publications` over the corpus, stored per-publication lookups, target-led rows and hand-added rows; `_headline` order `corpus > declared > supplement > proposed > empty > failed > not_queried`; `unqueried` naming every leg nobody asked; `merge_coverage_reports` for lists over the 50 bound; CSV/Markdown renderers), `POST /api/v1/patents/coverage` and `/coverage/export?format=markdown\|csv\|json` (rule in a header *and* in the file), `PublicationCoverage.tsx` (the collapsed *Coverage* strip in the patent view and on the 404 path, with the document jump and the export control) and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py` (39 cases, suite 677 → 741); live record `benchmarks/patent-coverage-2026-09-16.{md,json}` (5 publications p50 4.4 ms / 11.7 KB, the 50-publication bound p50 5.5 ms, and one request showing `corpus` / `declared` ×2 / `asked_empty` / `not_queried` kept apart). Browser-verified on the local stack (404 path, family view, document jump, never-asked row, export request) including the failure state by blocking the route: the strip then shows no counts at all, so a failed read cannot be misread as an absence. |
+| B-26 | 2026-09-16 | The coverage audit: `CoverageAnswer` / `CoverageLeg` / `PublicationCoverage` / `CoverageReport` + `COVERAGE_RULE = patent-coverage-v1`, `services/coverage.py` (`audit_publications` over the corpus, stored per-publication lookups, target-led rows and hand-added rows; `_headline` order `corpus > declared > supplement > proposed > empty > failed > not_queried`; `unqueried` naming every leg nobody asked; `merge_coverage_reports` for lists over the 50 bound; CSV/Markdown renderers), `POST /api/v1/patents/coverage` and `/coverage/export?format=markdown\|csv\|json` (rule in a header *and* in the file), `PublicationCoverage.tsx` (the collapsed *Coverage* strip in the patent view and on the 404 path, with the document jump and the export control) and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py` (39 cases, suite 677 → 716 — corrected 2026-09-16 from the B-06 round, whose `--collect-only` reads 727 including its own 11 cases; the 741 recorded at delivery was an ad-hoc count); live record `benchmarks/patent-coverage-2026-09-16.{md,json}` (5 publications p50 4.4 ms / 11.7 KB, the 50-publication bound p50 5.5 ms, and one request showing `corpus` / `declared` ×2 / `asked_empty` / `not_queried` kept apart). Browser-verified on the local stack (404 path, family view, document jump, never-asked row, export request) including the failure state by blocking the route: the strip then shows no counts at all, so a failed read cannot be misread as an absence. |
+| B-06 | 2026-09-16 | Per-source re-run: `investigate` now persists **only the sources it asked** (a source the run did not ask is reported from its stored row, or recorded `not_queried` only when it has never been asked), `DiscoveryReport.requested_sources` as the run's own scope, `RetrievalResponse.requested_in_run`, a refusal (422) for a run that names no source, the target header's per-source **Retry** control on a `failed`/`partial` chip with that source's own last-run cost, and `discoverNote` naming what the run asked and what it did not; `tests/test_b06_per_source_rerun.py` (11 cases, suite 716 → 727 collected, all passing), record `benchmarks/per-source-rerun-2026-09-16.{md,json}`. |
 
 ## 2. Items
 
@@ -177,26 +181,36 @@ its string comparison silently discarded a successful lookup for a slash form
 
 ### B-06 — Per-source re-run for target investigations *(owner request group)*
 
-**Promoted to P1 on 2026-09-16**, when B-26 landed and emptied the P1 group. The argument
-is §4's: every source outcome now has a surface of its own (including `failed`, named on
-the coverage row, in the reference tally and in the target header), and the recovery from
-that outcome is the one step the beta's own workflow can still hit live and cannot do —
-retrying a failed BindingDB re-spends ChEMBL's and PubChem's rate limits and rewrites rows
-that did not need touching. The status machine, the stored retriever ids and the
-per-retrieval tally a targeted re-run needs all already exist.
+**Delivered 2026-09-16** (P1, `S–M`, ungated). The problem was sharper than the register
+recorded: `investigate` built a `not_queried` row for every source it did **not** ask and
+persisted all of them, and the retrieval id is one row per (target, source) — so a subset run
+**overwrote** the other sources' stored outcome with `not_queried` while their candidate rows
+stayed in the database. The status machine could therefore say "nobody asked ChEMBL" beside
+ChEMBL's own rows. The recovery path and that defect are the same fix.
 
-- **Problem.** The base path is implemented and recorded (ONLINE-00/06/07), but
-  recovery from a single bad source is all-or-nothing. `DiscoverRequest.sources`
-  accepts a subset, yet the UI always sends all three (`App.tsx`) and the control is
-  "Refresh sources" / "Query open sources" (`TargetHeader.tsx`). A `failed` or stale
-  BindingDB leaves no way to retry just that source without re-spending the others.
-- **Scope if built.** Re-run a named source for a stored investigation, honouring the
-  existing per-source status machine (`complete` / `partial` / `empty` / `failed` /
-  `not_queried`) and the retraction rules from migration 0015; show what the retry
-  costs (upstream requests, wall time) before it runs.
-- **Acceptance sketch.** A target with one failed source retries only that source; the
-  other summaries/verdicts do not change; the retry is visible in `source_retrievals`.
-- **Class NEXT · P1 · S–M.**
+- **Delivered scope.** Only the asked sources are written; a source the run did not ask is
+  reported from its stored row (status, counts and `retrieved_at` intact) or recorded
+  `not_queried` **only** when it has never been asked, so "nobody asked this one" stays
+  visible. `DiscoveryReport.requested_sources` is the run's own scope; the response marks
+  every row `requested_in_run` (null on the stored-state coverage read); naming no source is
+  refused 422. In the target header the retry is offered where the all-source refresh is the
+  wrong tool (`failed` / `partial` chips) and carries that source's own last-run cost (pages,
+  records seen, wall time) before the click, plus a line stating what the run did and did not
+  ask.
+- **Not built, deliberately.** No retraction of rows a source no longer returns (a failed or
+  bounded ask establishes no absence; when a *complete* ask does is B-30), no stored-summary
+  rewrite (the verdict is recomputed on read and does reflect the retry), no per-source
+  control on a healthy chip (the all-source refresh owns that case).
+- **Acceptance sketch, met.** A target with one failed source retries only that source: the
+  other sources' retrieval rows, counts and `retrieved_at` are unchanged, their candidate
+  rows keep their own retrieval time, the verdict counts them exactly as before, and the
+  retry is a visible new outcome in `source_retrievals`
+  (`tests/test_b06_per_source_rerun.py`, 11 cases; the write set is measured in
+  `benchmarks/per-source-rerun-2026-09-16.md`).
+- **Residual risk to keep in view.** A successful re-run does not remove a row the source no
+  longer reports — the investigation then holds that row, dated to when it was retrieved.
+  That is stated in the retry's own docs rather than implied away, and is B-30's subject.
+- **Class NEXT · delivered · S–M.**
 
 ### B-07 — PubChem BioAssay bounded CID→AID path *(owner request group)*
 
@@ -580,6 +594,29 @@ note until B-23 exists; it is not in the priority table.
   it out of the app". Build it when a project-level report is actually requested.
 - **Class LATER · P3 · M.**
 
+### B-30 — A source refresh that retracts what its release no longer contains
+
+- **Problem.** Migration 0015 already carries the columns and the intent ("a source refresh
+  could not retract a mapping the new release no longer contains"), and B-06 established
+  which rows each retrieval owns (`target_candidates` per (target, source, source_record_id),
+  measurements keyed per investigation and source record). What nobody has built is the
+  rule: after a **complete** source refresh, the rows of *that source* which the new payload
+  does not contain are no longer current, and today they stay current, dated to when they
+  were retrieved. A reader looking at a candidate list cannot tell a row the source still
+  reports from one it dropped.
+- **Why not part of B-06.** Absence is only established by a *complete* ask: a `failed` or
+  bound-limited (`partial`) ask must retract nothing, or an outage becomes a deletion. The
+  other half is the compound-level candidacy of `investigation_measurements` — retracting the
+  last live candidate of a compound takes its measurements out of the investigation, which is
+  correct but must be tested as such. That is its own round: rules, tests (failure does not
+  retract, a re-delivered row comes back), a reported count, and the reason string each
+  withdrawn row carries.
+- **Scope if built.** `complete` only; the re-run source's rows only; `retracted_at` +
+  a reason naming the release/date, never a delete; the count reported in the run's own
+  response and the target header; re-delivery clears the retraction (the existing
+  `ON CONFLICT … retracted_at = NULL` already does this).
+- **Class LATER · P3 · M.**
+
 ## 3. Review discussion — what the `BindingDB_IO` implementation changes (2026-09-16)
 
 Read-only review of `/media/chen/Machine_Disk/Datasets/BindingDB_IO/` (README,
@@ -641,22 +678,24 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 8. **B-26** — *delivered 2026-09-16:* answer "what do we hold for this publication, from
    which leg, and what has nobody asked" in one read, without letting "never asked" pass
    for "no compounds".
+9. **B-06** — *delivered 2026-09-16:* recover a failed source by re-asking that source, and
+   only it — no other source's rate limit spent, no other source's rows re-dated.
 
-**Why B-06 is now at the top.** B-26 was argued from the gate's own success criteria
-(criterion 5 asks for a coverage matrix whose every source outcome is explicit), and with
-the audit in place every one of those outcomes now has a surface — including the failed
-one. What the beta's own workflow can still hit live is the *recovery* from that failed
-outcome: if BindingDB fails for a target (as it did for IL-6R in the recorded cohort run),
-today the only way to get it is to re-run the whole investigation, which re-spends the
-other sources' rate limits and re-writes rows that did not need touching. The per-source
-status machine, the stored retriever ids and the reference-coverage tally that a targeted
-re-run needs are all already served, so this is a bounded addition (S–M) to a workflow the
-gate tests rather than a new capability. It is ungated, and unlike B-23 it needs no
-operator decision. **B-23 stays the first P2** with its snapshot-terms and §25 gates
-unchanged: the audit's own notes now say in every report that no snapshot leg is
-configured, which makes the gap legible but does not make it buildable — a licensed dump
-without recorded terms and version would violate §7/§25 rather than fill the leg. **B-15**
-is unchanged and still waits on a deployment-config decision, which is the operator's.
+**Why B-23 is now at the top.** Two things changed with B-06. First, the *recovery* gap is
+closed: a source that fails can be re-asked alone, and the run says which sources it asked
+(`benchmarks/per-source-rerun-2026-09-16.md` measures the write set: one source's rows
+re-dated, the others untouched). That makes the remaining cost of the online path visible
+rather than hidden — every target investigation still asks BindingDB over the network, once
+per target, and the beta's own cohort run is the place that hurts. Second, B-26's report now
+names the missing snapshot leg in every row it prints, so the same gap is legible from two
+surfaces. B-23 is therefore promoted to P1 — **with its gate intact and stated**: the
+snapshot's licence terms and the §25 version record stay with the operator, and this
+promotion means the *engineering* may start (an adapter reading a local TSV through DuckDB
+with release, checksum and retrieval date recorded), not that the item can be finished
+without that decision. **B-15** moves up behind it: it is ungated, `S–M`, and the first
+Ketcher open is the one measured cost a beta user feels directly. **B-30** joins the
+register as LATER with the reasoning in its entry: absence is only established by a complete
+ask, so a refresh-retraction rule needs its own round — it is not an unfinished part of B-06.
 
 ## 5. Deliberately out (do not treat as queued)
 
@@ -685,3 +724,4 @@ is unchanged and still waits on a deployment-config decision, which is the opera
 | 2026-09-16 | **B-03 delivered** (`looks_like_publication_number` + `MATCH_RULE`, exact-first `find_patent` with the one normalized comparison, `PatentLookup`/`AmbiguousError`/`PatentMatch`, the `match-note`, the mirrored client rule and the same rule in the plan path; `services/core/tests/test_b03_tolerant_lookup.py`, suite 595 → 643; `benchmarks/tolerant-lookup-2026-09-16.md`: exact 1.35 ms unchanged, tolerant 155 ms at 50 000 documents). Re-sorted, with the reason stated: the P1 group is empty, so **B-25 is promoted to P1** — the thin-target moment the §6 gate exercises ends in one-row-per-POST manual entry today, and B-25 is the control that offers the supplement in the shape the rows are produced in (§4 argues it). B-26 stays second and B-23 stays third with its operator/file gate unchanged. Two scope notes: the tolerant comparison runs **only** after the indexed miss (so the common case pays nothing) and it is a metadata scan, not a maintained normalized column — a second writer of the rule that can go stale silently was the alternative, and 155 ms at 50 000 documents did not buy it. The delivery also fixed a defect the browser found in B-24's panel (a string comparison of the requested number discarded a successful lookup for slash forms). |
 | 2026-09-16 | **B-25 delivered** (`SupplementBundle` + the bundle service, migrations 0018/0019, the three `supplement-imports` routes, `unreviewed_supplements` on the verdict, `SupplementDialog`'s bundle pane, `ReferenceStrip`'s review control; `tests/test_b25_supplement_bundle.py`, suite 643 → 677; docs in `docs/online-capability.md` §3a, `README.md` and `docs/runbook.md` §2.5). Browser-verified end to end on the local stack, which found three defects the unit tests did not (the fresh report rendered twice, a re-posted remark not counted as an update, `repeated_of` not derived on read-back — all fixed in the round). Re-sorted, with the reason stated: the P1 group is empty again, so **B-26 is promoted to P1** — with four paths now contributing to a publication's coverage, nothing puts them side by side for one publication, and the gate's criterion 5 asks for exactly that shape at the target level. **B-06 stays second** (a single failed source still forces a full re-run; the status machine to do better already exists), B-23 third with its operator/file gate unchanged. |
 | 2026-09-16 | **B-26 delivered** (the coverage service + `patent-coverage-v1`, `POST /api/v1/patents/coverage` and its three exports, `PublicationCoverage.tsx` — the collapsed *Coverage* strip in the patent view and on the 404 path — and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py`, suite 677 → 741; live record `benchmarks/patent-coverage-2026-09-16.{md,json}`). Re-sorted, with the moves stated: the P1 group is empty, so **B-06 is promoted to P1** — the audit gave every source outcome a surface, including `failed`, and what the beta workflow can still hit live is the recovery from a failed source, which today means re-running the whole investigation and re-spending the other sources' rate limits. It is ungated and S–M. **B-23 stays the first P2** with its gates unchanged, and B-15 moves down with them. Three notes recorded from the round: (1) `holds_records` was added to the report's `totals` so the strip reads the service's own headline count instead of re-deriving it (`AGENTS.md` §11); (2) the strip filters its publication list with the mirrored client shape rule before asking, because the synthetic fixture's ids are deliberately not publication numbers and a request carrying none of them is refused 422 — a refusal banner where a coverage line belongs would be worse than no strip; (3) the notes/export `<details>` is controlled state after the browser check found it snapping shut between opening it and clicking export (a DOM-owned marker reset by an unrelated re-render). |
+| 2026-09-16 | **B-06 delivered** (asked-only persistence in `TargetDiscoveryService.investigate` + `DiscoveryReport.requested_sources`, `RetrievalResponse.requested_in_run`, the 422 refusal for a run that names no source, the target header's per-source **Retry** control on `failed`/`partial` chips with that source's own last-run cost and a run note naming the asked set, `tests/test_b06_per_source_rerun.py` 11 cases, record `benchmarks/per-source-rerun-2026-09-16.{md,json}`). The round found the defect sharper than the register had it: `investigate` wrote a `not_queried` row for every source it did **not** ask, and the retrieval id is one row per (target, source) — so a subset run **overwrote** the other sources' stored outcome while their candidate rows stayed in the database. A subset run now writes only what it produced, reports the rest from its stored row, and records `not_queried` only for a source that has never been asked. Measured: one retry = 1 upstream request for that source and **0** for the other two; only that source's retrieval row changes; its own candidate rows re-date (2 when it answers, 0 when it fails); measurements and verdict unchanged. Live browser check on two surfaces (IL6R's `bindingdb failed`, IL6's `pubchem partial`) — the other chips' stored outcomes, including `retrieved_at`, were identical afterwards; healthy chips offered no retry control. Re-sorted, with the moves stated: the P1 group is empty again, so **B-23 (local BindingDB snapshot search) takes the top** with its operator/file gate explicitly intact — its engineering is what is unblocked, and a retry without the network is what the beta's own cohort needs. **B-15 moves to the first P2**, and **B-30** joins the register as `LATER · M`: a *complete* refresh retracting rows its release no longer returns is an absence rule of its own (a `failed`/`partial` ask establishes none), so it was not folded into this round. |

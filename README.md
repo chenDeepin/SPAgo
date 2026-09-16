@@ -31,6 +31,14 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
   `not_queried`). Deterministic modality classification keeps small molecules apart from
   peptides and biologics, and every measurement carries an explicit evidence class
   (measured binding, interaction disruption, functional effect, screening).
+- **Retrying one source without disturbing the others (B-06).**
+  `POST /targets/discover` accepts a source subset: a failed or bound-limited source is
+  re-asked **alone**, its stored retrieval is the only one rewritten, and the other
+  sources keep their status, counts and retrieval time — so a healthy source's rate limit
+  is not spent to recover a broken one. The response marks every row with
+  `requested_in_run`; the UI offers the retry on the failed/partial chip and shows that
+  source's own last-run cost (pages, records seen, wall time) before the click. A re-run
+  retracts nothing: a failed ask establishes no absence.
 - **Potency classes and a screening-reference verdict (ONLINE-06).** Deterministic
   classes under one versioned threshold (`potency-gate-v1`), computed from stored rows on
   read and exported together with the threshold that produced them, plus source-declared

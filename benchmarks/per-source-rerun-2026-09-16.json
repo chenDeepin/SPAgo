@@ -1,0 +1,243 @@
+{
+  "round": "B-06",
+  "measured_at": "2026-09-16T10:40:17.132826+00:00",
+  "shape": "fixture-only adapters against local PostgreSQL (spago_test); no source called",
+  "blocked": [
+    "upstream wall time (no source was called: the adapters answer from recorded payloads)",
+    "hosted deployment timings"
+  ],
+  "full_run": {
+    "wall_ms": 86.5,
+    "upstream_requests": {
+      "chembl": 3,
+      "bindingdb": 1,
+      "pubchem": 1
+    },
+    "requested_sources": [
+      "chembl",
+      "bindingdb",
+      "pubchem"
+    ],
+    "retrievals": {
+      "bindingdb": {
+        "status": "complete",
+        "records_seen": 2,
+        "records_kept": 2,
+        "pages_fetched": 1,
+        "latency_ms": 4,
+        "retrieved_at": "2026-09-16T10:40:17.190668+00:00",
+        "checksum": "3fc817f4e44ea7a4"
+      },
+      "chembl": {
+        "status": "complete",
+        "records_seen": 4,
+        "records_kept": 3,
+        "pages_fetched": 1,
+        "latency_ms": 40,
+        "retrieved_at": "2026-09-16T10:40:17.186679+00:00",
+        "checksum": "8c75669009d69468"
+      },
+      "pubchem": {
+        "status": "complete",
+        "records_seen": 5,
+        "records_kept": 0,
+        "pages_fetched": 0,
+        "latency_ms": 0,
+        "retrieved_at": "2026-09-16T10:40:17.190788+00:00",
+        "checksum": "a1017549fb7f52ff"
+      }
+    },
+    "candidate_rows": 5,
+    "measurement_rows": 5,
+    "candidates_listed": 2,
+    "verdict_compounds": 3
+  },
+  "retry_one_source": {
+    "asked": [
+      "bindingdb"
+    ],
+    "wall_ms": 3.7,
+    "upstream_requests": {
+      "chembl": 0,
+      "bindingdb": 1,
+      "pubchem": 0
+    },
+    "report_rows": {
+      "chembl": {
+        "status": "complete",
+        "records_kept": 3
+      },
+      "bindingdb": {
+        "status": "failed",
+        "records_kept": 0
+      },
+      "pubchem": {
+        "status": "complete",
+        "records_kept": 0
+      }
+    },
+    "writes": {
+      "retrieval_rows": {
+        "bindingdb": {
+          "changed_fields": [
+            "status",
+            "records_seen",
+            "records_kept",
+            "latency_ms",
+            "retrieved_at"
+          ],
+          "status_before": "complete",
+          "status_after": "failed"
+        },
+        "chembl": {
+          "changed_fields": [],
+          "status_before": "complete",
+          "status_after": "complete"
+        },
+        "pubchem": {
+          "changed_fields": [],
+          "status_before": "complete",
+          "status_after": "complete"
+        }
+      },
+      "candidate_rows_re_dated": {
+        "bindingdb": 0,
+        "chembl": 0
+      },
+      "candidate_rows_total": 5,
+      "measurement_rows": {
+        "before": 5,
+        "after": 5
+      }
+    },
+    "verdict_compounds_after": 3,
+    "candidates_listed_after": 2
+  },
+  "retry_success": {
+    "wall_ms": 13.2,
+    "upstream_requests": {
+      "chembl": 0,
+      "bindingdb": 1,
+      "pubchem": 0
+    },
+    "writes_during_retry": {
+      "retrieval_rows": {
+        "bindingdb": {
+          "changed_fields": [
+            "status",
+            "records_seen",
+            "records_kept",
+            "latency_ms",
+            "retrieved_at"
+          ],
+          "status_before": "failed",
+          "status_after": "complete"
+        },
+        "chembl": {
+          "changed_fields": [],
+          "status_before": "complete",
+          "status_after": "complete"
+        },
+        "pubchem": {
+          "changed_fields": [],
+          "status_before": "complete",
+          "status_after": "complete"
+        }
+      },
+      "candidate_rows_re_dated": {
+        "bindingdb": 2,
+        "chembl": 0
+      },
+      "candidate_rows_total": 5,
+      "measurement_rows": {
+        "before": 5,
+        "after": 5
+      }
+    },
+    "rows_after": {
+      "retrievals": {
+        "bindingdb": {
+          "status": "complete",
+          "records_seen": 2,
+          "records_kept": 2,
+          "pages_fetched": 1,
+          "latency_ms": 5,
+          "retrieved_at": "2026-09-16T10:40:17.262297+00:00",
+          "checksum": "3fc817f4e44ea7a4"
+        },
+        "chembl": {
+          "status": "complete",
+          "records_seen": 4,
+          "records_kept": 3,
+          "pages_fetched": 1,
+          "latency_ms": 40,
+          "retrieved_at": "2026-09-16T10:40:17.186679+00:00",
+          "checksum": "8c75669009d69468"
+        },
+        "pubchem": {
+          "status": "complete",
+          "records_seen": 5,
+          "records_kept": 0,
+          "pages_fetched": 0,
+          "latency_ms": 0,
+          "retrieved_at": "2026-09-16T10:40:17.190788+00:00",
+          "checksum": "a1017549fb7f52ff"
+        }
+      },
+      "candidate_rows": 5,
+      "measurement_rows": 5
+    }
+  },
+  "http": {
+    "retry": {
+      "status_code": 200,
+      "wall_ms": 58.7,
+      "payload_bytes": 4813,
+      "rows": [
+        {
+          "source_name": "chembl",
+          "status": "complete",
+          "requested_in_run": false,
+          "retrieved_at": "2026-09-16T10:40:17.186679+00:00",
+          "records_kept": 3
+        },
+        {
+          "source_name": "bindingdb",
+          "status": "failed",
+          "requested_in_run": true,
+          "retrieved_at": "2026-09-16T10:40:17.522800+00:00",
+          "records_kept": 0
+        },
+        {
+          "source_name": "pubchem",
+          "status": "complete",
+          "requested_in_run": false,
+          "retrieved_at": "2026-09-16T10:40:17.190788+00:00",
+          "records_kept": 0
+        }
+      ],
+      "verdict_compounds": 3
+    },
+    "coverage_read": [
+      {
+        "source_name": "bindingdb",
+        "status": "failed",
+        "requested_in_run": null
+      },
+      {
+        "source_name": "chembl",
+        "status": "complete",
+        "requested_in_run": null
+      },
+      {
+        "source_name": "pubchem",
+        "status": "complete",
+        "requested_in_run": null
+      }
+    ],
+    "refusal_empty_sources": {
+      "status_code": 422,
+      "detail": "Name at least one source; a run that asks nothing would only re-date the target."
+    }
+  }
+}

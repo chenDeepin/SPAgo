@@ -89,7 +89,14 @@ QUALITY_REJECTIONS = {
 class DiscoveryReport:
     target_id: uuid.UUID
     target_key: str
+    #: One row per external source: this run's outcome for the sources it asked,
+    #: and the *stored* outcome for the others (B-06). A source this run did not
+    #: ask keeps whatever the last ask recorded, so a retry of one source cannot
+    #: report another as "not queried" while its rows are still present.
     retrievals: list[SourceRetrieval] = field(default_factory=list)
+    #: The sources this run actually asked, in order. The run's own record of its
+    #: scope, so a caller reads it from the artifact rather than re-deriving it.
+    requested_sources: list[str] = field(default_factory=list)
     compounds_stored: int = 0
     compounds_reused: int = 0
     measurements_stored: int = 0
@@ -160,11 +167,20 @@ class TargetDiscoveryService:
     ) -> DiscoveryReport:
         """Run the requested sources and persist everything they returned.
 
-        `sources` is explicit: a source that is not requested is recorded as
-        `not_queried`, which is different from empty.
+        `sources` is explicit: a source that is not requested is reported from its
+        stored outcome, or as `not_queried` when it has never been asked — which
+        is different from empty. **Only the requested sources are written** (B-06):
+        one source's retry must not re-date, re-count or blank another source's
+        stored retrieval, so that a `failed` source can be retried on its own.
         """
         source_list = [s for s in sources]
-        report = DiscoveryReport(target_id=target.id, target_key=target.target_key)
+        asked = set(source_list)
+        report = DiscoveryReport(
+            target_id=target.id, target_key=target.target_key, requested_sources=source_list
+        )
+        # Read once, before the write transaction: the outcomes this run is not
+        # producing are reported and left exactly as they are.
+        stored = {r.source_name: r for r in list_source_retrievals(engine, target.id)}
         accession = target.uniprot_accession
 
         collected: list[ActivityRecord] = []
@@ -194,7 +210,7 @@ class TargetDiscoveryService:
                 )
             )
         else:
-            report.retrievals.append(self._not_queried(target, "chembl", "Not requested."))
+            report.retrievals.append(self._not_asked(target, "chembl", stored))
 
         # --- BindingDB -------------------------------------------------------
         if "bindingdb" in source_list and accession:
@@ -212,7 +228,7 @@ class TargetDiscoveryService:
                 self._not_queried(target, "bindingdb", "No UniProt accession on the target.")
             )
         else:
-            report.retrievals.append(self._not_queried(target, "bindingdb", "Not requested."))
+            report.retrievals.append(self._not_asked(target, "bindingdb", stored))
 
         # --- PubChem (identity + screening context) --------------------------
         if "pubchem" in source_list:
@@ -221,17 +237,22 @@ class TargetDiscoveryService:
             report.retrievals.append(outcome.retrieval)
             report.warnings.extend(outcome.retrieval.warnings)
         else:
-            report.retrievals.append(self._not_queried(target, "pubchem", "Not requested."))
+            report.retrievals.append(self._not_asked(target, "pubchem", stored))
 
         # --- persistence -----------------------------------------------------
         with engine.begin() as conn:
             self._persist_target(conn, target)
+            # B-06: only the asked sources are written. A source this run did not
+            # ask is reported from its stored row and left untouched — including
+            # its `retrieved_at`, which is what makes "this source's outcome is
+            # from that run, not this one" readable.
             retrieval_ids = {
                 r.source_name: self._persist_retrieval(conn, target, r)
                 for r in report.retrievals
+                if r.source_name in asked or r.source_name not in stored
             }
             for retrieval in report.retrievals:
-                retrieval.id = retrieval_ids[retrieval.source_name]
+                retrieval.id = retrieval_ids.get(retrieval.source_name, retrieval.id)
 
             stored, reused = self._persist_compounds(conn, normalized)
             report.compounds_stored = stored
@@ -964,6 +985,25 @@ class TargetDiscoveryService:
             query={},
             warnings=[reason],
         )
+
+    def _not_asked(
+        self,
+        target: ResolvedTarget,
+        source_name: str,
+        stored: dict[str, SourceRetrieval],
+    ) -> SourceRetrieval:
+        """What to report for a source this run was not asked about (B-06).
+
+        The stored outcome when the source has one: this run has nothing to say
+        about it, and replacing a `complete` with `not_queried` would put the
+        status machine in contradiction with the source's own rows. Only a source
+        that has never been asked is recorded as `not_queried` — the same fact the
+        first full run stores — so "nobody asked this one" stays visible.
+        """
+        existing = stored.get(source_name)
+        if existing is not None:
+            return existing
+        return self._not_queried(target, source_name, "Not requested.")
 
 
 # --- module helpers ---------------------------------------------------------------

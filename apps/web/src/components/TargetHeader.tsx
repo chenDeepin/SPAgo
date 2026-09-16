@@ -94,6 +94,27 @@ interface TargetHeaderProps {
    * (scrolled to and flashed) so a `source:` citation lands on the record it
    * refers to instead of a dead control. */
   focusedSource?: string | null;
+  /** B-06: re-run one source. Offered only for a chip whose stored outcome is a
+   * recovery case (`failed` / `partial`), because there the all-source refresh
+   * re-spends the healthy sources for nothing. */
+  onRetrySource?: (sourceName: string) => void;
+  /** The source a retry is running for right now, so the strip shows which one
+   * and stays inert for the others. */
+  retryingSource?: string | null;
+  /** What the last run did, when it asked a subset — the run's own numbers, so a
+   * partial run is never read as a full one. */
+  discoverNote?: string | null;
+}
+
+/** B-06: the last run's own cost for one source. Stored facts, not an estimate:
+ * the reader is deciding what a retry will spend, and the only honest number for
+ * that is what it spent last time. */
+function lastRunCost(entry: SourceRetrieval): string {
+  const pages = entry.pages_fetched === 1 ? "1 page" : `${entry.pages_fetched} pages`;
+  const seen = `${entry.records_seen} record${entry.records_seen === 1 ? "" : "s"} seen`;
+  const wall = entry.latency_ms == null ? "wall time not recorded" : `${(entry.latency_ms / 1000).toFixed(1)} s`;
+  const when = entry.retrieved_at ? new Date(entry.retrieved_at).toLocaleString() : "time not recorded";
+  return `last run ${when} · ${pages} · ${seen} · ${wall}`;
 }
 
 /** Target scope header: what was resolved, which related partners exist, and
@@ -111,6 +132,9 @@ export function TargetHeader({
   onDiscover,
   onOpenRelated,
   focusedSource = null,
+  onRetrySource,
+  retryingSource = null,
+  discoverNote = null,
 }: TargetHeaderProps) {
   if (!target) return null;
   const resolution = target.resolution;
@@ -120,7 +144,20 @@ export function TargetHeader({
     (c) => c.role && RELATED_MEMBER_ROLES.includes(c.role) && (c.gene_symbol || c.accession),
   );
   const queried = coverage.filter((c) => c.status !== "not_queried");
+  // B-06: a source whose own ask failed (or stopped at a bound) is the case a
+  // scoped re-run exists for; the others have nothing to recover.
+  const retryable = onRetrySource
+    ? coverage.filter((c) => c.status === "failed" || c.status === "partial")
+    : [];
+  const busiest = retryingSource !== null;
   const modality = discovery?.modality_counts ?? {};
+  // B-06: a run that asked a subset reports that run's own numbers. The line says
+  // which sources it speaks for, so a one-source retry cannot be read as the
+  // target's totals.
+  const runScope = (discovery?.sources ?? [])
+    .filter((entry) => entry.requested_in_run !== false)
+    .map((entry) => entry.source_name);
+  const partialRun = (discovery?.sources ?? []).some((entry) => entry.requested_in_run === false);
   const small = (modality.small_molecule ?? 0) + (modality.unclassified ?? 0);
   const otherModalities = Object.entries(modality).filter(
     ([key]) => key !== "small_molecule" && key !== "unclassified",
@@ -209,8 +246,24 @@ export function TargetHeader({
             {entry.records_seen === 0 && entry.status === "complete" && " · 0 records"}
           </span>
         ))}
+        {retryable.map((entry) => (
+          <button
+            key={`retry-${entry.source_name}`}
+            className="btn btn-quiet coverage-retry"
+            onClick={() => onRetrySource?.(entry.source_name)}
+            disabled={busiest || discovering}
+            title={
+              `Ask ${entry.source_name} again, and only ${entry.source_name}: the other ` +
+              `sources' stored outcomes are left as they are. ${lastRunCost(entry)}.`
+            }
+          >
+            {retryingSource === entry.source_name
+              ? `Retrying ${entry.source_name}…`
+              : `Retry ${entry.source_name}`}
+          </button>
+        ))}
         {queried.length > 0 && (
-          <button className="btn btn-quiet" onClick={onDiscover} disabled={discovering}>
+          <button className="btn btn-quiet" onClick={onDiscover} disabled={discovering || busiest}>
             {discovering ? "Refreshing…" : "Refresh sources"}
           </button>
         )}
@@ -221,6 +274,17 @@ export function TargetHeader({
         )}
       </div>
 
+      {retryable.length > 0 && (
+        <p className="fineprint coverage-cost">
+          A retry asks only that source and rewrites only its stored outcome; the others are not
+          asked again and their rows keep their own retrieval time. What it will spend, from that
+          source's own last run:{" "}
+          {retryable.map((entry) => `${entry.source_name} — ${lastRunCost(entry)}`).join(" · ")}.
+        </p>
+      )}
+
+      {discoverNote && <p className="fineprint coverage-note" role="status">{discoverNote}</p>}
+
       {discoverError && (
         <div className="state-banner error" role="alert">
           <span>{discoverError}</span>
@@ -229,6 +293,12 @@ export function TargetHeader({
 
       {discovery && (
         <p className="hint-note">
+          {partialRun && (
+            <>
+              Last run asked {runScope.join(", ") || "no source"} only, so these are that run's
+              numbers.{" "}
+            </>
+          )}
           Candidate focus: <strong>{small}</strong> small-molecule / unclassified
           {otherModalities.length > 0 && (
             <>

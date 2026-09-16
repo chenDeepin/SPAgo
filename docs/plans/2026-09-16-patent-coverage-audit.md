@@ -182,6 +182,9 @@ stops the compound table from being read as the whole answer.
 Checks, as run (all on this checkout unless stated):
 
 - **Backend suite**: `services/core/.venv/bin/python -m pytest tests -q` — 741 tests, exit 0.
+  *(Corrected 2026-09-16 from the B-06 round: an independent `--collect-only` on this checkout
+  reads 727 including B-06's 11 new cases, so this round's total was 716; the 741 above was an
+  ad-hoc count, not a collection.)*
 - **B-26 suite**: 39 tests, exit 0, covering the legs, the headline order, the request bound,
   the API shape and the export formats.
 - **Frontend**: `npm run build` (tsc -b + vite build), exit 0.

@@ -388,6 +388,10 @@ export interface SourceRetrieval {
   warnings: string[];
   checksum: string | null;
   retrieved_at: string;
+  /** B-06: whether the run that produced this row asked this source. `false`
+   * means the row reports the source's last stored outcome, which that run did
+   * not touch; `null`/absent on a stored-state read, where no run is described. */
+  requested_in_run?: boolean | null;
 }
 
 export interface DiscoverResponse {

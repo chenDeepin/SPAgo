@@ -1852,6 +1852,10 @@ class RetrievalResponse(BaseModel):
     warnings: list[str] = []
     checksum: Optional[str] = None
     retrieved_at: str
+    #: B-06: whether *this* run asked this source. False means the row reports the
+    #: source's last stored outcome, which this run did not touch. Null on a
+    #: stored-state read (`/targets/{id}/coverage`), where no run is described.
+    requested_in_run: Optional[bool] = None
 
 
 class ActiveCompoundResponse(BaseModel):
@@ -1995,7 +1999,13 @@ def discover_target(
     engine=Depends(get_engine),
     settings: Settings = Depends(get_settings),
 ):
-    """Run bounded retrieval from the open sources for a resolved target."""
+    """Run bounded retrieval from the open sources for a resolved target.
+
+    `sources` may name a subset: only those sources are asked and only their
+    stored retrieval is rewritten. Every other source is reported from its stored
+    outcome with `requested_in_run=false` — a retry of one source must not blank
+    another's status, and B-06 is the recovery path for a single failed source.
+    """
     from spago_core.services import NotFoundError
     from spago_core.services.discovery import EXTERNAL_SOURCES
     from spago_core.services.reference import reference_verdict
@@ -2007,6 +2017,11 @@ def discover_target(
             detail=f"Unsupported source(s): {', '.join(unknown)}. "
             f"Supported: {', '.join(EXTERNAL_SOURCES)}.",
         )
+    if not body.sources:
+        raise HTTPException(
+            status_code=422,
+            detail="Name at least one source; a run that asks nothing would only re-date the target.",
+        )
     target_service = _get_target_service(request)
     try:
         target = target_service.get_target(engine, body.target_id)
@@ -2015,6 +2030,7 @@ def discover_target(
 
     service = _get_discovery_service(request)
     report = service.investigate(engine, target, body.sources)
+    asked = set(report.requested_sources)
     # The verdict is computed from the rows that were just persisted, under the
     # deployment policy, so it reports the retrieval that happened rather than
     # whatever the caller hoped for.
@@ -2039,6 +2055,7 @@ def discover_target(
                 warnings=r.warnings,
                 checksum=r.checksum,
                 retrieved_at=r.retrieved_at.isoformat(),
+                requested_in_run=r.source_name in asked,
             )
             for r in report.retrievals
         ],

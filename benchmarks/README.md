@@ -106,6 +106,17 @@ measurable — they are **not** capacity claims for bulk datasets.
   documents in one family measured the family overview instead of the lookup (294 ms
   for an indexed hit) and is recorded in the file as the reason the family size is
   stated.
+- `per-source-rerun-2026-09-16.md` (raw: `...json`) — B-06: what a one-source re-run
+  writes, in two shapes stated separately. Fixture-only (recorded payloads, real
+  PostgreSQL): one retry spends **1** upstream request for that source and **0** for the
+  other two, changes only that source's retrieval row (status/counts/latency/`retrieved_at`)
+  and re-dates only its own candidate rows (2 when it answers, 0 when it fails), leaving
+  measurements and the verdict unchanged; the HTTP contract marks the asked rows
+  (`requested_in_run`) and refuses an empty ask 422. Live browser check on the local
+  stack: IL6R's `bindingdb failed` and IL6's `pubchem partial` retried from the header
+  with the other chips' stored outcomes — including their `retrieved_at` — identical
+  afterwards. Upstream wall time is **not** measured (no source is called in the fixture
+  run); hosted timings are not claimed.
 
 ## Reproduce
 

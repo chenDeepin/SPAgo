@@ -84,6 +84,23 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   patent number (normalized), DOI and PMID for a discovered compound. Those are
   labelled *declared by the source* and kept in a separate column from a
   *corpus occurrence*, which is what SPAgo's patent linkage means.
+- **Retrying one source rewrites that source and nothing else (B-06).** A retrieval
+  whose ChEMBL call failed, or whose BindingDB ask stopped at a bound, is recovered by
+  asking **that source alone**: `POST /api/v1/targets/discover` with
+  `{"sources": ["bindingdb"]}`. Only the named sources are asked and only their stored
+  retrieval is rewritten — rows, counts and `retrieved_at` of the sources that were not
+  asked are left exactly as they were, so a retry cannot re-date, re-count or blank a
+  healthy source's outcome, and cannot re-spend its rate limit. The response carries one
+  row per source either way, with `requested_in_run` marking which this run asked; a
+  source that has never been asked is still recorded as `not_queried`, which is a
+  different fact from a failed or empty one. The control is offered in the target header
+  only where the all-source refresh is the wrong tool (a `failed` or `partial` chip), and
+  the cost shown before clicking is that source's own last run — pages, records seen and
+  wall time — not an estimate. A run that names no source is refused (422). What a retry
+  does **not** do: retract a row the source no longer returns (a failed or bounded ask
+  establishes no absence, and deciding when a complete ask does is a separate item,
+  register B-30), or rewrite a stored summary — the verdict is recomputed from the stored
+  rows, and an analysis remains the snapshot it was.
 - **How far that linkage actually reaches, per retrieval.** Each retrieval stores a
   disjoint tally over the records it kept — `patent_declared`, `doi_only`,
   `pmid_only`, and the reasons a reference is missing (`the document declares no

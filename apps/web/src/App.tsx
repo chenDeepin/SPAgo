@@ -389,6 +389,7 @@ export function App() {
     mutationFn: () =>
       api.discoverTarget({ target_id: resolvedTargetId as string, sources: ["chembl", "bindingdb", "pubchem"] }),
     onSuccess: () => {
+      setDiscoverNote(null);
       queryClient.invalidateQueries({ queryKey: ["target-coverage", resolvedTargetId] });
       queryClient.invalidateQueries({ queryKey: ["candidates", resolvedTargetId] });
       queryClient.invalidateQueries({ queryKey: ["target", resolvedTargetId] });
@@ -396,6 +397,36 @@ export function App() {
       // the counts of the previous retrieval.
       queryClient.invalidateQueries({ queryKey: ["target-reference", resolvedTargetId] });
     },
+  });
+
+  // B-06: retry one source. Only that source is asked and only its stored
+  // retrieval is rewritten, so the note names the run's scope and the other
+  // sources' outcomes are left as they are (the strip shows them unchanged).
+  const [retryingSource, setRetryingSource] = useState<string | null>(null);
+  const [discoverNote, setDiscoverNote] = useState<string | null>(null);
+  const retrySourceMutation = useMutation({
+    mutationFn: (source: string) =>
+      api.discoverTarget({ target_id: resolvedTargetId as string, sources: [source] }),
+    onMutate: (source: string) => {
+      setRetryingSource(source);
+      setDiscoverNote(null);
+    },
+    onSuccess: (response, source) => {
+      const row = response.sources.find((entry) => entry.source_name === source);
+      const others = response.sources
+        .filter((entry) => entry.source_name !== source)
+        .map((entry) => entry.source_name);
+      setDiscoverNote(
+        `Asked ${source} only: ${row?.status ?? "unknown"} · ${row?.records_kept ?? 0} kept of ` +
+          `${row?.records_seen ?? 0} seen · ${response.candidates_stored} candidate row(s) ` +
+          `stored by this run.${others.length > 0 ? ` ${others.join(", ")} not asked again — their stored outcomes are unchanged.` : ""}`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["target-coverage", resolvedTargetId] });
+      queryClient.invalidateQueries({ queryKey: ["candidates", resolvedTargetId] });
+      queryClient.invalidateQueries({ queryKey: ["target", resolvedTargetId] });
+      queryClient.invalidateQueries({ queryKey: ["target-reference", resolvedTargetId] });
+    },
+    onSettled: () => setRetryingSource(null),
   });
   // Compounds for the family, optionally scoped to one document. Pages are
   // fetched by offset and appended, so row 501+ is reachable without ever
@@ -1032,11 +1063,18 @@ export function App() {
                   discovery={discoverMutation.data ?? null}
                   discovering={discoverMutation.isPending}
                   discoverError={
-                    discoverMutation.error ? (discoverMutation.error as Error).message : null
+                    discoverMutation.error
+                      ? (discoverMutation.error as Error).message
+                      : retrySourceMutation.error
+                        ? (retrySourceMutation.error as Error).message
+                        : null
                   }
                   onDiscover={() => discoverMutation.mutate()}
                   onOpenRelated={(query) => handleSearch(query)}
                   focusedSource={focusedSource}
+                  onRetrySource={(source) => retrySourceMutation.mutate(source)}
+                  retryingSource={retryingSource}
+                  discoverNote={discoverNote}
                 />
 
                 <ReferenceStrip

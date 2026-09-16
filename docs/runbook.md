@@ -274,6 +274,33 @@ needs a bibliographic source, B-22), and `not_queried` is never an absent verdic
 (`AGENTS.md` §11). The UI surface is the *Coverage* strip in the patent view,
 collapsed to one line; the same report is exported as Markdown or CSV from it.
 
+### 2.7 Retrying one source without touching the others (B-06)
+
+When one source of a target investigation failed or stopped at a bound, re-run **that
+source alone**. It is the same endpoint as a full retrieval, with the source named:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/v1/targets/discover \
+  -H 'content-type: application/json' \
+  -d '{"target_id": "<uuid>", "sources": ["bindingdb"]}' | jq '.sources[] | {source_name, status, records_kept, requested_in_run, retrieved_at}'
+```
+
+What it does: asks only the named source, writes only that source's retrieval row,
+candidate rows and measurements. What it leaves alone: the other sources' stored
+retrieval — status, counts and the `retrieved_at` that says *when those rows were
+retrieved* — so a healthy source's rate limit is not spent and its rows are not
+re-dated. Every row in the response carries `requested_in_run`, and a source that has
+never been asked still reads `not_queried` (a fact, not an empty result). Naming no
+source is refused with 422.
+
+What it does **not** do, and must not be read as: retracting rows a source no longer
+returns. A failed or bound-limited ask establishes no absence, so nothing is
+retracted; whether a *complete* ask should retract the rows it no longer contains is
+register item B-30, not implemented. A stored analysis is a snapshot and stays as it
+is; the potency verdict is recomputed from the stored rows, so it does reflect the
+retry. In the UI the control appears on the target header's failed/partial chip, with
+that source's own last-run cost beside it.
+
 ## 3. Backup
 
 Backs up everything scientific: projects, saved items, evidence, source
