@@ -1,77 +1,63 @@
 # SPAgo — Product Contract and Current Handoff
 
-> **Current handoff — 2026-09-16, reviewed at `efb1357`.** This round is explicitly
-> **planning and documentation only**. Do not execute the implementation queue,
-> rerun acceptance, deploy, commit or push as part of this round. The review record is
-> [product review Q&A](docs/plans/2026-09-16-product-review-qa.md); the ordered proposals
-> are in [backlog §1](docs/plans/backlog.md#1-priority-order).
+> **Current handoff — 2026-09-16, implementation round 1 (owner-authorized queue,
+> through `1fda7f7`).** The product-review round's P1 engineering group and the P2
+> group's ungated items are delivered; the exact records with their evidence are in
+> [backlog §1](docs/plans/backlog.md#1-priority-order). **B-38 (browser regression
+> specs) was in flight at handoff; verify its record before building on it.**
 >
-> **Actual stage.** A locally implemented product with historical browser, database
-> and selected live-source verification, plus a local hosted-shape rehearsal. No
-> accepted hosted deployment, invited-user completion or independent scientific
-> cross-read is recorded. This documentation review did not rerun those checks.
+> **Actual stage.** A locally implemented product with browser-verified workflow
+> correctness, a full CI gate (every push runs the whole backend suite against the
+> shipped PostgreSQL+RDKit image and the e2e smoke against the seeded compose stack),
+> and a prepared scientific cross-read pack. **Hosted acceptance, the invited
+> scientist and the independent human cross-read remain open and operator-gated (B-31,
+> B-32's second half).** A local rehearsal or a green CI run never closes them.
 >
-> **Implemented core:** patent/family/compound inspection, deterministic RDKit structure
-> filtering, scoped evidence and bioactivity, target-led UniProt/ChEMBL/BindingDB/PubChem
-> investigation, typed natural-language plans, family/document/target summaries,
-> invitation-only owner access and quotas, project saving/reopening, and CSV/SDF export.
-> ONLINE-06 supplies a versioned potency policy; ONLINE-07 and B-25 supply literature
-> rows, bundle validation, recorded confirmation and withdrawal. An unconfirmed agent
-> proposal is outside candidate/verdict/export/summary results.
->
-> **Delivered backlog rounds, with the exact records in the register:** B-01 corpus
-> batch/inventory, B-02 reference coverage, B-03 tolerant patent entry, B-04 scoped import
-> retraction/resume, B-06 per-source retry, B-10 analysis history, B-13 restore support,
-> B-14 selected-test CI, B-15 served-asset compression, B-17 one browser smoke, B-18
-> companion panel-behavior verification, B-23 operator snapshot search, B-24 patent-led
-> source declarations and B-26 publication coverage. The publication audit uses
-> `POST /api/v1/patents/coverage`; source retry uses `POST /api/v1/targets/discover`.
+> **Delivered this round:** B-33 (target export/screen policy parity, browser-reproduced
+> then fixed), B-34 (distinguishable build identity in `/healthz` with a recorder that
+> fails on mismatch), B-35 (CI `full-stack` job; the 0006 helper respects the
+> required-database gate), B-42 (short-viewport table collapse), B-36 (every saved scope
+> of a mixed project reopens through one switcher), B-32's machine half (the cohort pack:
+> source-only vs combined verdicts, TSLP's historical "1/2 vs 0/1" now machine-visible
+> as one supplement row), B-37 (a citation opens the exact record it names, across the
+> target panel, family panel and analyses archive), B-30 (a complete refresh retracts
+> what its release no longer returned, scoped by target+source+access path, migration
+> 0021), B-19 (table keyboard semantics and header ownership; screen-reader pass open),
+> B-29 (stored analyses as project artifacts, migration 0022), B-39 (the target view's
+> evidence class, modality and threshold travel in the URL state), B-11's ungated half
+> (refusal class and retry budget in the 502 detail), and B-21's feasibility decision
+> document (the source/terms choice itself is the operator's).
 >
 > **Limits that matter to the product loop:**
-> - B-04 retracts within the corpus package's documents or a complete activity release;
->   it does not establish absence outside that scope. Online investigation retries do
->   not yet retract missing source rows (B-30). Snapshot and REST access paths must not
->   retract each other's records merely because their source name is the same.
-> - Source declarations, corpus occurrences and user supplements remain distinct. A
->   reference verdict is a count under a stated policy, not an inhibitor, biological,
->   legal or completeness conclusion. Different stored workspaces can have different
->   verdicts because one includes supplements; historical cohort numbers are not a
->   single current baseline (B-32).
-> - Static inspection found target display/export parameter mismatch (B-33), incomplete
->   navigation of mixed saved projects (B-36), and citations that do not locate their
->   exact records (B-37). These findings are not browser-reproduced in this round and
->   do not erase the narrower successful paths recorded previously.
-> - CI runs a selected backend subset and frontend typecheck/build, not the full
->   database suite or browser smoke (B-35). `/healthz` currently reports API version
->   `0.1.0`, not a unique revision/build identity (B-34).
-> - One live model provider (`deepseek-flash`) has historical measurements. Citation
->   validation does not prove scientific entailment. Second-provider evaluation stays
->   gated on an explicit choice and budget (B-11).
-> - Ketcher loads on demand; B-15 measured 5.2 MB transferred / 20.3 MB decoded for
->   first open. The optional companion's physical toolbar click and browser side-panel
->   chrome remain unverified. Claims text, full cross-family SAR, PDF/OCSR/M6, Markush
->   and general chat are not delivered.
+> - B-30's retraction needs a *complete* or *empty* ask; failed/partial asks and other
+>   access paths are provably untouched, and 155 legacy rows with no recorded access
+>   path are never retracted. Document-level corpus absence stays unclaimed.
+> - The cohort pack is machine-prepared evidence, not an independent review; B-31's
+> gate needs the human cross-read the pack is shaped for.
+> - The retraction run note and the screen-reader pass were not browser-reproduced
+>   (the reasons are in their plans). B-43 (a patent search from a target view pushes
+>   two history entries) is recorded with a workaround.
+> - One live model provider remains historically measured; second-provider evaluation
+>   stays gated on an explicit choice and budget. Claims text needs the operator's
+>   B-21 decision (OPS registration/terms) before any integration (B-22 stays P3).
+> - The optional companion's physical toolbar click and side-panel chrome remain
+>   unverified. Full cross-family SAR (B-40), PDF/OCSR/M6, Markush and general chat
+>   are not delivered.
 >
-> **Next-stage order, not execution authorization for this round:**
-> 1. B-31 retains the real hosted gate in `docs/online-capability.md` §6: host/TLS,
->    readiness, owner isolation, restore, provider smoke, source coverage, latency/cost,
->    invited scientist and independent reader. Operator-only decisions stay explicit;
->    a local rehearsal never closes that gate.
-> 2. When implementation resumes, B-33 is the first engineering candidate. B-34,
->    B-32, B-35, B-36, B-37 and B-30 follow in the register's order, respecting their
->    dependencies. Prepare independent work while a review/operator gate is pending;
->    do not manufacture a pass or add sources to fill an empty priority group.
-> 3. Later proposals include resilient browser checks, keyboard accessibility, analyses
->    attached to projects, reproducible target filters and a claims-source decision.
->    Target catalog expansion follows validation of the existing cohort. The register
->    records why B-19/B-21/B-29/B-30 moved and why B-22 remains later.
+> **Next-stage order:** 1. B-31 retains the real hosted gate in
+> `docs/online-capability.md` §6 — host/TLS, readiness, owner isolation, restore,
+> provider smoke, source coverage, latency/cost, invited scientist and independent
+> reader, now with the build-identity recorder and the cohort pack as its tooling.
+> Operator-only decisions stay explicit. 2. Land and verify B-38. 3. The remaining
+> register items are gated (B-21 decision, B-09 scientific review, B-11 provider) or
+> P3 as ranked; the register records why.
 >
 > **Evidence map:** scope and hosted gate `docs/online-capability.md`; operations
-> `docs/runbook.md` §H1–H10; local rehearsal
-> `docs/plans/2026-09-16-hosted-acceptance-rehearsal.md`; per-item delivery records in
-> `docs/plans/backlog.md` and its linked plans/benchmarks. Older rounds in `docs/archive/`
-> are historical records, not the current work queue. The rest of this document is
-> the standing product contract; aspirational capabilities are not implementation claims.
+> `docs/runbook.md` §H1–H10; per-item delivery records in `docs/plans/backlog.md`
+> and its linked plans/benchmarks; the cohort pack `benchmarks/cohort-pack-2026-09-16.*`.
+> Older rounds in `docs/archive/` are historical records, not the current work queue.
+> The rest of this document is the standing product contract; aspirational capabilities
+> are not implementation claims.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.
 
@@ -736,9 +722,10 @@ citations, confidence states.
 Exit: factual AI answers expose evidence, and unsupported conclusions are visibly marked
 as inference.
 **State: family/document/target summaries and validated plans are implemented offline
-and against one historically measured live provider. Full family comparison is not
-delivered; scientific entailment review (B-32) and exact citation navigation (B-37)
-remain open.**
+and against one historically measured live provider; citations navigate to the exact
+record they name across the live panels and the analyses archive (B-37, 2026-09-16),
+and stored analyses attach to projects (B-29). Full family comparison is not
+delivered; the independent scientific cross-read (B-32's gated half) remains open.**
 
 ## Milestone 6 — Document Extraction Fallback
 
