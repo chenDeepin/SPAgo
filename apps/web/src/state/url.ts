@@ -9,13 +9,49 @@
  * ONLINE-00 extends the same contract to target investigations: `t` is the
  * resolved target id, `q` holds the requested target query (a gene symbol or
  * accession), and `c` selects a candidate. Only identifiers are encoded — never
- * structures, SMILES or result sets. */
+ * structures, SMILES or result sets.
+ *
+ * B-39 adds the target view's bounded policy state — `ev` (evidence class),
+ * `mod` (=all for the labelled modality expansion), `th` (threshold in µM) —
+ * so refresh, Back/Forward and a shared link reopen the same question under
+ * the same rule. Each is validated on read: an unknown class, a non-positive
+ * or oversized threshold is dropped to its default rather than smuggled into a
+ * request. Filter changes replace the current entry (the URL states the view
+ * as it is); each history entry carries the filters of its own scope. */
 
 export interface UrlState {
   q: string | null; // patent publication number, or a requested target query
   doc: string | null; // selected document id (document scope)
   c: string | null; // selected compound id
   t: string | null; // resolved target id (target investigation)
+  /** Optional: a state that omits them resets to the deployment defaults —
+   * that is how every scope-opening call site says "new scope, default
+   * filters" without listing the fields (B-39). */
+  ev?: string | null; // evidence-class filter
+  all?: boolean; // include-all-modalities expansion
+  th?: number | null; // potency threshold override in micromolar
+}
+
+/** The evidence classes the server's filter vocabulary accepts; anything else
+ * in a URL is stale or hand-edited and is dropped, not guessed. */
+const EVIDENCE_CLASSES = new Set([
+  "measured_direct_binding",
+  "interaction_disruption",
+  "functional_effect",
+  "screening_assay",
+  "unspecified",
+]);
+
+const THRESHOLD_UM_MIN = 0.0001;
+const THRESHOLD_UM_MAX = 1000;
+
+function readBoundedThreshold(raw: string | null): number | null {
+  if (raw == null) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < THRESHOLD_UM_MIN || value > THRESHOLD_UM_MAX) {
+    return null;
+  }
+  return value;
 }
 
 /** Deterministic publication-number shape, mirrored from
@@ -53,11 +89,15 @@ export function publicationPath(value: string): string {
 
 export function readUrlState(): UrlState {
   const params = new URLSearchParams(window.location.search);
+  const ev = params.get("ev");
   return {
     q: params.get("q"),
     doc: params.get("doc"),
     c: params.get("c"),
     t: params.get("t"),
+    ev: ev && EVIDENCE_CLASSES.has(ev) ? ev : null,
+    all: params.get("mod") === "all",
+    th: readBoundedThreshold(params.get("th")),
   };
 }
 
@@ -67,6 +107,9 @@ export function writeUrlState(state: UrlState, mode: "push" | "replace" = "repla
   if (state.doc) params.set("doc", state.doc);
   if (state.c) params.set("c", state.c);
   if (state.t) params.set("t", state.t);
+  if (state.ev) params.set("ev", state.ev);
+  if (state.all) params.set("mod", "all");
+  if (state.th != null) params.set("th", String(state.th));
   const qs = params.toString();
   const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
   if (mode === "push") {

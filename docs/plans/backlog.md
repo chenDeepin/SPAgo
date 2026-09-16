@@ -8,9 +8,10 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 base) before engineering can finish it, not before engineering can start.
 
 Last updated: **2026-09-16 — implementation round 1 after the product review:
-B-33, B-34, B-42, B-35, B-36, B-32 (machine half), B-37 and B-30 delivered.
-The P1 engineering group is empty; B-31 (hosted acceptance) is the operator's
-gate, and the P2 group follows.**
+B-33, B-34, B-42, B-35, B-36, B-32 (machine half), B-37, B-30, B-19, B-29 and
+B-39 delivered; B-43 added. The P1 engineering group is empty; B-31 (hosted
+acceptance) is the operator's gate; B-38 is in flight; B-21/B-09/B-11 keep
+their gates.**
 Current stage: a locally implemented and previously exercised product, with selected
 live-source measurements and a local hosted-shape rehearsal; **hosted acceptance and
 independent scientific validation remain open**. Review findings, evidence limits and
@@ -53,13 +54,11 @@ authorized. This planning-only round authorizes none of those actions.
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
 | P0 | B-31 | Real hosted pilot acceptance | CORE | M + operator time | real host/TLS, provider/budget, invited scientist; B-32 evidence |
-| P2 | B-38 | Browser regression for failures, stale responses and saved work | NEXT | M | reuse B-17; B-35 for automatic execution |
-| P2 | B-19 | Keyboard and dialog accessibility in the existing layout | NEXT | M | browser/assistive-technology evidence |
-| P2 | B-29 | A stored analysis as a project artifact | NEXT | M | B-36/B-37 first; preserve owner and snapshot rules |
-| P2 | B-39 | Reopen a saved investigation with its filters and policy | NEXT | M | bounded private state contract; no sensitive URL payloads |
+| P2 | B-38 | Browser regression for failures, stale responses and saved work | NEXT | M | reuse B-17; B-35 for automatic execution — in flight |
 | P2 | B-21 | Claim-text source feasibility and evidence design | NEXT | S–M decision; L integration | source/terms/sample decision; integration separately gated |
 | P2 | B-09 | Reviewed target-scope catalog expansion | NEXT | M | scientific review |
 | P2 | B-11 | Refusal explanation, then second-provider evaluation | NEXT | M | explanation ungated; provider/budget gate on live evaluation |
+| P3 | B-43 | One patent search from a target view pushes two history entries | LATER | S | browser-reproduced 2026-09-16 during B-39's verification |
 | P3 | B-40 | Small cross-family SAR comparison with assay comparability | LATER | M–L | reviewed comparison task + matched assay context |
 | P3 | B-08 | BindingDB assay-context enrichment *(owner request group)* | LATER | M | source capability check |
 | P3 | B-28 | Bounded multi-target snapshot run and change report | LATER | M | B-30 plus measured repeated-batch need |
@@ -118,6 +117,9 @@ it):**
 | B-32 | 2026-09-16 | The machine half: `scripts/cohort_pack.py` (build identity verbatim from `/healthz` with `--expected-build`, schema state, resolved targets, per-source retrieval rows with access paths, the verdict **twice** — source-only vs combined via `reference_verdicts(include_supplements=False)` — policy, bounds, per-record stratification, Limits section; `--compact` keeps the committed artifact aggregate-only), `benchmarks/cohort-pack-2026-09-16.{json,md}` from the running stack (`d9f441a-dirty`), and the stale coverage `REPORT_NOTES` corrected (the snapshot is an operator access path with no per-publication leg). Headline made machine-readable: TSLP source-only does **not** qualify while combined reports 1/2 — the historical "1/2 vs 0/1" confusion is one visible `user_supplement` row, not a conflict. `tests/test_b32_cohort_pack.py` (13 cases, trio 80 passed, coordinator re-run); coordinator trim: committed pack 2.6 MB → 78 KB (`--compact`, aggregates unchanged, full reviewer pack one command away). **Operator-gated remainder stands**: the independent human cross-read, §6 boxes, any accuracy claim. Plan: `docs/plans/2026-09-16-cohort-pack.md`. |
 | B-37 | 2026-09-16 | Citations open the exact record they name. Server: `measurement` citations carry `compound_id` (all three snapshot scopes), `evidence` citations carry it or an explicit null when their mention is no longer current, the family citation carries `family_id`. Frontend: `AiPanel` passes the typed citation; the target panel routes `candidate`/`measurement` citations through the app (selection switch + D2 pin) and highlights the cited row — or renders the explicit "not in today's stored rows" note; the family panel shows and highlights a cited evidence record, selects its occurrence, and expands the activity section for same-compound measurement citations; the analyses archive's citations are buttons that reopen their scope at the record (target scopes by URL state, family/document through the stored query); one `citationFocus` state cannot outlive its navigation. `tests/test_b37_citation_records.py` (5 cases) + 59-test AI regression. Browser-verified on `12be253-dirty` (target: URL switched to the cited compound with the row highlighted; archived analysis: closed the dialog and opened `?q=IL6&c=<cited>&t=<id>`; family: evidence tab + activity section). Plan: `docs/plans/2026-09-16-citation-navigation.md`. |
 | B-30 | 2026-09-16 | A complete (or explicitly `empty`) source ask retracts the candidate rows of the same target, source and **access path** that its release no longer returned — never deleting them, naming the withdrawing retrieval in `retracted_reason`, cleared automatically on re-delivery; failed/partial asks retract nothing. The scope needed migration **0021**: `target_candidates.source_version` (the row's own access-path statement, backfilled from its retrieval link), because the shared retrieval row's `source_version` is overwritten by whichever path asked last — so a REST re-ask cannot retract snapshot rows, and 155 legacy rows with no recorded path are never retracted (an unknown origin is not an inferred absence). Per-source counts surface as `retracted_candidates` on run responses and in the UI run note; runbook §2.7 now states the rule where it said "not implemented". `tests/test_b30_refresh_retraction.py` (9 cases) + the discovery/refresh cluster **136 passed**; migration 0021 applied to the operator's stack on rebuild (`a1ea1ba-dirty`, backfill verified in situ), smoke green, IL6 still reads 157. Not browser-reproduced: the retraction note needs a live source that drops records between two real asks. Plan: `docs/plans/2026-09-16-refresh-retraction.md`. |
+| B-19 | 2026-09-16 | Both virtualized tables own their header (`role="table"` moved onto the scroll container, header row inside it, `columnheader` cells, body as `rowgroup`) and one guard in the row key handler gives nested controls their keys — Space on a row checkbox previously never toggled *and* fired inspection. Browser-verified on the rebuilt stack (`ownsHeader: true`, 6 columnheaders + 1 rowgroup, Enter inspects, Space toggles only); the smoke's row locator was re-scoped to the rowgroup before it could break. **Open: a screen-reader announcement pass.** Plan (shared with B-29): `docs/plans/2026-09-16-table-keyboard-and-project-analyses.md`. |
+| B-29 | 2026-09-16 | Migration **0022** (`project_analyses`: analysis id + identity snapshot — a vanished analysis leaves a readable, marked reference, the 0008 contract applied to analyses), attach/list/remove service functions (attach idempotent and owner-scoped; remove deletes the pointer, never the artifact), the two routes plus `analyses` on the project detail, and the UI: attach from the Analyses dialog's expanded entry (progressive disclosure — the first draft put a select on every row and was fixed pre-commit), "Saved analyses (N)" in both project banners, and a read dialog with the stored text, its staleness and export — no provider call. 5 tests + 41-test regression; browser-verified end to end. Plan: same file as B-19. |
+| B-39 | 2026-09-16 | `state/url.ts` gained `ev`/`mod`/`th` (validated on read: unknown class or out-of-bounds threshold drops to default, never into a request; optional in `UrlState` so scope-opening call sites keep meaning "default filters"); the three target-view states initialize from the URL, restore per history entry, and each control's change replaces the entry with its own filter state. Browser-verified on `bf2e925-dirty`: applying all three writes them into the URL, reload restores them exactly, an invalid hand-edited state is dropped with the verdict visibly computed under the deployment default, and Back/Forward restores `ev=functional_effect&th=1`. Found en route: **B-43**. Plan: `docs/plans/2026-09-16-reproducible-target-state.md`. |
 
 ## 2. Items
 
@@ -986,6 +988,21 @@ at 1280×720 and 1600×1000 on the rebuilt stack, family smoke unchanged.
   is small, browser-reproduced, and it silently hides the primary workflow's
   main object on screens a beta scientist plausibly uses.
 
+### B-43 — One patent search from a target view pushes two history entries
+
+- **Evidence (browser-reproduced 2026-09-16, found during B-39's verification).**
+  `App.tsx::openPatent` calls `updateUrl(..., "push")` once because a target view
+  is open (the target-mode reset) and once more for the query itself, so opening
+  a patent from inside an investigation creates two identical history entries
+  and browser Back needs two presses to leave the family. `history.length` 4
+  after one navigation observed; the second Back correctly restores the target
+  entry with its filter state (B-39 was verified through it).
+- **Scope if built.** One push per explicit navigation step; the popstate
+  restore must keep working (B-39's per-entry filter state is the regression
+  to pin).
+- **Class LATER · P3 · S.** A polish defect with a working workaround (press
+  Back twice); recorded so it is not rediscovered.
+
 ## 3. Historical review — what the `BindingDB_IO` implementation changed (2026-09-16)
 
 The comparison below describes the checkout **before** B-23…B-26 were delivered.
@@ -1126,3 +1143,4 @@ the present proposal order; a previous “no remaining work” statement is not 
 | 2026-09-16 | **B-35 delivered** (workflow `full-stack` job + the 0006 helper's required-database gate + README's honest CI statement; commit `d9f441a`). **Verified by executing the hosted run 35113553962**: the runner built the shipped db image, the full suite ran **793 passed** (not skipped), the recorder confirmed `build_id d9f441a` from the CI-built app image, and the B-17 smoke passed against the seeded stack — checks 1m08s, full-stack 3m09s. **B-36 delivered** right after it (`App.tsx`: `openProjectTarget` + `openedProjectScopes` + the unified "Saved scope" switcher in both banners; browser-verified across a three-scope mixed project on `d9f441a-dirty`). **Both leave the table; the P1 head is B-37** (citation navigation), **B-30 follows** (refresh retraction), with **B-32's machine half in flight** as a parallel workstream. |
 | 2026-09-16 | **B-32 machine half delivered** (subagent implementation, coordinator review: pack regenerated and trimmed 2.6 MB → 78 KB with a new `--compact` mode; trio re-run 80 passed) and **B-37 delivered** (typed citation contract + navigation across the target panel, family panel and analyses archive; 5 contract tests + 59-test regression + three browser paths on `12be253-dirty`). **Both leave the table; B-30 is the last P1 engineering item** — its absence semantics (complete-ask retraction within one access path) then feed B-31's evidence. B-32's independent-review half remains explicitly operator-gated and is not closed by the pack. |
 | 2026-09-16 | **B-30 delivered — the P1 engineering group is empty.** Absence is established only by an ask that answered the whole question (complete, or empty), scoped to target + source + access path (migration 0021 puts the access path on the candidate row; the shared retrieval row cannot carry it), retracting never deleting, restored on re-delivery, with failed/partial/other-path/legacy rows provably untouched (9 test cases; discovery cluster 136 passed; migration applied to the operator's stack on rebuild). **What remains is B-31 (P0, operator-only: host, provider budget, invited scientist — its B-32 evidence pack is prepared) and the P2 group** (B-38, B-19, B-29, B-39, B-21's decision, B-09's review, B-11's ungated refusal explanation) in §1's order. |
+| 2026-09-16 | **B-19, B-29 and B-39 delivered** (the P2 group's ungated engineering items). B-19 as a subagent round reviewed by the coordinator (the cross-workstream smoke-locator catch was fixed before commit); B-29 as the coordinator's round (the attach control moved into the expanded entry for progressive disclosure before commit); B-39 with reload/invalid/Back-Forward browser evidence. **B-43 added** (P3/S): the double history push when opening a patent from a target view, found and reproduced during B-39's verification. Remaining table: **B-31 (operator), B-38 (in flight), B-21/B-09/B-11 (gated), P3 as ranked.** |

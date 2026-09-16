@@ -147,8 +147,13 @@ export function App() {
   const [planEdits, setPlanEdits] = useState<Record<string, string>>({});
   const [planError, setPlanError] = useState<string | null>(null);
   const [planWorking, setPlanWorking] = useState(false);
-  const [allModalities, setAllModalities] = useState(false);
-  const [evidenceClassFilter, setEvidenceClassFilter] = useState<string | null>(null);
+  // B-39: the target view's policy state starts from the URL (validated on
+  // read), so a shared link or a reload reopens the same question under the
+  // same rule. A state that carries none of them uses the deployment defaults.
+  const [allModalities, setAllModalities] = useState(urlState.all ?? false);
+  const [evidenceClassFilter, setEvidenceClassFilter] = useState<string | null>(
+    urlState.ev ?? null,
+  );
   const [saveCandidatesOpen, setSaveCandidatesOpen] = useState(false);
   // ONLINE-07: the add-rows dialog. Offered from the reference strip, so the one
   // write path for a person's own reading sits where a thin set is visible.
@@ -157,7 +162,9 @@ export function App() {
   const [supplementOpen, setSupplementOpen] = useState<false | "rows" | "bundle">(false);
   // ONLINE-06: the potency threshold is a *policy*, so a session-level override
   // is explicit state rather than a hidden default. `null` = deployment policy.
-  const [thresholdOverride, setThresholdOverride] = useState<number | null>(null);
+  const [thresholdOverride, setThresholdOverride] = useState<number | null>(
+    urlState.th ?? null,
+  );
   // Per-source citation focus: the header chip is flashed briefly, because the
   // coverage strip is a status list, not a selectable view.
   const [focusedSource, setFocusedSource] = useState<string | null>(null);
@@ -607,6 +614,11 @@ export function App() {
           setSubmittedQuery(restored.q);
           setLastGoodQuery(restored.q);
         }
+        // B-39: each history entry carries its own filter state; Back/Forward
+        // restores the question *and* the rule it was asked under.
+        setAllModalities(restored.all ?? false);
+        setEvidenceClassFilter(restored.ev ?? null);
+        setThresholdOverride(restored.th ?? null);
         setSelectedIds(new Set());
       }),
     [closeProject],
@@ -1293,6 +1305,9 @@ export function App() {
                     // re-interpretation of what is already on screen.
                     setThresholdOverride(micromolar);
                     setSelectedIds(new Set());
+                    // B-39: the URL states the rule the view was asked under, so
+                    // reload and Back/Forward reopen the same question.
+                    updateUrl({ ...urlState, th: micromolar }, "replace");
                   }}
                   onSelectCompound={handleSelectCompound}
                   onAddRows={(mode = "rows") => setSupplementOpen(mode)}
@@ -1306,6 +1321,7 @@ export function App() {
                       onChange={(e) => {
                         setAllModalities(e.target.checked);
                         setSelectedIds(new Set());
+                        updateUrl({ ...urlState, all: e.target.checked }, "replace");
                       }}
                     />
                     Include peptides, oligonucleotides and biologics
@@ -1322,6 +1338,7 @@ export function App() {
                       onChange={(e) => {
                         setEvidenceClassFilter(e.target.value || null);
                         setSelectedIds(new Set());
+                        updateUrl({ ...urlState, ev: e.target.value || null }, "replace");
                       }}
                     >
                       <option value="">any</option>
