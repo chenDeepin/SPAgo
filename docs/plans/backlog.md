@@ -31,7 +31,6 @@ file.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-10 | Summary archive and retrieval *(owner request)* | NEXT | M | — |
 | P1 | B-02 | Live source-declared patent linkage + candidate→corpus match display | NEXT | M | upstream source behaviour |
 | P2 | B-24 | Patent-led compound discovery via ChEMBL patent search | NEXT | M | upstream source behaviour |
 | P2 | B-25 | Literature supplement bundle import (agent-produced rows) | NEXT | M | — |
@@ -55,6 +54,7 @@ file.
 | P3 | B-16 | Operator usage visibility (decide: docs-only or small admin view) | LATER | S | — |
 | P3 | B-19 | Accessibility pass on the virtualized table and dialogs | LATER | M | — |
 | P3 | B-20 | Chinese UI / i18n | LATER | L | user-base decision |
+| P3 | B-29 | A stored analysis as a project artifact | LATER | M | user workflow ask |
 | P3 | B-12 | Multi-worker deployment (shared in-flight model registry) | LATER | M | scaling need |
 | — | — | *(rejected / deliberately out — see §5)* | REJECT | — | — |
 
@@ -69,6 +69,7 @@ it):**
 | ID | Delivered | Artifact |
 | --- | --- | --- |
 | B-01 | 2026-09-16 | `scripts/corpus_batch.py` (chunked extract → import with resumable `STATE.json`, per-chunk status, non-zero exit and an explicit missing-number list when the corpus does not hold the requested set); `spago_core.corpus_status` (terminal surface; `--patents` exits non-zero and prints every number that is not loaded) and `GET /api/v1/corpus` behind the top-bar dataset badge (`CorpusDialog.tsx`) — counts read from the corpus tables, per dataset version, with failed/interrupted imports and unregistered versions reported. |
+| B-10 | 2026-09-16 | Read path over `ai_analyses`: `GET /api/v1/analyses` (owner-scoped list with scope label, model, prompt/policy version, tokens, staleness reasons), `GET /api/v1/analyses/{id}` (stored text + citations + the exact input-fingerprint check), `GET /api/v1/analyses/{id}/export` (Markdown whose header states scope, provider, model, prompt, policy, data version and citations), and the top-bar **Analyses** dialog (`AnalysesDialog.tsx`) that reopens them without a provider call. |
 | B-13 | 2026-09-16 | `scripts/restore_check.sh` (dumps, restores, compares the §H7 counts, fails non-zero on mismatch, verified against the rehearsal stack and against a deliberate mismatch) and the §H2 ingress-duty table (compression, TLS, throttling, logs, backup schedule) in `docs/runbook.md`. |
 
 ## 2. Items
@@ -200,6 +201,13 @@ corpus tables on every request instead of maintaining a counter.
 - **Class NEXT · P2 · M (review-heavy).**
 
 ### B-10 — Summary archive and retrieval *(owner request)*
+
+**Delivered 2026-09-16** (`docs/plans/2026-09-16-analysis-history.md`). The shipped
+shape keeps the stated scope and adds one thing the problem statement implied but did
+not name: an *exact* staleness answer, not just a version comparison. Opening a stored
+analysis recomputes its input fingerprint with the same function the write path uses,
+so "would this request be a cache hit now?" is answered by computation instead of by
+assumption.
 
 - **Problem.** The data exists but is write-only from the product's point of view.
   Successful scoped summaries are stored in `ai_analyses` with `input_hash`, scope
@@ -500,6 +508,21 @@ supports several queries in one pass (`readers/multi.py`). If B-23 lands, a batc
 and worth its own small item — record it here so it is not invented twice. It stays a
 note until B-23 exists; it is not in the priority table.
 
+### B-29 — A stored analysis as a project artifact
+
+- **Problem.** A summary is now findable (B-10) but not *attachable*: a project can hold
+  compounds and families, not the analysis that explains why they were picked. A
+  scientist assembling a report still copies the summary text out by hand, and the copy
+  loses its scope/version header — the exact thing B-10's export exists to preserve.
+- **Scope if built.** Reference a stored analysis from a project (id + the identity
+  snapshot the project already keeps for items), render it in the project view with its
+  staleness stated, and include it in the project export. Deletion of the analysis must
+  leave the project item readable and marked, as family/compound deletion does today
+  (migration 0008's contract).
+- **Why not now.** No reviewed workflow asks for it, and the export already covers "take
+  it out of the app". Build it when a project-level report is actually requested.
+- **Class LATER · P3 · M.**
+
 ## 3. Review discussion — what the `BindingDB_IO` implementation changes (2026-09-16)
 
 Read-only review of `/media/chen/Machine_Disk/Datasets/BindingDB_IO/` (README,
@@ -545,7 +568,8 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 1. **B-13** — *delivered 2026-09-16:* make the §6 gate cheaper to pass and harder to fake.
 2. **B-01** — *delivered 2026-09-16:* make "search real patents" mean more than "search
    what was imported".
-3. **B-10** — let a scientist keep and find the analysis they already paid for.
+3. **B-10** — *delivered 2026-09-16:* let a scientist keep and find the analysis they
+   already paid for.
 4. **B-02** — prove the patent-linkage claim on live data, or state exactly how far it
    reaches.
 
@@ -570,3 +594,4 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 | 2026-09-16 | Second planning-only stage. `BindingDB_IO` reviewed read-only; §3 added with the adopt/defer/reject argument; new items B-23 (local snapshot search), B-24 (patent-led ChEMBL compounds), B-25 (supplement bundle import), B-26 (patent coverage audit), B-27 (review sheet, LATER) and the B-28 note recorded; priority table and P2 order updated. `AGENTS.md` gained the snapshot, agent-retrieval, repository-hygiene and acceptance/verifier rules; `docs/online-capability.md` §6 gained the hosted-acceptance definition and success criteria. No application code changed. |
 | 2026-09-16 | **B-13 delivered** after the hosted-acceptance rehearsal: `scripts/restore_check.sh` (scripted §H7 rehearsal; verified against the rehearsal stack and against a deliberate mismatch) and the §H2 "ingress duties" table (TLS, compression with the measured 20.3 MB → 4.95 MB figure, throttling, logs, backup schedule). The rehearsal also produced `docs/plans/2026-09-16-hosted-acceptance-rehearsal.md` and five defect fixes (target-summary bounds, rejected-call token accounting, transport-failure outcome, drill mode, §H7 column name). |
 | 2026-09-16 | **B-01 delivered** (`scripts/corpus_batch.py`, `spago_core.corpus_status`, `GET /api/v1/corpus` + `CorpusDialog.tsx`). No re-sorting needed: the priority order below is unchanged, and B-10 is now the top P1 item. Two scope notes recorded: the batch loop is an operator-side chunker (no queue service, §6/§22), and the corpus counts are computed per request rather than maintained — the measured cost is in the plan file, and a corpus large enough to need counters is a measured problem, not a guess. |
+| 2026-09-16 | **B-10 delivered** (`services/analyses.py`, `GET /api/v1/analyses`, `/analyses/{id}`, `/analyses/{id}/export`, `AnalysesDialog.tsx`). Re-sorted: **B-02 is now the top P1 item**; B-10 leaves the table. One new backlog item recorded from building it — **B-29** (attach a stored analysis to a project, and cite it from the project view), `LATER · M`: the capability statement already promises that saved work reopens, and an analysis is now an artifact a project can point at, but no reviewed workflow asks for it yet. |

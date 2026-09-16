@@ -100,6 +100,12 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 
 - Scoped summaries for a family, one document, or a target investigation.
   Each scope is labelled, cached separately and generated from stored facts only.
+- **Stored analyses are readable again** (`GET /api/v1/analyses`, the top-bar
+  **Analyses** dialog, and a Markdown export per analysis): the owner's own
+  summaries with their scope, model, prompt version, data version and billed
+  tokens. Reopening one is a read — no provider call — and an entry whose data or
+  potency policy has moved since is shown as out of date, with the reason, rather
+  than presented as current.
 - Natural-language requests are turned into a **validated plan** against a fixed
   operation allowlist, shown for review, and executed only on explicit action.
 - Deterministic identifier requests (publication numbers, reviewed target

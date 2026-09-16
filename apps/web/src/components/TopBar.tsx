@@ -4,13 +4,15 @@ import { api } from "../api/client";
 interface TopBarProps {
   onOpenProjects?: () => void;
   onOpenCorpus?: () => void;
+  /** Stored analyses this owner can reopen (B-10). */
+  onOpenAnalyses?: () => void;
 }
 
 /** The dataset badge shows the *actual* loaded sources (PROD-01): synthetic
  * demo data is labeled as demo; imported real sources show their real name,
  * and multiple datasets are counted rather than hidden behind one label. The
  * badge is also the button that opens the corpus inventory (B-01). */
-export function TopBar({ onOpenProjects, onOpenCorpus }: TopBarProps) {
+export function TopBar({ onOpenProjects, onOpenCorpus, onOpenAnalyses }: TopBarProps) {
   const { data: health } = useQuery({
     queryKey: ["health"],
     queryFn: ({ signal }) => api.health(signal),
@@ -36,6 +38,11 @@ export function TopBar({ onOpenProjects, onOpenCorpus }: TopBarProps) {
       {onOpenProjects && (
         <button className="btn btn-quiet" onClick={onOpenProjects}>
           Projects
+        </button>
+      )}
+      {onOpenAnalyses && (
+        <button className="btn btn-quiet" onClick={onOpenAnalyses}>
+          Analyses
         </button>
       )}
       {latest && (

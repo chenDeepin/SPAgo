@@ -189,6 +189,113 @@ button.dataset-badge:hover {
   color: var(--text-2);
 }
 
+/* ---------- my analyses (B-10) ---------- */
+
+.analyses-filters {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.analyses-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.analyses-filter select,
+.analyses-filter input {
+  height: 30px;
+  padding: 0 8px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.analyses-filter-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.analyses-count {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+.analyses-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.analyses-item {
+  border: var(--border-w) solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.analyses-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.analyses-open {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-1);
+  font-size: 13px;
+  text-align: left;
+}
+
+.analyses-open:hover {
+  text-decoration: underline;
+}
+
+.analyses-scope {
+  font-weight: 600;
+}
+
+.analyses-meta {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.analyses-stale {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--warn, #b45309);
+}
+
+.analyses-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.analyses-detail {
+  margin-top: 8px;
+  border-top: var(--border-w) solid var(--border);
+  padding-top: 8px;
+}
+
 /* ---------- search row ---------- */
 
 .searchrow {

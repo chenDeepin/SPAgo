@@ -162,6 +162,13 @@ cancellation. The recorded live smoke
 ([`docs/archive/2026-09-15-llm-live-smoke.md`](docs/archive/2026-09-15-llm-live-smoke.md))
 is one provider at 85 % single-attempt compliance, not a compatibility claim.
 
+**Stored summaries.** Every generated summary is kept (`ai_analyses`) and is readable
+again from **Analyses** in the top bar — scope, model, prompt version, data version,
+billed tokens — without calling the provider a second time. Each one exports as
+Markdown whose header carries those fields plus the citations, and an entry whose data
+or potency policy moved since it was generated is labelled out of date instead of being
+shown as current.
+
 ---
 
 ## How it works

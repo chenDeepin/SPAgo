@@ -368,6 +368,12 @@ project individually; do not bulk-assign.
   `/api/v1/usage/events` is administrator-only and lists operational rows:
   provider, model, scope, outcome, tokens, truncated error text. No provider
   payload and no credential is stored.
+- What a user paid for stays readable: the **Analyses** button in the top bar
+  lists their stored analyses (`GET /api/v1/analyses`), each with the model, the
+  prompt version, the data version and the billed tokens. Opening one is a plain
+  read — it never calls the provider — and each export carries that header with
+  the text. A summary generated before the data or the potency policy moved is
+  shown as out of date rather than silently re-served.
 - If `SPAGO_LLM_PRICE_PER_MILLION_TOKENS` is unset, the report says no price is
   configured and reports tokens only. The provider invoice is authoritative in
   every case.

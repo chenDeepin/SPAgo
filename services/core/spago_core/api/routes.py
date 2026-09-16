@@ -845,6 +845,135 @@ def target_summary(
     )
 
 
+class AnalysisEntry(BaseModel):
+    """One stored analysis as the history list shows it."""
+
+    analysis_id: uuid.UUID
+    scope: str
+    analysis_kind: str
+    scope_label: str
+    #: What to submit to the search box to reopen this scope; null when the
+    #: scope entity is gone, so the UI never offers a dead navigation.
+    scope_query: Optional[str] = None
+    scope_id: Optional[uuid.UUID] = None
+    provider: str
+    model: Optional[str] = None
+    mode: str
+    provenance_state: str
+    prompt_version: Optional[str] = None
+    dataset_version: str
+    created_at: str
+    citation_count: int
+    total_tokens: Optional[str] = None
+    stale: bool = False
+    stale_reasons: list[str] = []
+    exact_check: Optional[dict] = None
+
+
+class AnalysisListResponse(BaseModel):
+    items: list[AnalysisEntry]
+    total: int
+    limit: int
+    offset: int
+    #: The deployment's current dataset version, so the list can say what its
+    #: own staleness comparison used.
+    current_dataset_version: Optional[str] = None
+
+
+class AnalysisDetailResponse(AnalysisEntry):
+    text: str
+    citations: list[dict]
+    usage: Optional[dict] = None
+
+
+@router.get("/analyses", response_model=AnalysisListResponse)
+def list_analyses(
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+    scope: Optional[str] = Query(default=None, pattern="^(family|document|target)$"),
+    search: Optional[str] = Query(default=None, max_length=200),
+    offset: int = 0,
+    limit: int = 50,
+):
+    """Stored summaries this owner can reopen (B-10).
+
+    Read-only: no provider is called, nothing is regenerated. Each entry states
+    its scope, its model, its prompt/policy version and whether anything cheap
+    says the data has moved since; the full check happens when one is opened.
+    """
+    from spago_core.services import analyses as analyses_svc
+
+    try:
+        items, total = analyses_svc.list_analyses(
+            engine,
+            auth_svc.owner_id_for(user),
+            scope=scope,
+            search=search,
+            offset=offset,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    dataset = services.get_dataset_info(engine)
+    return AnalysisListResponse(
+        items=[AnalysisEntry(**item) for item in items],
+        total=total,
+        limit=max(1, min(limit, analyses_svc.MAX_PAGE)),
+        offset=max(0, offset),
+        current_dataset_version=dataset["dataset_version"] if dataset else None,
+    )
+
+
+@router.get("/analyses/{analysis_id}", response_model=AnalysisDetailResponse)
+def get_analysis(
+    analysis_id: uuid.UUID,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    """One stored analysis with its text, citations and exact input check."""
+    from spago_core.services import analyses as analyses_svc
+
+    try:
+        entry = analyses_svc.get_analysis(engine, analysis_id, auth_svc.owner_id_for(user))
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return AnalysisDetailResponse(**entry)
+
+
+@router.get("/analyses/{analysis_id}/export")
+def export_analysis(
+    analysis_id: uuid.UUID,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    """Download one analysis as a self-describing Markdown file.
+
+    The header carries scope, provider, model, prompt version, policy version,
+    data version and the staleness verdict, so the file stands on its own after
+    it leaves the app (AGENTS.md §9, §25).
+    """
+    from spago_core.services import analyses as analyses_svc
+
+    try:
+        entry = analyses_svc.get_analysis(engine, analysis_id, auth_svc.owner_id_for(user))
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    info = services.get_dataset_info(engine)
+    content = analyses_svc.render_analysis_markdown(
+        entry, current_dataset=info["dataset_version"] if info else None
+    )
+    filename = f"spago-{entry['scope']}-analysis-{str(analysis_id)[:8]}.md"
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # Lets a caller confirm what the file says without parsing it.
+            "X-Spago-Analysis-Stale": "true" if entry["stale"] else "false",
+        },
+    )
+
+
 @router.post("/ai/plan", response_model=SearchPlanResponse)
 def ai_plan(
     body: PlanQueryRequest,

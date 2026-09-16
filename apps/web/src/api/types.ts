@@ -705,3 +705,42 @@ export interface UsageReport {
   currency: string | null;
   cost_note: string;
 }
+
+/** One stored analysis as the history list shows it (B-10). */
+export interface AnalysisEntry {
+  analysis_id: string;
+  scope: "family" | "document" | "target";
+  analysis_kind: string;
+  /** What this analysis covers, named the way the workspace names it. */
+  scope_label: string;
+  /** What to submit to the search box to reopen the scope; null when the
+   * scope no longer exists, in which case no navigation is offered. */
+  scope_query: string | null;
+  scope_id: string | null;
+  provider: string;
+  model: string | null;
+  mode: string;
+  provenance_state: string;
+  prompt_version: string | null;
+  dataset_version: string;
+  created_at: string;
+  citation_count: number;
+  total_tokens: string | null;
+  stale: boolean;
+  stale_reasons: string[];
+  exact_check: { same_inputs: boolean | null; note?: string } | null;
+}
+
+export interface AnalysisListResponse {
+  items: AnalysisEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+  current_dataset_version: string | null;
+}
+
+export interface AnalysisDetail extends AnalysisEntry {
+  text: string;
+  citations: { fact_ref: string; kind: string; label?: string | null }[];
+  usage: Record<string, unknown> | null;
+}

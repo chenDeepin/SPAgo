@@ -99,8 +99,36 @@ async function downloadFile(path: string, body: unknown, filename: string): Prom
   URL.revokeObjectURL(url);
 }
 
-export const api = {
-  // --- ONLINE-03: hosted access ---
+/** Fetch a file the server renders (no body) and hand it to the browser. */
+async function downloadGet(path: string, filename: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(path, { headers: { Accept: "text/markdown" } });
+  } catch {
+    throw new ApiError(0, "Export failed: the SPAgo service could not be reached.");
+  }
+  if (!res.ok) {
+    let detail = `Export failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (typeof body?.detail === "string") detail = body.detail;
+    } catch {
+      /* keep generic detail */
+    }
+    throw new ApiError(res.status, detail);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export const api = {  // --- ONLINE-03: hosted access ---
   authStatus: (signal?: AbortSignal) =>
     getJson<import("./types").AuthStatus>("/api/v1/auth/status", signal),
   redeemInvitation: (token: string, signal?: AbortSignal) =>
@@ -112,6 +140,30 @@ export const api = {
     getJson<import("./types").DatasetInfoResponse>("/api/v1/datasets/info", signal),
   corpus: (signal?: AbortSignal) =>
     getJson<import("./types").CorpusResponse>("/api/v1/corpus", signal),
+  // --- B-10: stored analyses ---
+  analyses: (
+    params: { scope?: string | null; search?: string | null; offset?: number; limit?: number },
+    signal?: AbortSignal,
+  ) => {
+    const query = new URLSearchParams();
+    if (params.scope) query.set("scope", params.scope);
+    if (params.search) query.set("search", params.search);
+    if (params.offset) query.set("offset", String(params.offset));
+    if (params.limit) query.set("limit", String(params.limit));
+    const suffix = query.toString();
+    return getJson<import("./types").AnalysisListResponse>(
+      `/api/v1/analyses${suffix ? `?${suffix}` : ""}`,
+      signal,
+    );
+  },
+  analysis: (analysisId: string, signal?: AbortSignal) =>
+    getJson<import("./types").AnalysisDetail>(`/api/v1/analyses/${analysisId}`, signal),
+  exportAnalysis: async (analysis: { analysis_id: string; scope: string }) => {
+    await downloadGet(
+      `/api/v1/analyses/${analysis.analysis_id}/export`,
+      `spago-${analysis.scope}-analysis-${analysis.analysis_id.slice(0, 8)}.md`,
+    );
+  },
   patent: (publicationNumber: string, signal?: AbortSignal) =>
     getJson<import("./types").PatentResponse>(
       `/api/v1/patents/${encodeURIComponent(publicationNumber)}`,
