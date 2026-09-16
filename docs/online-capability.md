@@ -108,6 +108,57 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 - Save and reopen a candidate with no patent mapping; it keeps its target scope,
   source versions and identity snapshot.
 
+## 3b. Supported: what a source declares for a publication (patent-led)
+
+Target-led retrieval starts from a protein. The corpus starts from what was imported.
+This path starts from a **patent publication number** and asks one source what it
+declares under that number, whether or not SPAgo holds the family:
+
+- **The corpus is no longer the only answer.** Requesting
+  `POST /api/v1/patents/{publication_number}/source-compounds` runs a bounded ChEMBL
+  lookup for the number as typed (`US-10508115-B2`, `US 10508115`, `US10508115B2` all
+  normalize to one token). This is the case the panel exists for: a publication that
+  was never imported, or imported thinly, still reaches a declared compound set.
+- **The match rule is stated and versioned.** `chembl-document-patent-body-v1`: the
+  source's `document.patent_id` normalizes to the same country-plus-digits token
+  (kind code and separators ignored). The rule travels with every response, every row
+  and every export, so "the source declares nothing" is readable as a statement about
+  *this source under this rule* rather than about the patent. A document the body
+  search returns under a **different** number is a **near match**: listed with its
+  number and excluded — never merged, never silently dropped.
+- **Five states, kept apart.** `complete`, `partial` (a document or activity bound was
+  reached), `empty` (asked; the source knows no such document), `failed` (could not be
+  asked) and `not_queried` (nobody asked). A failed lookup keeps the rows from the last
+  successful retrieval and says which retrieval they came from; it never reads as
+  "nothing declared".
+- **A declaration is not an occurrence** (AGENTS.md §11). The set is stored in its own
+  tables (`patent_source_lookups`, `patent_source_compounds`), its compounds share the
+  corpus identity by InChIKey, and **no `compound_mentions` row is written**: a lookup
+  does not change a family's compound count, does not enter the compound table, and is
+  never presented as evidence. The panel is a separate surface with its own vocabulary
+  ("declared", the rule, the retrieval time).
+- **What was thrown away is reported.** Records are kept when they carry a structure
+  and a numeric value; the rest are counted by reason (`missing_structure`,
+  `missing_standard_value`, …). Live on `US10508115`, 268 of 402 records are the
+  document's kinetic rows and are counted, not dropped.
+- **Potency is computed on read, under the same policy as everywhere else.**
+  `activity_class` / `potency_label` come from `potency-gate-v1` on each read, with
+  `reference_threshold_nM` and `reference_policy_version` on the response and in the
+  export. No ranking is implied; the patent path claims no `evidence_class` (it does not
+  resolve the assayed biological object), and it says so.
+- **Export carries what it holds.** `GET .../source-compounds/export?format=csv|sdf`
+  writes the whole stored set (not the loaded page); every row is labelled
+  `record_kind = source_declared_compound` with the source, its version, the match rule,
+  the retrieval time, the policy and the declared document number. Exporting a set that
+  was never looked up, or an empty one, is refused with the reason instead of writing an
+  empty file.
+- **Operator path without a browser:** `scripts/patent_source_lookup.py --patents …`
+  runs the same service call against a database and prints/records the view; the live
+  record is [`benchmarks/patent-source-declarations-2026-09-16.md`](../benchmarks/patent-source-declarations-2026-09-16.md).
+
+What this is not: a completeness claim for a publication (one source, one rule), a
+resolution-rate claim over a cohort, or a corpus occurrence. See *Not supported*.
+
 ## 4. Supported: interpretation, with limits
 
 - Scoped summaries for a family, one document, or a target investigation.

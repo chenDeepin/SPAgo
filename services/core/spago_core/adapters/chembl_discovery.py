@@ -80,6 +80,32 @@ ACTIVITY_FIELDS = (
     "pchembl_value,potential_duplicate,data_validity_comment,type,modality"
 )
 
+#: B-24 — the patent-led read path asks for one field more than the target path:
+#: `molecule_pref_name`, so a declared compound can be shown under the name the
+#: source uses. A separate constant rather than an addition to `ACTIVITY_FIELDS`,
+#: because that projection has a measured egress claim attached to it and must not
+#: change silently (`benchmarks/online00-chembl-projection-2026-09-16.md`). The
+#: patent-path projection is measured on its own in
+#: `benchmarks/patent-source-compounds-2026-09-16.md`.
+PATENT_ACTIVITY_FIELDS = ACTIVITY_FIELDS + ",molecule_pref_name"
+
+#: B-24 match rule: the source's `document.patent_id` is normalized and compared
+#: with the requested token. Versioned, stored with every lookup, and stated in the
+#: UI and the export — a body-only difference (another jurisdiction, a longer body)
+#: is a *near match*, reported and never merged into the declared set.
+MATCH_RULE = "chembl-document-patent-body-v1"
+MATCH_RULE_TEXT = (
+    "ChEMBL documents whose patent_id normalizes to the same publication number "
+    "(country code + digits; kind code and separators are ignored)"
+)
+
+#: Documents asked for in one activity query, and the most kept records one
+#: patent-led lookup may return. Both bounds are stated in the UI and stored with
+#: the lookup, so a partial set is never read as the whole truth (AGENTS.md §16).
+PATENT_DOCUMENT_QUERY_LIMIT = 100
+DECLARED_DOCUMENT_LIMIT = 20
+DEFAULT_MAX_DECLARED_ACTIVITIES = 500
+
 #: ChEMBL `target_type` strings → the normalized vocabulary. A
 #: protein–protein interaction stays distinct from the single protein it is
 #: built from (ONLINE-00 A).
@@ -173,6 +199,37 @@ class DocumentLookups:
     metadata: dict[str, dict] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     unresolved: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class DeclaredCompounds:
+    """B-24: what a source declares for one publication number.
+
+    ``documents`` are the source's documents whose ``patent_id`` normalizes to the
+    requested token; ``near_matches`` are documents the body search returned that
+    normalize to a *different* number (another jurisdiction, a longer body). The
+    second list exists so a sibling publication is neither silently included nor
+    silently dropped: it is reported with its number and excluded from ``records``.
+    """
+
+    publication_number: str
+    requested_number: str
+    match_rule: str
+    envelope: SourceEnvelope
+    status: str = "complete"
+    documents: list[dict] = field(default_factory=list)
+    near_matches: list[dict] = field(default_factory=list)
+    records: list[ActivityRecord] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    records_seen: int = 0
+    records_excluded: int = 0
+    rejection_counts: dict[str, int] = field(default_factory=dict)
+    pages_fetched: int = 0
+    bounds: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def is_complete(self) -> bool:
+        return self.status == "complete"
 
 
 class ChEMBLDiscoveryAdapter:
@@ -543,7 +600,9 @@ class ChEMBLDiscoveryAdapter:
             document_reference_counts=document_reference_counts(records),
         )
 
-    def _to_record(self, activity: dict, target_type, reject) -> Optional[ActivityRecord]:
+    def _to_record(
+        self, activity: dict, target_type, reject, *, classify: bool = True
+    ) -> Optional[ActivityRecord]:
         raw_smiles = (activity.get("canonical_smiles") or "").strip()
         if not raw_smiles:
             reject("missing_structure")
@@ -576,7 +635,14 @@ class ChEMBLDiscoveryAdapter:
             value=value,
             unit=activity.get("standard_units") or "",
             relation=_relation(activity.get("standard_relation")),
-            evidence_class=classify_evidence(assay_type, standard_type, target_type),
+            # B-24: the patent-led path does not resolve the assayed biological
+            # object, so it assigns no evidence class rather than claiming a
+            # direct-binding reading it cannot support (`classify=False`).
+            evidence_class=(
+                classify_evidence(assay_type, standard_type, target_type)
+                if classify
+                else EvidenceClass.UNSPECIFIED
+            ),
             raw_value=str(value_raw),
             assay_description=activity.get("assay_description"),
             assay_format=activity.get("bao_label"),
@@ -600,5 +666,224 @@ class ChEMBLDiscoveryAdapter:
             modality_declared=activity.get("modality") or None,
             raw_smiles=raw_smiles,
             source_molecule_id=molecule_id or None,
+            source_molecule_name=activity.get("molecule_pref_name") or None,
             target_type_declared=target_type.value if target_type else None,
+        )
+
+    # -- 5. patent-led discovery (B-24) ---------------------------------------
+
+    def declared_compounds(
+        self,
+        publication_number: str,
+        *,
+        max_documents: int = DECLARED_DOCUMENT_LIMIT,
+        max_activities: int = DEFAULT_MAX_DECLARED_ACTIVITIES,
+    ) -> DeclaredCompounds:
+        """What ChEMBL declares for one publication number (B-24).
+
+        The reverse of the target-led path: the user has a publication in hand and
+        wants the compounds a source associates with it. Two bounded requests — a
+        document search on the numeric body, then the activities of the documents
+        that verify against the same normalized number — with every kept record
+        carrying its assay, target and document reference.
+
+        The rule is stated and stored (`MATCH_RULE`): a document whose
+        `patent_id` normalizes to a *different* number is a near match — listed
+        with its number, excluded from the records, so a sibling publication is
+        neither silently included nor silently dropped. Nothing here is an
+        occurrence in SPAgo's corpus (AGENTS.md §11).
+        """
+        requested = (publication_number or "").strip()
+        retrieved_at = datetime.now(timezone.utc)
+        dataset_version = f"chembl:{retrieved_at.date().isoformat()}"
+        warnings: list[str] = []
+        bounds = {
+            "max_documents": max_documents,
+            "max_activities": max_activities,
+            "document_query_limit": PATENT_DOCUMENT_QUERY_LIMIT,
+        }
+
+        def outcome(
+            status: str,
+            *,
+            token: str = "",
+            documents: Optional[list[dict]] = None,
+            near: Optional[list[dict]] = None,
+            records: Optional[list[ActivityRecord]] = None,
+            seen: int = 0,
+            excluded: int = 0,
+            rejections: Optional[dict[str, int]] = None,
+            pages: int = 0,
+        ) -> DeclaredCompounds:
+            return DeclaredCompounds(
+                publication_number=token,
+                requested_number=requested,
+                match_rule=MATCH_RULE,
+                envelope=SourceEnvelope(
+                    source_name=SOURCE_NAME,
+                    source_version=SOURCE_VERSION,
+                    dataset_version=dataset_version,
+                    retrieved_at=retrieved_at,
+                    synthetic=False,
+                    warnings=warnings,
+                ),
+                status=status,
+                documents=documents or [],
+                near_matches=near or [],
+                records=records or [],
+                warnings=warnings,
+                records_seen=seen,
+                records_excluded=excluded,
+                rejection_counts=rejections or {},
+                pages_fetched=pages,
+                bounds=bounds,
+            )
+
+        token = normalize_patent_number(requested)
+        if not token:
+            warnings.append(
+                f"'{requested}' is not a publication number SPAgo can normalize "
+                "(country code followed by at least six digits), so nothing was queried."
+            )
+            return outcome("failed")
+
+        body = token[2:]
+        try:
+            payload = self.client.get_json(
+                DOCUMENT_PATH,
+                params={
+                    "patent_id__icontains": body,
+                    "only": DOCUMENT_FIELDS,
+                    "limit": PATENT_DOCUMENT_QUERY_LIMIT,
+                },
+            )
+        except SourceUnavailableError as exc:
+            warnings.append(
+                f"Document lookup failed ({exc}); whether ChEMBL declares compounds for "
+                "{token} is unknown, and this is not an empty result.".format(token=token)
+            )
+            return outcome("failed", token=token)
+
+        matched: list[dict] = []
+        near: list[dict] = []
+        for document in payload.get("documents") or []:
+            if normalize_patent_number(document.get("patent_id")) == token:
+                matched.append(document)
+            else:
+                near.append(
+                    {
+                        "document_chembl_id": document.get("document_chembl_id"),
+                        "patent_id": document.get("patent_id"),
+                        "year": document.get("year"),
+                        "reason": "body_only",
+                    }
+                )
+
+        if not matched:
+            warnings.append(
+                f"ChEMBL returned no document whose patent_id normalizes to {token} "
+                f"(rule: {MATCH_RULE})."
+            )
+            return outcome("empty", token=token, near=near)
+
+        document_map = {
+            str(document.get("document_chembl_id")): document
+            for document in matched
+            if document.get("document_chembl_id")
+        }
+        if len(document_map) > max_documents:
+            warnings.append(
+                f"{len(document_map)} documents declare {token}; the activity query covers "
+                f"the first {max_documents} (bound), so the declared set below is partial."
+            )
+            document_map = dict(list(document_map.items())[:max_documents])
+        if not document_map:
+            warnings.append(
+                f"ChEMBL's matching document(s) for {token} carry no document id, so no "
+                "activity could be requested."
+            )
+            return outcome("empty", token=token, documents=matched, near=near)
+
+        records: list[ActivityRecord] = []
+        rejection_counts: dict[str, int] = {}
+        seen = 0
+        excluded = 0
+        pages = 0
+        status = "complete"
+
+        def reject(reason: str) -> None:
+            nonlocal excluded
+            excluded += 1
+            rejection_counts[reason] = rejection_counts.get(reason, 0) + 1
+
+        document_ids = ",".join(document_map)
+        offset = 0
+        while len(records) < max_activities:
+            try:
+                page = self.client.get_json(
+                    ACTIVITY_PATH,
+                    params={
+                        "document_chembl_id__in": document_ids,
+                        "limit": PAGE_LIMIT,
+                        "offset": offset,
+                        "only": PATENT_ACTIVITY_FIELDS,
+                    },
+                )
+            except SourceUnavailableError as exc:
+                warnings.append(str(exc))
+                status = "partial" if records or pages else "failed"
+                break
+
+            pages += 1
+            page_meta = page.get("page_meta") or {}
+            total = int(page_meta.get("total_count") or 0)
+            batch = page.get("activities") or []
+            if not batch:
+                break
+            for activity in batch:
+                seen += 1
+                if len(records) >= max_activities:
+                    break
+                # The patent path does not resolve the assayed biological object,
+                # so it records no evidence class (see `_to_record`).
+                record = self._to_record(activity, None, reject, classify=False)
+                if record is not None:
+                    document = document_map.get(str(record.document_ref or ""))
+                    if document:
+                        # The document is already in hand: no second lookup, and
+                        # the declared reference is stamped from what the source
+                        # answered.
+                        record.document_patent_number = (
+                            normalize_patent_number(document.get("patent_id")) or None
+                        )
+                        record.document_doi = document.get("doi") or None
+                        record.document_pmid = (
+                            str(document["pubmed_id"]) if document.get("pubmed_id") else None
+                        )
+                    record.source_name = SOURCE_NAME
+                    record.source_dataset_version = dataset_version
+                    records.append(record)
+            offset += PAGE_LIMIT
+            if offset >= total:
+                break
+
+        if status == "complete" and len(records) >= max_activities:
+            warnings.append(
+                f"Activity retrieval stopped at the configured bound of {max_activities} "
+                f"record(s) for {token}; the source has more."
+            )
+            status = "partial"
+        if status == "complete" and not records:
+            status = "empty"
+
+        return outcome(
+            status,
+            token=token,
+            documents=matched,
+            near=near,
+            records=records,
+            seen=seen,
+            excluded=excluded,
+            rejections=rejection_counts,
+            pages=pages,
         )

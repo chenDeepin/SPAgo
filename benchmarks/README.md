@@ -81,6 +81,14 @@ measurable — they are **not** capacity claims for bulk datasets.
   while 1,210 of EGFR's 2,397 cite a document the source does not return and
   CHEMBL203 stopped at the 2,000-activity bound. Nothing was written to the database,
   so these are retrieval-scoped facts, not corpus occurrences.
+- `patent-source-declarations-2026-09-16.md` (raw: `...json`) — B-24: the patent-led
+  read path, measured live on the local stack. Asking for `US10508115` resolves the
+  source's document `CHEMBL5727449` (declared patent `US-10508115-B2`) and stores 134
+  declared records for 73 compounds out of 402 seen (268 kinetic rows have no numeric
+  value and are counted, not dropped); `US12345678` returns `empty` **with the match
+  rule** in 5.9 s. The exports are checked in the same run (CSV 135 lines, SDF 134
+  records, all parsed back). Row payloads are deliberately not committed; the counts,
+  the CSV header and the export checks are.
 
 ## Reproduce
 

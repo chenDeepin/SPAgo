@@ -215,6 +215,191 @@ def get_family(family_id: uuid.UUID, engine=Depends(get_engine)):
     )
 
 
+# --- patent-led source compounds (B-24) --------------------------------------------
+
+
+class PatentSourceDocument(BaseModel):
+    document_chembl_id: Optional[str] = None
+    patent_id: Optional[str] = None
+    doi: Optional[str] = None
+    pubmed_id: Optional[str] = None
+    year: Optional[int] = None
+
+
+class PatentSourceNearMatch(BaseModel):
+    document_chembl_id: Optional[str] = None
+    patent_id: Optional[str] = None
+    year: Optional[int] = None
+    reason: str
+
+
+class PatentSourceRow(BaseModel):
+    """One declared record. `activity_class` is computed on read under the policy
+    named in the response; nothing here is an occurrence in SPAgo's corpus."""
+
+    row_id: uuid.UUID
+    compound_id: uuid.UUID
+    inchikey: str
+    canonical_smiles: str
+    molecular_formula: Optional[str] = None
+    molecular_weight: Optional[float] = None
+    modality: Optional[str] = None
+    source_record_id: str
+    source_molecule_id: Optional[str] = None
+    source_molecule_name: Optional[str] = None
+    standard_type: str
+    value: float
+    unit: str
+    relation: str
+    raw_value: Optional[str] = None
+    pchembl_value: Optional[float] = None
+    potential_duplicate: bool = False
+    validity_comment: Optional[str] = None
+    activity_class: str
+    activity_class_rule: str
+    potency_label: str
+    assay_key: Optional[str] = None
+    assay_type: Optional[str] = None
+    assay_description: Optional[str] = None
+    target_key: Optional[str] = None
+    target_name: Optional[str] = None
+    species: Optional[str] = None
+    variant_accession: Optional[str] = None
+    variant_mutation: Optional[str] = None
+    document_ref: Optional[str] = None
+    document_patent_number: Optional[str] = None
+    document_doi: Optional[str] = None
+    document_pmid: Optional[str] = None
+    source_url: Optional[str] = None
+    provenance_state: str
+    dataset_version: str
+    retrieved_at: str
+
+
+class PatentSourceResponse(BaseModel):
+    publication_number: str
+    requested_number: str
+    source_name: str
+    source_version: Optional[str] = None
+    dataset_version: Optional[str] = None
+    #: complete | partial | empty | failed | not_queried. `not_queried` means
+    #: nothing was asked, which is not "the source knows nothing".
+    status: str
+    match_rule: str
+    match_rule_text: Optional[str] = None
+    retrieved_at: Optional[str] = None
+    rows_retrieved_at: Optional[str] = None
+    documents: list[PatentSourceDocument]
+    near_matches: list[PatentSourceNearMatch]
+    warnings: list[str]
+    rejection_counts: dict[str, int]
+    bounds: dict[str, int]
+    records_seen: int
+    records_excluded: int
+    row_count: int
+    compound_count: int
+    activity_class_counts: dict[str, int]
+    activity_classes_with_a_class: int
+    reference_threshold_nM: float
+    reference_threshold_label: str
+    reference_policy_version: str
+    not_queried_reason: Optional[str] = None
+    offset: int
+    limit: int
+    rows: list[PatentSourceRow]
+
+
+def _patent_source_response(view: dict) -> PatentSourceResponse:
+    return PatentSourceResponse(
+        **{
+            **view,
+            "documents": [PatentSourceDocument(**d) for d in view["documents"]],
+            "near_matches": [PatentSourceNearMatch(**n) for n in view["near_matches"]],
+            "rows": [PatentSourceRow(**row) for row in view["rows"]],
+        }
+    )
+
+
+def _patent_source_service():
+    """The patent-led lookup service, injectable so a test can drive a stub source.
+
+    FastAPI dependency (not a module-level singleton): the adapter holds a
+    rate-limited, TTL-cached HTTP client, and a request-scoped instance is what
+    the target-led path uses too.
+    """
+    from spago_core.services.patent_sources import PatentSourceService
+
+    return PatentSourceService()
+
+
+@router.post(
+    "/patents/{publication_number}/source-compounds",
+    response_model=PatentSourceResponse,
+)
+def lookup_patent_source_compounds(
+    publication_number: str,
+    engine=Depends(get_engine),
+    service=Depends(_patent_source_service),
+):
+    """Ask the source what it declares for this publication (B-24).
+
+    An explicit, bounded, human-initiated action — the patent-led counterpart of
+    `POST /targets/discover`. The publication does not have to be in the corpus:
+    that is the case this exists for. The declared set is stored separately from
+    the corpus and is never merged into it (AGENTS.md §11).
+    """
+    from spago_core.services import patent_sources as patent_sources_svc
+
+    try:
+        view = service.lookup(engine, publication_number)
+    except patent_sources_svc.PatentSourceError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _patent_source_response(view)
+
+
+@router.get(
+    "/patents/{publication_number}/source-compounds",
+    response_model=PatentSourceResponse,
+)
+def get_patent_source_compounds(
+    publication_number: str,
+    offset: int = 0,
+    limit: int = 100,
+    engine=Depends(get_engine),
+    service=Depends(_patent_source_service),
+):
+    """The stored declared set, or `not_queried` when nothing was asked yet."""
+    view = service.read(engine, publication_number, offset=offset, limit=limit)
+    return _patent_source_response(view)
+
+
+@router.get("/patents/{publication_number}/source-compounds/export")
+def export_patent_source_compounds(
+    publication_number: str,
+    format: str = "csv",
+    engine=Depends(get_engine),
+    service=Depends(_patent_source_service),
+):
+    """The whole declared set, with the source, the rule and the policy in the file."""
+    from spago_core.services import patent_sources as patent_sources_svc
+    from spago_core.services.export import ExportScopeError
+
+    try:
+        filename, text = service.export(engine, publication_number, fmt=format)
+    except (ExportScopeError, patent_sources_svc.PatentSourceError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    media_type = "text/csv; charset=utf-8" if format == "csv" else "chemical/x-mdl-sdfile"
+    return Response(
+        content=text.encode("utf-8"),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # Lets a caller confirm which set the file holds without parsing it.
+            "X-Spago-Source-Set": "source_declared",
+        },
+    )
+
+
 # --- compounds ---------------------------------------------------------------------
 
 

@@ -466,40 +466,9 @@ class TargetDiscoveryService:
     def _normalize_records(
         self, records: Iterable[ActivityRecord]
     ) -> tuple[dict[str, _NormalizedCandidate], dict[str, Modality], dict[str, int]]:
-        normalized: dict[str, _NormalizedCandidate] = {}
-        modality: dict[str, Modality] = {}
-        rejections: dict[str, int] = {}
-        for record in records:
-            raw = (record.raw_smiles or record.compound_source_id or "").strip()
-            cleaned, notes = clean_external_smiles(raw)
-            key = cleaned
-            if key in normalized:
-                continue
-            if key in rejections:
-                continue
-            try:
-                norm = normalize(cleaned)
-            except StructureParseError:
-                rejections["unparseable_structure"] = rejections.get("unparseable_structure", 0) + 1
-                continue
-            verdict = classify_modality(
-                norm.canonical_smiles,
-                source_declared=record.modality_declared,
-            )
-            try:
-                scaffold = murcko_scaffold(norm.canonical_smiles)
-            except StructureParseError:
-                scaffold = None
-            normalized[key] = _NormalizedCandidate(
-                raw_smiles=raw,
-                structure=norm,
-                modality=verdict.modality,
-                modality_rule=verdict.rule + (";" + ";".join(notes) if notes else ""),
-                modality_source="source+rdkit" if verdict.source_declared else "rdkit",
-                scaffold=scaffold,
-            )
-            modality[key] = verdict.modality
-        return normalized, modality, rejections
+        # Kept as a method for the existing call sites; the rule itself is
+        # module-level so the patent-led path (B-24) normalizes identically.
+        return normalize_external_records(records)
 
     # -- persistence ----------------------------------------------------------
 
@@ -998,6 +967,52 @@ class TargetDiscoveryService:
 
 
 # --- module helpers ---------------------------------------------------------------
+
+
+def normalize_external_records(
+    records: Iterable[ActivityRecord],
+) -> tuple[dict[str, _NormalizedCandidate], dict[str, Modality], dict[str, int]]:
+    """Normalize external structures once, keyed by cleaned SMILES.
+
+    Every ingest path that reads an external source (target-led discovery, the
+    patent-led lookup in B-24) must reach the same compound for the same
+    structure, with the same modality reading, so the rule lives here rather than
+    in each caller. Returns `(candidates, modality, rejections)`.
+    """
+    normalized: dict[str, _NormalizedCandidate] = {}
+    modality: dict[str, Modality] = {}
+    rejections: dict[str, int] = {}
+    for record in records:
+        raw = (record.raw_smiles or record.compound_source_id or "").strip()
+        cleaned, notes = clean_external_smiles(raw)
+        key = cleaned
+        if key in normalized:
+            continue
+        if key in rejections:
+            continue
+        try:
+            norm = normalize(cleaned)
+        except StructureParseError:
+            rejections["unparseable_structure"] = rejections.get("unparseable_structure", 0) + 1
+            continue
+        verdict = classify_modality(
+            norm.canonical_smiles,
+            source_declared=record.modality_declared,
+        )
+        try:
+            scaffold = murcko_scaffold(norm.canonical_smiles)
+        except StructureParseError:
+            scaffold = None
+        normalized[key] = _NormalizedCandidate(
+            raw_smiles=raw,
+            structure=norm,
+            modality=verdict.modality,
+            modality_rule=verdict.rule + (";" + ";".join(notes) if notes else ""),
+            modality_source="source+rdkit" if verdict.source_declared else "rdkit",
+            scaffold=scaffold,
+        )
+        modality[key] = verdict.modality
+    return normalized, modality, rejections
 
 
 def _now_ms() -> int:

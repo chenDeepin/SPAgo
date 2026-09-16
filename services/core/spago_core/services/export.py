@@ -657,3 +657,182 @@ def render_sdf(rows: list[ExportRow]) -> str:
     finally:
         writer.close()
     return sio.getvalue()
+
+
+# --- B-24: the source-declared set ------------------------------------------------
+#
+# A different *kind* of row from everything above: those files export compounds
+# SPAgo holds, one row per compound aggregated over its corpus mentions. These
+# export what a source *declares* for a publication — one row per declared record —
+# and the two must never be merged or read as each other (AGENTS.md §11). Both
+# renderers therefore carry the source, the versioned match rule, the retrieval
+# time, the policy behind `activity_class`, and a `record_kind` column that says
+# which of the two relations the file holds.
+
+DECLARED_COMPOUND_CSV_FIELDS = [
+    "record_kind",
+    "publication_number",
+    "match_rule",
+    "source_name",
+    "source_version",
+    "source_dataset_version",
+    "retrieved_at",
+    "inchikey",
+    "canonical_smiles",
+    "molecular_formula",
+    "molecular_weight",
+    "source_molecule_id",
+    "source_molecule_name",
+    "standard_type",
+    "value",
+    "unit",
+    "relation",
+    "activity_class",
+    "potency_label",
+    "reference_threshold_nM",
+    "reference_policy_version",
+    "pchembl_value",
+    "source_flagged_duplicate",
+    "assay_ref",
+    "assay_type",
+    "assay_description",
+    "target_ref",
+    "target_name",
+    "species",
+    "document_ref",
+    "document_patent_number",
+    "document_doi",
+    "document_pmid",
+    "source_url",
+    "provenance_state",
+]
+
+#: What every row in these files is. A reader who finds the file out of context
+#: must not have to guess whether `document_patent_number` means "occurs in the
+#: corpus" or "the source declared it".
+DECLARED_RECORD_KIND = "source_declared_compound"
+
+
+def render_declared_compounds_csv(view: dict) -> str:
+    """One row per declared record, with the rule and the policy in the columns."""
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=DECLARED_COMPOUND_CSV_FIELDS)
+    writer.writeheader()
+    for row in view["rows"]:
+        writer.writerow(
+            {
+                "record_kind": DECLARED_RECORD_KIND,
+                "publication_number": view["publication_number"],
+                "match_rule": view["match_rule"],
+                "source_name": view["source_name"],
+                "source_version": view["source_version"] or "",
+                "source_dataset_version": view["dataset_version"] or "",
+                "retrieved_at": view["retrieved_at"] or "",
+                "inchikey": row["inchikey"],
+                "canonical_smiles": row["canonical_smiles"],
+                "molecular_formula": row["molecular_formula"] or "",
+                "molecular_weight": (
+                    row["molecular_weight"] if row["molecular_weight"] is not None else ""
+                ),
+                "source_molecule_id": row["source_molecule_id"] or "",
+                "source_molecule_name": row["source_molecule_name"] or "",
+                "standard_type": row["standard_type"],
+                "value": row["value"],
+                "unit": row["unit"],
+                "relation": row["relation"],
+                "activity_class": row["activity_class"],
+                "potency_label": row["potency_label"],
+                "reference_threshold_nM": (
+                    f"{view['reference_threshold_nM']:g}"
+                    if view.get("reference_threshold_nM") is not None
+                    else ""
+                ),
+                "reference_policy_version": view.get("reference_policy_version") or "",
+                "pchembl_value": row["pchembl_value"] if row["pchembl_value"] is not None else "",
+                "source_flagged_duplicate": str(row["potential_duplicate"]).lower(),
+                "assay_ref": row["assay_key"] or "",
+                "assay_type": row["assay_type"] or "",
+                "assay_description": row["assay_description"] or "",
+                "target_ref": row["target_key"] or "",
+                "target_name": row["target_name"] or "",
+                "species": row["species"] or "",
+                "document_ref": row["document_ref"] or "",
+                "document_patent_number": row["document_patent_number"] or "",
+                "document_doi": row["document_doi"] or "",
+                "document_pmid": row["document_pmid"] or "",
+                "source_url": row["source_url"] or "",
+                "provenance_state": row["provenance_state"],
+            }
+        )
+    return buf.getvalue()
+
+
+def render_declared_compounds_sdf(view: dict) -> str:
+    """SDF of the declared set; every record repeats the rule and the source."""
+    from rdkit import Chem
+
+    sio = io.StringIO()
+    writer = Chem.SDWriter(sio)
+    try:
+        for row in view["rows"]:
+            mol = Chem.MolFromSmiles(row["canonical_smiles"])
+            if mol is None:
+                raise ExportScopeError(
+                    f"Stored structure {row['inchikey']} cannot be parsed; the SDF "
+                    "export was not created."
+                )
+            mol.SetProp("_Name", row["source_molecule_name"] or row["inchikey"])
+            mol.SetProp("record_kind", DECLARED_RECORD_KIND)
+            mol.SetProp("inchikey", row["inchikey"])
+            mol.SetProp("canonical_smiles", row["canonical_smiles"])
+            if row["molecular_formula"]:
+                mol.SetProp("molecular_formula", row["molecular_formula"])
+            mol.SetProp("publication_number", view["publication_number"])
+            mol.SetProp("match_rule", view["match_rule"])
+            mol.SetProp("source_name", view["source_name"])
+            if view["source_version"]:
+                mol.SetProp("source_version", view["source_version"])
+            if view["dataset_version"]:
+                mol.SetProp("source_dataset_version", view["dataset_version"])
+            if view["retrieved_at"]:
+                mol.SetProp("retrieved_at", view["retrieved_at"])
+            if row["source_molecule_id"]:
+                mol.SetProp("source_molecule_id", row["source_molecule_id"])
+            if row["source_molecule_name"]:
+                mol.SetProp("source_molecule_name", row["source_molecule_name"])
+            mol.SetProp("standard_type", row["standard_type"])
+            mol.SetProp("value", f"{row['value']:g}")
+            mol.SetProp("unit", row["unit"] or "")
+            mol.SetProp("relation", row["relation"])
+            mol.SetProp("activity_class", row["activity_class"])
+            mol.SetProp("potency_label", row["potency_label"])
+            if view.get("reference_threshold_nM") is not None:
+                mol.SetProp("reference_threshold_nM", f"{view['reference_threshold_nM']:g}")
+            if view.get("reference_policy_version"):
+                mol.SetProp("reference_policy_version", view["reference_policy_version"])
+            if row["pchembl_value"] is not None:
+                mol.SetProp("pchembl_value", f"{row['pchembl_value']:g}")
+            mol.SetProp("source_flagged_duplicate", str(row["potential_duplicate"]).lower())
+            if row["assay_key"]:
+                mol.SetProp("assay_ref", row["assay_key"])
+            if row["assay_type"]:
+                mol.SetProp("assay_type", row["assay_type"])
+            if row["target_key"]:
+                mol.SetProp("target_ref", row["target_key"])
+            if row["target_name"]:
+                mol.SetProp("target_name", row["target_name"])
+            if row["document_ref"]:
+                mol.SetProp("document_ref", row["document_ref"])
+            if row["document_patent_number"]:
+                mol.SetProp("document_patent_number", row["document_patent_number"])
+            if row["document_doi"]:
+                mol.SetProp("document_doi", row["document_doi"])
+            if row["document_pmid"]:
+                mol.SetProp("document_pmid", row["document_pmid"])
+            if row["source_url"]:
+                mol.SetProp("source_url", row["source_url"])
+            mol.SetProp("provenance_state", row["provenance_state"])
+            writer.write(mol)
+    finally:
+        writer.close()
+    return sio.getvalue()

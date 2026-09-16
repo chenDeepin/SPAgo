@@ -142,6 +142,42 @@ before it could say. Never read it as "no patent", and never add
 `reference_counts` to `rejection_counts` — the first covers kept records, the second
 covers records the source returned without a usable structure or value.
 
+### 2.4 What a source declares for a publication (patent-led lookup)
+
+`POST /api/v1/patents/{publication_number}/source-compounds` (the patent view's
+**Ask ChEMBL what it declares** control) asks one source what it declares under a
+publication number, whether or not the corpus holds that family. It writes only to
+`patent_source_lookups` / `patent_source_compounds`; it never writes a
+`compound_mentions` row, so it cannot change a family's compound count or appear as
+evidence.
+
+To run it without a browser and record the result:
+
+```bash
+SPAGO_DATABASE_URL=postgresql+psycopg://spago:spago@127.0.0.1:5432/spago \
+services/core/.venv/bin/python scripts/patent_source_lookup.py \
+    --patents US10508115 --json > benchmarks/patent-source-<number>-<date>.json
+```
+
+Read the exit code and the status word, not just the counts:
+
+| Status | Means | What to do |
+| --- | --- | --- |
+| `complete` | The set was read whole. | Use it; the rule and the retrieval time are on the response. |
+| `partial` | A document or activity bound was reached (20 documents / 500 records). | The set is the first slice, and the warning says which bound. Raise `--max-activities` if the document is bigger than the bound and the whole set is needed. |
+| `empty` | The source was asked and knows no document under that number **for this rule**. | Nothing is wrong. It is a statement about this source, not about the patent. |
+| `failed` | The source could not be asked. | Retry; the previously stored rows are still shown, with the time they came from. |
+| `not_queried` | Nobody asked. | Not an answer. |
+
+`--quiet` prints one line per publication (status, counts, rule) and the notes on
+stderr, for a list of numbers in a batch: `--patents-file my-patents.txt`.
+
+Two things to keep straight when reporting a set: a declared compound is **not** an
+occurrence in this corpus, and the `N declared, M not usable` split is the honest
+headline — the not-usable records were returned by the source and could not be
+compared with a potency threshold (kinetic constants, values without a numeric
+field, rows without a structure), which is different from "the source has nothing".
+
 ## 3. Backup
 
 Backs up everything scientific: projects, saved items, evidence, source

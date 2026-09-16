@@ -182,6 +182,25 @@ DOIs, and 1,210 of EGFR's 2,397 cite a document ChEMBL does not return. A bound 
 failed lookup is reported as a fact about that retrieval — never as "no patent", and
 never as an occurrence in SPAgo's corpus, which stays a separate labelled fact.
 
+**A patent number alone can now reach compounds.** The corpus used to be the only answer
+to "what does this patent contain": a publication that was never imported (or imported
+thinly) showed an empty table, and the search box reported it as not covered. The patent
+view now offers the other direction — *ask a public source what it declares for this
+publication number* — under a stated, versioned name-match rule
+(`chembl-document-patent-body-v1`: the source's `patent_id` normalizes to the same
+country-plus-digits token). Live on `US10508115`: 134 declared records for 73 compounds out
+of 402 seen (the 268 kinetic rows without a numeric value are counted, not dropped), on
+[`benchmarks/patent-source-declarations-2026-09-16.md`](benchmarks/patent-source-declarations-2026-09-16.md).
+A number the source does not know returns **empty with the rule** — a different answer from
+*failed* and from *not queried* — and a document the body search returns under a different
+number is a **near match**: listed with its number and excluded, never merged.
+
+A declared compound is deliberately not an occurrence (§11): it lands in its own tables, it
+writes no `compound_mentions` row, it never changes a family's compound count, and it is
+shown in its own panel under its own vocabulary ("declared", the rule, the policy) with CSV
+and SDF exports that name what they hold. Read [what a source declares for a
+publication](docs/online-capability.md) for the served contract.
+
 ---
 
 ## How it works

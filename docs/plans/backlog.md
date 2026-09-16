@@ -7,11 +7,9 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 (second planning-only stage)** — the current checkout, the
-capability statement, the runbook and the `BindingDB_IO` research project
-(`/media/chen/Machine_Disk/Datasets/BindingDB_IO/`, read-only) were reviewed; docs and
-`AGENTS.md` were updated, no application code was changed. Update log at the end of this
-file.
+Last updated: **2026-09-16 (B-24 delivered; B-03 promoted to P1)** — the priority table was
+re-sorted when B-24 landed: B-03 is the new P1, B-26 moved ahead of B-23, and nothing else
+changed. See the update log at the end of this file and §4 for the one-sentence arguments.
 
 ## 0. Standing constraints for everything below
 
@@ -31,11 +29,10 @@ file.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-24 | Patent-led compound discovery via ChEMBL patent search | NEXT | M | upstream source behaviour |
+| P1 | B-03 | Tolerant publication-number lookup | NEXT | S | — |
 | P2 | B-25 | Literature supplement bundle import (agent-produced rows) | NEXT | M | — |
-| P2 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning |
 | P2 | B-26 | Patent coverage audit (corpus / snapshot / ChEMBL / supplement / absent) | NEXT | M | — |
-| P2 | B-03 | Tolerant publication-number lookup | NEXT | S | — |
+| P2 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning |
 | P2 | B-06 | Per-source re-run for target investigations *(owner request group)* | NEXT | S–M | — |
 | P2 | B-15 | Compress served assets (Ketcher first open) | NEXT | S–M | deployment proxy or image config |
 | P2 | B-04 | Import refresh completeness and interrupted-import resume | NEXT | M | — |
@@ -71,6 +68,7 @@ it):**
 | B-10 | 2026-09-16 | Read path over `ai_analyses`: `GET /api/v1/analyses` (owner-scoped list with scope label, model, prompt/policy version, tokens, staleness reasons), `GET /api/v1/analyses/{id}` (stored text + citations + the exact input-fingerprint check), `GET /api/v1/analyses/{id}/export` (Markdown whose header states scope, provider, model, prompt, policy, data version and citations), and the top-bar **Analyses** dialog (`AnalysesDialog.tsx`) that reopens them without a provider call. |
 | B-02 | 2026-09-16 | A disjoint per-retrieval tally of how each kept record's document reference resolved (`source_retrievals.reference_counts`, migration 0016; vocabulary in `spago_core/domain/document_refs.py`), served by `GET /targets/{id}/coverage` and rendered in the target header's **Source notes and reference coverage** disclosure together with the source notes that were previously stored and never shown; `scripts/cohort_coverage.py --declarations` measures it live and read-only, recorded in `benchmarks/reference-declarations-2026-09-16.{md,json}` (135 of IL6's 166 kept records carry a source-declared patent — the live linkage the handoff could not previously point at). |
 | B-13 | 2026-09-16 | `scripts/restore_check.sh` (dumps, restores, compares the §H7 counts, fails non-zero on mismatch, verified against the rehearsal stack and against a deliberate mismatch) and the §H2 ingress-duty table (compression, TLS, throttling, logs, backup schedule) in `docs/runbook.md`. |
+| B-24 | 2026-09-16 | The patent-led read path: `ChEMBLDiscoveryAdapter.declared_compounds` (body-search rule `chembl-document-patent-body-v1`, exact-normalization verification, near matches listed and excluded), `services/patent_sources.py` + migration 0017 (`patent_source_lookups` / `patent_source_compounds`, no `compound_mentions` row ever written), `POST`/`GET /api/v1/patents/{number}/source-compounds` and `/export?format=csv|sdf`, `SourceDeclaredCompounds.tsx` (under the patent view and on a publication the corpus does not hold, where the 404 used to be a dead end), and `scripts/patent_source_lookup.py`; live record `benchmarks/patent-source-declarations-2026-09-16.{md,json}` (US10508115 → 134 declared records for 73 compounds out of 402 seen, 5 states kept apart). |
 
 ## 2. Items
 
@@ -406,6 +404,13 @@ it.
 
 ### B-24 — Patent-led compound discovery via ChEMBL patent search
 
+**Delivered 2026-09-16** (`docs/plans/2026-09-16-patent-source-compounds.md`). The problem
+and the honesty requirements below are kept as the record of what was asked. Two scope
+notes from building it: the declared set is a separate storage shape (its own tables; a
+lookup writes no `compound_mentions` row and cannot move a family's compound count), and
+the browser check found a defect the unit tests could not — the panel compared the
+answer's *canonical* number with the number as typed, discarding a successful lookup.
+
 - **Problem.** The patent view shows compounds only from the imported corpus. A family
   that was not imported (or is thin) has an empty compound table even when the
   compound set is publicly indexed, and the product's first promise — enter a patent,
@@ -434,7 +439,7 @@ it.
   compounds with assay/target/document references; a deliberately wrong number returns
   empty *with the rule stated*; the UI never merges the declared set into the corpus
   count; the export carries the source and the match rule.
-- **Class NEXT · P2 (first item of the next implementation round) · M.**
+- **Class NEXT · P2 (delivered 2026-09-16) · M.**
 
 ### B-25 — Literature supplement bundle import (agent-produced rows)
 
@@ -579,6 +584,9 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
    already paid for.
 4. **B-02** — *delivered 2026-09-16:* prove the patent-linkage claim on live data, and say
    exactly how far it reaches.
+5. **B-24** — *delivered 2026-09-16:* make "enter a patent, see its compounds" survive a
+   corpus that does not hold that patent.
+6. **B-03** — *open:* let the number a scientist actually types open the family it names.
 
 ## 5. Deliberately out (do not treat as queued)
 
@@ -603,3 +611,4 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 | 2026-09-16 | **B-01 delivered** (`scripts/corpus_batch.py`, `spago_core.corpus_status`, `GET /api/v1/corpus` + `CorpusDialog.tsx`). No re-sorting needed: the priority order below is unchanged, and B-10 is now the top P1 item. Two scope notes recorded: the batch loop is an operator-side chunker (no queue service, §6/§22), and the corpus counts are computed per request rather than maintained — the measured cost is in the plan file, and a corpus large enough to need counters is a measured problem, not a guess. |
 | 2026-09-16 | **B-02 delivered** (`source_retrievals.reference_counts` + migration 0016, `spago_core/domain/document_refs.py`, the `--declarations` live measurement, and the target header's *Source notes and reference coverage* disclosure). Re-sorted: **B-24 is now the top P1 item**; B-02 leaves the table. The delivery answered the item's blocker with a live number instead of an assumption — 135 of IL6's 166 kept records carry a source-declared patent number, and EGFR's are 1,187 DOI-only plus 1,210 whose cited document the source does not return — and it surfaced a defect it did not set out to find: every retrieval's `warnings` (including "the lookup bound was reached") was persisted, served and rendered nowhere in the UI. Three scope notes: the tally is computed by the service over the records it kept, not by each adapter, so it means one thing for every source; a record already excluded for a missing structure or value is counted in `rejection_counts`, never in this tally; and no new dependency was added. |
 | 2026-09-16 | **B-10 delivered** (`services/analyses.py`, `GET /api/v1/analyses`, `/analyses/{id}`, `/analyses/{id}/export`, `AnalysesDialog.tsx`). Re-sorted: **B-02 is now the top P1 item**; B-10 leaves the table. One new backlog item recorded from building it — **B-29** (attach a stored analysis to a project, and cite it from the project view), `LATER · M`: the capability statement already promises that saved work reopens, and an analysis is now an artifact a project can point at, but no reviewed workflow asks for it yet. |
+| 2026-09-16 | **B-24 delivered** (`ChEMBLDiscoveryAdapter.declared_compounds`, `services/patent_sources.py`, migration 0017, the `source-compounds` read/lookup/export routes, `SourceDeclaredCompounds.tsx`, `scripts/patent_source_lookup.py`; live record in `benchmarks/patent-source-declarations-2026-09-16.md`). Re-sorted, with the moves stated: **B-03 is promoted to P1** — with the corpus no longer the only answer, the remaining primary-loop failure is the *entry*: `find_patent` matches the stored string exactly, and the search box classifies by a kind-code-shaped regex, so `wo 2020/123456` for a stored `WO-2020-123456-A` opens nothing. It is a day of work, ungated, and it feeds the same normalizer the patent-led path already uses. **B-26 moves ahead of B-23**: B-24 landed, so the audit's ChEMBL leg is content that exists today, while B-23 stays operator- and file-gated and is explicitly a workstation gain rather than a beta capability. B-24 leaves the table, and B-25 heads the P2 order unchanged. |

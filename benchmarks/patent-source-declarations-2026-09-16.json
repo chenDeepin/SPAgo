@@ -1,0 +1,180 @@
+{
+  "database": "local dev stack (docker compose, database 'spago')",
+  "measured_at": "2026-09-16T15:32:46+0800",
+  "publications": [
+    {
+      "activity_class_counts": {
+        "active": 134,
+        "not_applicable": 0,
+        "unknown": 0,
+        "weak": 0
+      },
+      "bounds": {
+        "document_query_limit": 100,
+        "max_activities": 500,
+        "max_documents": 20
+      },
+      "class_distribution_over_full_set": {
+        "active": 134
+      },
+      "compound_count": 73,
+      "csv_export": {
+        "filename": "spago-US10508115-source-declared-chembl.csv",
+        "header": [
+          "record_kind",
+          "publication_number",
+          "match_rule",
+          "source_name",
+          "source_version",
+          "source_dataset_version",
+          "retrieved_at",
+          "inchikey",
+          "canonical_smiles",
+          "molecular_formula",
+          "molecular_weight",
+          "source_molecule_id",
+          "source_molecule_name",
+          "standard_type",
+          "value",
+          "unit",
+          "relation",
+          "activity_class",
+          "potency_label",
+          "reference_threshold_nM",
+          "reference_policy_version",
+          "pchembl_value",
+          "source_flagged_duplicate",
+          "assay_ref",
+          "assay_type",
+          "assay_description",
+          "target_ref",
+          "target_name",
+          "species",
+          "document_ref",
+          "document_patent_number",
+          "document_doi",
+          "document_pmid",
+          "source_url",
+          "provenance_state"
+        ],
+        "line_count": 135,
+        "rows_carrying_the_match_rule": 134,
+        "rows_labeled_source_declared_compound": 134
+      },
+      "dataset_version": "chembl:2026-09-16",
+      "dict_of_rows_read": 134,
+      "distinct_declared_document_numbers": [
+        "US10508115"
+      ],
+      "distinct_modalities": [
+        "small_molecule"
+      ],
+      "distinct_standard_types": {
+        "EC50": 134
+      },
+      "distinct_targets": [
+        "Interleukin-6",
+        "Toll-like receptor 7"
+      ],
+      "documents": [
+        {
+          "doc_type": "PATENT",
+          "document_chembl_id": "CHEMBL5727449",
+          "doi": null,
+          "patent_id": "US-10508115-B2",
+          "pubmed_id": null,
+          "year": 2019
+        }
+      ],
+      "lookup_seconds": 16.01,
+      "match_rule": "chembl-document-patent-body-v1",
+      "match_rule_text": "ChEMBL documents whose patent_id normalizes to the same publication number (country code + digits; kind code and separators are ignored)",
+      "near_matches": [],
+      "publication_number": "US10508115",
+      "records_excluded": 268,
+      "records_seen": 402,
+      "reference_policy_version": "potency-gate-v1",
+      "reference_threshold_label": "10 \u00b5M",
+      "reference_threshold_nM": 10000.0,
+      "rejection_counts": {
+        "missing_standard_value": 268
+      },
+      "requested": "US10508115",
+      "retrieved_at": "2026-09-16T07:32:47.001986+00:00",
+      "row_count": 134,
+      "row_payload_copied_into_repo": false,
+      "rows_retrieved_at": "2026-09-16T07:32:47.001986+00:00",
+      "rows_the_source_flags_as_duplicates": 3,
+      "rows_with_a_source_molecule_name": 2,
+      "sdf_export": {
+        "filename": "spago-US10508115-source-declared-chembl.sdf",
+        "first_record_properties_kept": [
+          "activity_class",
+          "inchikey",
+          "match_rule",
+          "potency_label",
+          "publication_number",
+          "record_kind",
+          "reference_policy_version"
+        ],
+        "records": 134,
+        "records_rdkit_parsed_back": 134
+      },
+      "source_name": "chembl",
+      "source_version": "chembl-web-services",
+      "status": "complete",
+      "warnings": []
+    },
+    {
+      "activity_class_counts": {
+        "active": 0,
+        "not_applicable": 0,
+        "unknown": 0,
+        "weak": 0
+      },
+      "bounds": {
+        "document_query_limit": 100,
+        "max_activities": 500,
+        "max_documents": 20
+      },
+      "class_distribution_over_full_set": {},
+      "compound_count": 0,
+      "csv_export": {
+        "refused": "The stored lookup for US12345678 holds no declared records (status: empty), so there is nothing to export."
+      },
+      "dataset_version": "chembl:2026-09-16",
+      "dict_of_rows_read": 0,
+      "distinct_declared_document_numbers": [],
+      "distinct_modalities": [],
+      "distinct_standard_types": {},
+      "distinct_targets": [],
+      "documents": [],
+      "lookup_seconds": 5.924,
+      "match_rule": "chembl-document-patent-body-v1",
+      "match_rule_text": "ChEMBL documents whose patent_id normalizes to the same publication number (country code + digits; kind code and separators are ignored)",
+      "near_matches": [],
+      "publication_number": "US12345678",
+      "records_excluded": 0,
+      "records_seen": 0,
+      "reference_policy_version": "potency-gate-v1",
+      "reference_threshold_label": "10 \u00b5M",
+      "reference_threshold_nM": 10000.0,
+      "rejection_counts": {},
+      "requested": "US12345678",
+      "retrieved_at": "2026-09-16T07:33:03.095529+00:00",
+      "row_count": 0,
+      "row_payload_copied_into_repo": false,
+      "rows_retrieved_at": null,
+      "rows_the_source_flags_as_duplicates": 0,
+      "rows_with_a_source_molecule_name": 0,
+      "source_name": "chembl",
+      "source_version": "chembl-web-services",
+      "status": "empty",
+      "warnings": [
+        "ChEMBL returned no document whose patent_id normalizes to US12345678 (rule: chembl-document-patent-body-v1)."
+      ]
+    }
+  ],
+  "run_by": "scripts/patent_source_lookup.py + PatentSourceService.lookup/read_all/export",
+  "source": "ChEMBL web services, live"
+}

@@ -1,0 +1,17 @@
+{
+ "documents": [
+  {
+   "doc_type": "PATENT",
+   "document_chembl_id": "CHEMBL5727449",
+   "doi": null,
+   "patent_id": "US-10508115-B2",
+   "pubmed_id": null,
+   "year": 2019
+  }
+ ],
+ "page_meta": {
+  "limit": 100,
+  "offset": 0,
+  "total_count": 1
+ }
+}

@@ -169,6 +169,38 @@ export const api = {  // --- ONLINE-03: hosted access ---
       `/api/v1/patents/${encodeURIComponent(publicationNumber)}`,
       signal,
     ),
+  // --- B-24: what a source declares for a publication ---
+  patentSourceCompounds: (
+    publicationNumber: string,
+    params: { offset?: number; limit?: number } = {},
+    signal?: AbortSignal,
+  ) => {
+    const query = new URLSearchParams();
+    if (params.offset) query.set("offset", String(params.offset));
+    if (params.limit) query.set("limit", String(params.limit));
+    const suffix = query.toString();
+    return getJson<import("./types").PatentSourceResponse>(
+      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/source-compounds${
+        suffix ? `?${suffix}` : ""
+      }`,
+      signal,
+    );
+  },
+  lookupPatentSourceCompounds: (publicationNumber: string, signal?: AbortSignal) =>
+    postJson<import("./types").PatentSourceResponse>(
+      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/source-compounds`,
+      {},
+      signal,
+    ),
+  exportPatentSourceCompounds: async (
+    publicationNumber: string,
+    format: "csv" | "sdf",
+  ) => {
+    await downloadGet(
+      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/source-compounds/export?format=${format}`,
+      `spago-${publicationNumber}-source-declared.${format}`,
+    );
+  },
   family: (familyId: string, signal?: AbortSignal) =>
     getJson<import("./types").FamilyResponse>(
       `/api/v1/families/${familyId}`,

@@ -25,7 +25,7 @@ import { SaveToProjectDialog } from "./components/SaveToProjectDialog";
 import { StructureDrawer } from "./components/StructureDrawer";
 import { TargetEvidencePanel } from "./components/TargetEvidencePanel";
 import { ReferenceStrip } from "./components/ReferenceStrip";
-import { TargetHeader, coverageChipId, REFERENCE_VERDICT_ID } from "./components/TargetHeader";
+import { SourceDeclaredCompounds } from "./components/SourceDeclaredCompounds";import { TargetHeader, coverageChipId, REFERENCE_VERDICT_ID } from "./components/TargetHeader";
 import type { StructureSearchSummary } from "./components/StructureSearchDialog";
 const StructureSearchDialog = lazy(() => import("./components/StructureSearchDialog").then((m) => ({ default: m.StructureSearchDialog })));
 import { SearchBar } from "./components/SearchBar";
@@ -1416,6 +1416,37 @@ export function App() {
                 </span>
               </div>
             )}
+
+            {/* B-24: the corpus is not the only place a publication's compounds can
+                come from. The declared set is fetched from a public source only when
+                the reader asks, and it is shown separately from the table above. */}
+            {patentQuery.data && (
+              <SourceDeclaredCompounds
+                publicationNumber={
+                  (urlState.doc
+                    ? patentQuery.data.documents.find((doc) => doc.id === urlState.doc)
+                    : patentQuery.data.document
+                  )?.publication_number ?? null
+                }
+                corpusCompoundCount={plainTotal}
+              />
+            )}
+
+            {/* B-24: a publication the corpus does not hold used to be a dead end —
+                the search box said so and nothing else could be asked. A public
+                source may still declare compounds under that number, so offer it
+                here instead of leaving the reader with a denial. */}
+            {!patentQuery.isLoading &&
+              patentError?.status === 404 &&
+              submittedQuery !== null &&
+              looksLikePublicationNumber(submittedQuery) && (
+                <div className="declared-strip">
+                  <SourceDeclaredCompounds
+                    publicationNumber={submittedQuery}
+                    notHeldByCorpus
+                  />
+                </div>
+              )}
           </main>
 
           {urlState.c && selectedRow && (

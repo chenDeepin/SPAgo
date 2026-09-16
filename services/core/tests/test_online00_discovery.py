@@ -26,6 +26,7 @@ from spago_core.adapters.bindingdb_rest import BindingDBRestAdapter
 from spago_core.adapters.bioactivity_base import ActivityRecord
 from spago_core.adapters.chembl_discovery import (
     ACTIVITY_FIELDS,
+    PATENT_ACTIVITY_FIELDS,
     ChEMBLDiscoveryAdapter,
     classify_evidence,
 )
@@ -207,6 +208,10 @@ class TestChEMBLDiscovery:
         is only safe because it names every field the mapper reads — which is
         what the second half of this test pins down, so a new field cannot
         silently read as absent.
+
+        The patent-led path (B-24) projects one extra field for the declared
+        compound's source name, so the invariant is checked against the union of
+        the two projections, and each call shape still asks for its own exact set.
         """
         import inspect
 
@@ -221,10 +226,11 @@ class TestChEMBLDiscovery:
         for params in activity_calls:
             assert params.get("only") == ACTIVITY_FIELDS
 
+        assert PATENT_ACTIVITY_FIELDS.startswith(ACTIVITY_FIELDS + ",")
         mapped = set(
             re.findall(r'activity\.get\("([^"]+)"\)', inspect.getsource(ChEMBLDiscoveryAdapter._to_record))
         )
-        projected = set(ACTIVITY_FIELDS.split(","))
+        projected = set(PATENT_ACTIVITY_FIELDS.split(","))
         assert mapped <= projected, f"fields read but not projected: {sorted(mapped - projected)}"
 
 

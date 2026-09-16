@@ -749,3 +749,100 @@ export interface AnalysisDetail extends AnalysisEntry {
   citations: { fact_ref: string; kind: string; label?: string | null }[];
   usage: Record<string, unknown> | null;
 }
+
+/** One record a source *declares* for a publication (B-24).
+ *
+ * Not a corpus occurrence: `document_patent_number` is the reference the source
+ * itself recorded, and nothing here says the compound occurs in a patent.
+ */
+export interface PatentSourceRow {
+  row_id: string;
+  compound_id: string;
+  inchikey: string;
+  canonical_smiles: string;
+  molecular_formula: string | null;
+  molecular_weight: number | null;
+  modality: string | null;
+  source_record_id: string;
+  source_molecule_id: string | null;
+  source_molecule_name: string | null;
+  standard_type: string;
+  value: number;
+  unit: string;
+  relation: string;
+  raw_value: string | null;
+  pchembl_value: number | null;
+  /** The source's own duplicate flag; kept rather than resolved away. */
+  potential_duplicate: boolean;
+  validity_comment: string | null;
+  /** Computed on read under the policy named on the response. */
+  activity_class: "active" | "weak" | "inactive" | "undecided" | "unknown" | "not_applicable";
+  activity_class_rule: string;
+  potency_label: string;
+  assay_key: string | null;
+  assay_type: string | null;
+  assay_description: string | null;
+  target_key: string | null;
+  target_name: string | null;
+  species: string | null;
+  variant_accession: string | null;
+  variant_mutation: string | null;
+  document_ref: string | null;
+  document_patent_number: string | null;
+  document_doi: string | null;
+  document_pmid: string | null;
+  source_url: string | null;
+  provenance_state: string;
+  dataset_version: string;
+  retrieved_at: string;
+}
+
+export interface PatentSourceDocumentRef {
+  document_chembl_id: string | null;
+  patent_id: string | null;
+  doi: string | null;
+  pubmed_id: string | null;
+  year: number | null;
+}
+
+/** A document the body search returned whose number is *not* this publication. */
+export interface PatentSourceNearMatch {
+  document_chembl_id: string | null;
+  patent_id: string | null;
+  year: number | null;
+  reason: string;
+}
+
+export interface PatentSourceResponse {
+  publication_number: string;
+  requested_number: string;
+  source_name: string;
+  source_version: string | null;
+  dataset_version: string | null;
+  /** complete | partial | empty | failed | not_queried.
+   * `not_queried` means nothing was asked — not that the source knows nothing. */
+  status: "complete" | "partial" | "empty" | "failed" | "not_queried";
+  match_rule: string;
+  match_rule_text: string | null;
+  retrieved_at: string | null;
+  /** When the set now shown was retrieved (differs from `retrieved_at` after a failure). */
+  rows_retrieved_at: string | null;
+  documents: PatentSourceDocumentRef[];
+  near_matches: PatentSourceNearMatch[];
+  warnings: string[];
+  rejection_counts: Record<string, number>;
+  bounds: Record<string, number>;
+  records_seen: number;
+  records_excluded: number;
+  row_count: number;
+  compound_count: number;
+  activity_class_counts: Record<string, number>;
+  activity_classes_with_a_class: number;
+  reference_threshold_nM: number;
+  reference_threshold_label: string;
+  reference_policy_version: string;
+  not_queried_reason: string | null;
+  offset: number;
+  limit: number;
+  rows: PatentSourceRow[];
+}

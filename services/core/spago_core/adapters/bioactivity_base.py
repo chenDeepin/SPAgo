@@ -80,6 +80,11 @@ class ActivityRecord(BaseModel):
     raw_smiles: str | None = None
     #: Stable external molecule identifier (ChEMBL id, CID, BindingDB monomer).
     source_molecule_id: str | None = None
+    #: The source's own name for the ligand (ChEMBL `molecule_pref_name`), when the
+    #: payload carries it. The target path's measured projection does not request
+    #: it; the patent path (B-24) does, so the name is filled there and stays
+    #: `None` elsewhere rather than being invented.
+    source_molecule_name: str | None = None
     #: ONLINE-06: the source that produced this record, and the dataset release
     #: it came from. One investigation reads several sources, so recording the
     #: *target's* resolver source on every measurement misattributes the datum

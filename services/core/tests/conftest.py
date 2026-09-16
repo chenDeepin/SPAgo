@@ -112,6 +112,8 @@ RESETTABLE_TABLES = (
     "target_resolutions",
     "evidence_records",
     "compound_mentions",
+    "patent_source_compounds",
+    "patent_source_lookups",
     "ingestion_issues",
     "patent_documents",
     "patent_families",
