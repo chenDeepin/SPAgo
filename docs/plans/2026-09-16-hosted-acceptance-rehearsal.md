@@ -1,6 +1,10 @@
 # Round plan — hosted-acceptance rehearsal, then the backlog queue (2026-09-16)
 
-Status: **active**. Owner: coordinating agent. Baseline commit: `e1a69a8` plus the
+Status: **recorded local rehearsal; original queue superseded**. Hosted operator and
+independent-human criteria remain open. The planning-only review at `efb1357` did not
+rerun this record; current proposals are in [backlog §1](backlog.md#1-priority-order).
+The initial sequence below is historical, not an instruction to restart execution.
+Owner of the recorded round: coordinating agent. Baseline commit: `e1a69a8` plus the
 uncommitted documentation round of 2026-09-16 (backlog register + `AGENTS.md` rules).
 
 Inputs: the owner's instruction of 2026-09-16 (run hosted acceptance first, then work

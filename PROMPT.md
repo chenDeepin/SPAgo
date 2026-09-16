@@ -1,144 +1,77 @@
-# SPAgo — Initial Engineering Prompt
+# SPAgo — Product Contract and Current Handoff
 
-> **Current handoff (2026-09-16; baseline `194e953`, the ONLINE-00…07 work plus the
-> defect and backlog rounds).**
+> **Current handoff — 2026-09-16, reviewed at `efb1357`.** This round is explicitly
+> **planning and documentation only**. Do not execute the implementation queue,
+> rerun acceptance, deploy, commit or push as part of this round. The review record is
+> [product review Q&A](docs/plans/2026-09-16-product-review-qa.md); the ordered proposals
+> are in [backlog §1](docs/plans/backlog.md#1-priority-order).
 >
-> **Implemented and locally verified:** target-led open-database discovery
-> (UniProt + ChEMBL + BindingDB + PubChem, ONLINE-00), scoped evidence-grounded
-> summaries for family / document / target with an offline provider (ONLINE-01),
-> validated natural-language plans (ONLINE-02), invitation-only hosted sessions with
-> per-owner data and usage quotas (ONLINE-03), a deterministic potency class and
-> screening-reference verdict under a stated policy (ONLINE-06), and hand-added
-> literature rows with `user_curated` provenance (ONLINE-07).
-> Records: `docs/plans/2026-09-15-online-llm.md` §4 (ONLINE-00…05),
-> `docs/plans/2026-09-15-bindingdb-io-port.md` §6–§7 (ONLINE-06/07),
-> `benchmarks/` for every measurement, and `docs/online-capability.md` §6 for the
-> gate that hosted acceptance must pass (checklist plus the invited-user script).
+> **Actual stage.** A locally implemented product with historical browser, database
+> and selected live-source verification, plus a local hosted-shape rehearsal. No
+> accepted hosted deployment, invited-user completion or independent scientific
+> cross-read is recorded. This documentation review did not rerun those checks.
 >
-> **Closed in the 2026-09-16 rounds** (details: `docs/archive/2026-09-16-defect-round.md`
-> and `docs/archive/2026-09-16-backlog-round.md` §5):
-> - Investigation scope is per-target (`target_relations`), and rows are corrected or
->   **withdrawn**, never deleted — a source refresh retracts what it no longer returns,
->   and an interrupted import is marked `interrupted` instead of sitting in `running`.
-> - The ChEMBL `only=` projection is **measured**: −42 % bytes, **no** latency gain
->   (`benchmarks/online00-chembl-projection-2026-09-16.md`). The page count, not the page
->   size, is the upstream latency lever. `target_construct` was removed — no adapter
->   could populate it.
-> - The citation defect that refused target summaries is fixed and re-measured on a
->   **sparse** target (`benchmarks/online01-llm-eval-2026-09-16-sparse.md`: 0/2 before,
->   2/2 after).
-> - The acceptance cohort is re-recorded on this build
->   (`benchmarks/cohort-coverage-2026-09-16.md`): CD40LG **qualifies** (10 in-scope
->   compounds, 6 ≤ 10 µM) and IL-6R stays thin with a BindingDB **source failure**.
->   IL-6 / IL-6R resolve ambiguously by symbol and need `P05231` / `P08887`.
-> - The embedded **Ketcher editor** ships in the structure dialog; its cost is measured
->   (`benchmarks/online08-structure-editor-2026-09-16.md`: 20.3 MB raw / 4.95 MB gzip on
->   first open, 0.83–0.86 s to a usable editor on loopback, container serves assets
->   uncompressed). A `changeEvent` no-op that kept drawings out of the SMILES box was
->   found in the browser and fixed.
-> - The **MV3 companion** was loaded unpacked in a real browser and its handoff verified
->   from the extension's own `storage.session` (`apps/chrome-extension/verify-in-chrome.js`);
->   behind it: branded Chrome 137+ refuses `--load-extension`, so an unbranded
->   Chromium / Chrome for Testing build is required. The B-18 round (2026-09-16) added
->   the panel-behavior flag to that script's verified set — `openPanelOnActionClick` is
->   read back from the running worker, not assumed. The physical toolbar click and
->   side-panel surface chrome are **not** covered (no browser-chrome user gesture can be
->   synthesized here). Latency/cost targets are the operator's to fill in:
->   `docs/runbook.md` §H9.
+> **Implemented core:** patent/family/compound inspection, deterministic RDKit structure
+> filtering, scoped evidence and bioactivity, target-led UniProt/ChEMBL/BindingDB/PubChem
+> investigation, typed natural-language plans, family/document/target summaries,
+> invitation-only owner access and quotas, project saving/reopening, and CSV/SDF export.
+> ONLINE-06 supplies a versioned potency policy; ONLINE-07 and B-25 supply literature
+> rows, bundle validation, recorded confirmation and withdrawal. An unconfirmed agent
+> proposal is outside candidate/verdict/export/summary results.
 >
-> **Delivered after that baseline (2026-09-16 backlog rounds, each with its plan file,
-> tests and browser evidence; back to commit history for the exact set):**
-> - **B-13** gate support kit: `scripts/restore_check.sh` + the §H2 ingress-duty table.
-> - **B-01** corpus scale-up: `scripts/corpus_batch.py`, `spago_core.corpus_status`,
->   `GET /api/v1/corpus` and the top-bar corpus dialog.
-> - **B-10** analyses read back: `GET /api/v1/analyses`, `/analyses/{id}`,
->   `/analyses/{id}/export` and the **Analyses** dialog — no provider call to reopen.
-> - **B-02** reference coverage: a disjoint per-retrieval tally of how each kept record's
->   document reference resolved (`source_retrievals.reference_counts`,
->   `docs/plans/2026-09-16-source-declared-linkage.md`), rendered in the target header.
-> - **B-24** patent-led declared sets: `POST/GET /api/v1/patents/{number}/source-compounds`
->   (+ CSV/SDF export) and the patent view's declared-compound panel, on a publication the
->   corpus does not hold.
-> - **B-03** tolerant publication entry: one versioned shape rule
->   (`publication-number-tolerant-v1`) mirrored in the client, exact-first lookup, an
->   ambiguity reported as 409 with candidates named.
-> - **B-25** supplement bundles: `POST /targets/{id}/supplements/bundle`, the import
->   report and `POST …/supplement-imports/{id}/confirm` — an agent's rows are a
->   **proposal** (stored, readable, counted as `unreviewed_supplements`, outside the
->   candidates/verdict/exports) until a person confirms the import in a recorded act.
-> - **B-26** per-publication coverage audit: `GET /api/v1/patents/coverage` answers
->   what is stored for a publication and from which leg, keeping "never asked" apart
->   from "the source knows nothing".
-> - **B-06** per-source re-run: `POST /api/v1/targets/{id}/discover` takes one source —
->   a failed source is retried without spending another source's rate limit or
->   re-dating its rows — and the header shows which rows this run asked for.
-> - **B-23** operator snapshot path: `scripts/bindingdb_snapshot.py` answers a target
->   from the whole local BindingDB release with the file's release and digest stored
->   next to every row (operator-only; not a hosted capability).
-> - **B-15** served-asset compression: the app compresses its own responses (gzip,
->   level 6), so a `docker compose up` install sends the editor's first open as 5.2 MB
->   instead of 20.3 MB without a proxy (`benchmarks/asset-compression-2026-09-16.md`).
+> **Delivered backlog rounds, with the exact records in the register:** B-01 corpus
+> batch/inventory, B-02 reference coverage, B-03 tolerant patent entry, B-04 scoped import
+> retraction/resume, B-06 per-source retry, B-10 analysis history, B-13 restore support,
+> B-14 selected-test CI, B-15 served-asset compression, B-17 one browser smoke, B-18
+> companion panel-behavior verification, B-23 operator snapshot search, B-24 patent-led
+> source declarations and B-26 publication coverage. The publication audit uses
+> `POST /api/v1/patents/coverage`; source retry uses `POST /api/v1/targets/discover`.
 >
-> **Two facts to keep straight.** The reference verdict is a **count under a stated
-> policy — not a biological or legal conclusion**: on live data TSLP has no
-> small-molecule active in these sources. Source-declared patent linkage **is** now
-> measured live (B-02: 135 of IL6's 166 kept records carry a source-declared patent;
-> TSLP's are DOI-only; EGFR has 1,210 records citing a document ChEMBL does not return).
-> A hand-added row is
-> `user_curated` and cannot be deleted; a corrected row is re-submitted, which replaces
-> the earlier one; taking a row back is a recorded retraction with a reason.
+> **Limits that matter to the product loop:**
+> - B-04 retracts within the corpus package's documents or a complete activity release;
+>   it does not establish absence outside that scope. Online investigation retries do
+>   not yet retract missing source rows (B-30). Snapshot and REST access paths must not
+>   retract each other's records merely because their source name is the same.
+> - Source declarations, corpus occurrences and user supplements remain distinct. A
+>   reference verdict is a count under a stated policy, not an inhibitor, biological,
+>   legal or completeness conclusion. Different stored workspaces can have different
+>   verdicts because one includes supplements; historical cohort numbers are not a
+>   single current baseline (B-32).
+> - Static inspection found target display/export parameter mismatch (B-33), incomplete
+>   navigation of mixed saved projects (B-36), and citations that do not locate their
+>   exact records (B-37). These findings are not browser-reproduced in this round and
+>   do not erase the narrower successful paths recorded previously.
+> - CI runs a selected backend subset and frontend typecheck/build, not the full
+>   database suite or browser smoke (B-35). `/healthz` currently reports API version
+>   `0.1.0`, not a unique revision/build identity (B-34).
+> - One live model provider (`deepseek-flash`) has historical measurements. Citation
+>   validation does not prove scientific entailment. Second-provider evaluation stays
+>   gated on an explicit choice and budget (B-11).
+> - Ketcher loads on demand; B-15 measured 5.2 MB transferred / 20.3 MB decoded for
+>   first open. The optional companion's physical toolbar click and browser side-panel
+>   chrome remain unverified. Claims text, full cross-family SAR, PDF/OCSR/M6, Markush
+>   and general chat are not delivered.
 >
-> **NOT done — do not mistake implementation for acceptance.** No **hosted** deployment
-> exists (ONLINE-04 acceptance is open) and no invited user has been through the
-> workflow (ONLINE-05 is open). One live model provider was smoke-tested (DeepSeek
-> `deepseek-flash`) — one provider, not a compatibility claim
-> (`docs/archive/2026-09-15-llm-live-smoke.md`). Summary evaluation covers one demo
-> family, one demo document, one live target and one empty-scope target; a **second
-> provider** is still untested. Content correctness remains unproven: a valid schema and
-> a valid citation are not scientific truth. Host, provider, budget and cohort remain
-> operator decisions; this work does not authorize purchasing infrastructure, sending
-> private datasets to a provider, or public deployment.
+> **Next-stage order, not execution authorization for this round:**
+> 1. B-31 retains the real hosted gate in `docs/online-capability.md` §6: host/TLS,
+>    readiness, owner isolation, restore, provider smoke, source coverage, latency/cost,
+>    invited scientist and independent reader. Operator-only decisions stay explicit;
+>    a local rehearsal never closes that gate.
+> 2. When implementation resumes, B-33 is the first engineering candidate. B-34,
+>    B-32, B-35, B-36, B-37 and B-30 follow in the register's order, respecting their
+>    dependencies. Prepare independent work while a review/operator gate is pending;
+>    do not manufacture a pass or add sources to fill an empty priority group.
+> 3. Later proposals include resilient browser checks, keyboard accessibility, analyses
+>    attached to projects, reproducible target filters and a claims-source decision.
+>    Target catalog expansion follows validation of the existing cohort. The register
+>    records why B-19/B-21/B-29/B-30 moved and why B-22 remains later.
 >
-> **Start here for the next turn:**
-> 1. Re-read `docs/online-capability.md` (the scope statement) and `docs/runbook.md`
->    §H1–H10 (the hosted deployment contract, §H9 the budget worksheet).
-> 2. Run the acceptance script in `docs/online-capability.md` §6 on a
->    real host and close that section's gates: TLS ingress and secret injection, a
->    restore rehearsal on that host, one real invited user, independent cross-reading
->    of retrieved chemistry, and latency/cost targets for the chosen host and model
->    filled into §H9. Set `SPAGO_LLM_USER_TOKEN_LIMIT` /
->    `SPAGO_LLM_DEPLOYMENT_TOKEN_LIMIT` to real values first.
-> 3. Only operator-decision items remain in the capability gate (§6); the engineering
->    half is closed. If summary quality is measured again, add a **second provider**
->    before quoting numbers. Runner and method:
->    `benchmarks/online01-llm-eval-2026-09-15.md`.
-> 4. Engineering work that is *not* approved scope is collected, with its priority
->    order, in `docs/plans/backlog.md`. That register is a proposal list, not a queue:
->    an item there is not started, promised or authorized until it is deliberately
->    picked and planned as its own round. Its current head is **B-04** (import refresh
->    completeness and interrupted-import resume, P2); the register's update log records
->    every move and why.
->
-> Current source coverage is genuinely thin for some acceptance targets (human TSLP has
-> one small-molecule candidate in these sources; IL-6R has one, and BindingDB does not
-> answer for it). Report that honestly rather than promising inhibitor coverage. Model
-> output stays inference; chemistry stays deterministic. Full-document extraction/M6 and
-> general chat remain deferred.
->
-> Current source coverage is genuinely thin for some acceptance targets (human TSLP has
-> one small-molecule candidate in these sources; IL-6R has one, and BindingDB does not
-> answer for it). Report that honestly rather than promising inhibitor coverage. Model
-> output stays inference; chemistry stays deterministic. Full-document extraction/M6 and
-> general chat remain deferred.
->
-> History: the local milestone line is committed up to `194e953`, and today's two
-> closing rounds are archived in `docs/archive/2026-09-16-defect-round.md` and
-> `docs/archive/2026-09-16-backlog-round.md`. Earlier rounds (the local-first review
-> with its 217-test result, the UI review, the docs consolidation) are archived
-> under `docs/archive/` — do not mistake their uncommitted-state notes or
-> local-first priorities for this stage's status.
->
-> The rest of this document remains the standing engineering contract.
+> **Evidence map:** scope and hosted gate `docs/online-capability.md`; operations
+> `docs/runbook.md` §H1–H10; local rehearsal
+> `docs/plans/2026-09-16-hosted-acceptance-rehearsal.md`; per-item delivery records in
+> `docs/plans/backlog.md` and its linked plans/benchmarks. Older rounds in `docs/archive/`
+> are historical records, not the current work queue. The rest of this document is
+> the standing product contract; aspirational capabilities are not implementation claims.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.
 
@@ -775,8 +708,10 @@ Deliver: BindingDB and ChEMBL adapters, activity normalization, target mapping,
 SAR-oriented table modes, scaffold grouping.
 Exit: a user can compare related compounds across patents and activity sources, and every
 external measurement retains provenance.
-**State: implemented for open sources; direct/indirect distinction and per-target
-coverage live in the online capability statement.**
+**State: source-backed bioactivity, modality/potency rules and scoped tables are
+implemented; full cross-family SAR comparison is not delivered (backlog B-40).
+Direct/indirect distinction and measured per-target coverage are in the capability
+statement.**
 
 ## Milestone 4 — Chrome Companion
 
@@ -800,8 +735,10 @@ Deliver: query planner, patent summary, SAR summary, family comparison, evidence
 citations, confidence states.
 Exit: factual AI answers expose evidence, and unsupported conclusions are visibly marked
 as inference.
-**State: implemented offline and against one live provider; entailment evaluation
-open.**
+**State: family/document/target summaries and validated plans are implemented offline
+and against one historically measured live provider. Full family comparison is not
+delivered; scientific entailment review (B-32) and exact citation navigation (B-37)
+remain open.**
 
 ## Milestone 6 — Document Extraction Fallback
 

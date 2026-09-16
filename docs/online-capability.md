@@ -1,24 +1,27 @@
 # SPAgo capability and coverage — invited beta
 
-Status: **invited staging**, 2026-09-15. This page states what the deployment
-does, what it explicitly does not do, and which versions the claims were measured
-against. It is a scope statement, not marketing: every "supported" line below has
-a test or a recorded measurement behind it, and every "not supported" line is a
-deliberate limit rather than an oversight.
+Status: **local implementation with historical verification; hosted acceptance open**.
+Documentation reviewed at `efb1357` on 2026-09-16; no runtime checks were repeated in
+this planning-only round. “Supported” below refers to the implemented scope with the
+limits stated here, not an accepted hosted deployment. Tests, local browser records and
+selected live-source measurements prove different things; §6 remains the release gate.
+Current findings and proposed work: [product review](plans/2026-09-16-product-review-qa.md)
+and [backlog](plans/backlog.md).
 
 Update this page whenever a capability or a source version changes. The
 `Rollback` section at the end is part of the release, not an afterthought.
 
-## 1. Frozen versions of this build
+## 1. Version contracts in the reviewed checkout
 
 | Component | Version / identity |
 | --- | --- |
-| Application | build from this checkout; `/healthz` reports `api_version` |
+| Application | reviewed checkout `efb1357`; `/healthz` currently reports package `api_version=0.1.0`, not a unique build identity (B-34) |
 | Database | PostgreSQL 15 + RDKit cartridge 4.2.0 |
-| Schema | migrations 0001–0015 (forward-only) |
+| Schema | migrations 0001–0020 present (forward-only); verify the deployed schema separately |
 | UniProt | `rest.uniprot.org/uniprotkb/search` (REST, `uniprot-rest-uniprotkb`) |
 | ChEMBL | `www.ebi.ac.uk/chembl/api/data` (`chembl-web-services`), including the bounded `document.json` lookup that supplies patent/DOI/PMID, with the activity response projected to the mapped fields |
 | BindingDB | `bindingdb.org/rest/getLigandsByUniprot` (`bindingdb-rest`) |
+| BindingDB operator snapshot | `bindingdb-snapshot-tsv`; release and completed-file digest per run; not a hosted HTTP capability |
 | PubChem | `pubchem.ncbi.nlm.nih.gov/rest/pug` (`pubchem-pug-rest`) |
 | SureChEMBL | via versioned extraction packages (`dataset_version` per package) |
 | Reviewed scope catalog | `services/core/spago_core/data/target_scopes.json`, reviewed 2026-09-15 |
@@ -44,13 +47,15 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   This is the interactive lookup only: the loaded-corpus coverage report below stays an
   exact comparison, because "was *this* number imported?" must not be softened.
 - Compound tables with server-side paging (default 100, cap 500 rows per response).
-- Exact, substructure and similarity structure search over the loaded corpus,
-  executed server-side by RDKit; explicit similarity thresholds.
+- Exact, substructure and similarity structure search within the selected loaded
+  family/document scope, executed server-side by RDKit; explicit similarity thresholds.
 - Evidence inspection per compound: section, page, table/figure, local label,
   extraction method, provenance state, source link when the source supplies one.
 - CSV/SDF export by family, document, structure query or explicit selection, with
   patent numbers, labels, evidence references and dataset versions attached.
-- Target-candidate export, including candidates with no patent mapping.
+- Target-candidate export, including candidates with no patent mapping. The target UI
+  currently omits its threshold override and evidence-class filter from the export
+  request; parity with an actively filtered target view is not established (B-33, §8).
 - **Loaded-corpus inventory** (`GET /api/v1/corpus`, and the same view behind the
   top-bar dataset badge): families, documents, compounds, mentions, evidence and
   measurements per dataset version, read from the corpus tables on the request,
@@ -159,7 +164,8 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   row is an update, never a duplicate. Provenance never downgrades: an agent's
   re-post cannot turn a person's row into a proposal.
 - Save and reopen a candidate with no patent mapping; it keeps its target scope,
-  source versions and identity snapshot.
+  source versions and identity snapshot. Historical verification covers the single
+  target path; navigation among all scopes in a mixed project remains a gap (B-36).
 
 ## 3b. Supported: what a source declares for a publication (patent-led)
 
@@ -241,10 +247,12 @@ which leg, and which leg nobody has asked:
   reason rather than reading as a complete answer.
 - **Ambiguity is reported, not guessed.** A number matching two stored documents lists
   both identifiers on the row rather than choosing between them, following `find_patent`.
-- **The limits are in the report.** The corpus leg can only report documents SPAgo
-  imported (the true sibling set needs a bibliographic source, B-22); no snapshot leg is
-  reported in this build (B-23 does not exist, and the note says so rather than showing a
-  dead column); and `not_queried` is never an absent verdict.
+- **Coverage limits.** The corpus leg can only report documents SPAgo imported (the
+  true sibling set needs a bibliographic source, B-22). B-23's target-led snapshot tool
+  exists, but this audit has no dedicated snapshot leg or patent-led snapshot scan.
+  Its fixed runtime note saying the build has no configured snapshot is stale and
+  tracked in B-32; this documentation correction does not change that output.
+  `not_queried` is never an absent verdict.
 - **Two surfaces, one rule.** The patent view's *Coverage* strip (collapsed to one line,
   on the family view and on the 404 "the corpus does not hold it" path, where coverage is
   the question the reader actually has) and `scripts/patent_coverage.py` for an operator
@@ -267,6 +275,9 @@ family's publication set, or a substitute for asking a source. See *Not supporte
   operation allowlist, shown for review, and executed only on explicit action.
 - Deterministic identifier requests (publication numbers, reviewed target
   entities) work with no model configured at all.
+- Citation validation checks the stored input reference. Exact navigation from every
+  citation to its supporting record is not complete: several active callbacks only
+  change tabs, and archived-analysis citations are text (B-37).
 
 ## 5. Not supported (deliberate limits)
 
@@ -274,8 +285,12 @@ family's publication set, or a substitute for asking a source. See *Not supporte
   corpus plus the named open databases, each with its own recorded status.
 - **No inhibitor guarantee for any target.** The measured coverage is what it is:
   see `benchmarks/cohort-coverage-2026-09-16.md` for the acceptance cohort
-  re-recorded on this build (and `benchmarks/online00-coverage-2026-09-15.md` for
-  the earlier run). For human TSLP, 110 of 111 qualifying ChEMBL activities are
+  recorded on that local run (and `benchmarks/online00-coverage-2026-09-15.md` for
+  the earlier run). These are dated observations, not a live coverage guarantee.
+  The local workspace includes supplements; the isolated `*-accept` cohort uses
+  different stored data and lacks IL-6/IL-6R. Its TSLP verdict is 0/1 while the local
+  workspace's is 1/2; neither is a substitute for a source-only baseline (B-32).
+  In the recorded source retrieval, 110 of 111 qualifying ChEMBL activities are
   peptides and one genuine small molecule remains; **IL-6R is the thin one** (one
   in-scope compound whose only record is not a potency, and BindingDB failed for
   it); IL-6 and CD40LG do reach the policy's minimum (`potency-gate-v1`: IL-6 124
@@ -291,7 +306,9 @@ family's publication set, or a substitute for asking a source. See *Not supporte
   references) updates the stored row, and supplying a structure supersedes a
   structure-less remark for the same claim. Taking a row back is a recorded
   retraction with a required reason, not a deletion: the row stays readable, the
-  verdict reports it as withdrawn, and a source refresh follows the same rule. The
+  verdict reports it as withdrawn. B-04 applies recorded retraction within its corpus
+  package / complete activity-release scope; missing rows after online investigation
+  retries are not yet retracted (B-30). The
   UI has no physical delete, so no count changes without a reason on the row.
 - **The reference verdict is a count, not a biological conclusion.** "2 of 3
   in-scope compounds at or below 10 µM" states what the retrieved records support
@@ -375,7 +392,10 @@ Nothing else — a green test suite, a working demo, a passed review — substit
 
 All of the following must hold, each closed by an artifact rather than an assertion —
 a checked box without the output, report or record that produced it is not evidence.
-The run record names the build identity from `/healthz`.
+The run record includes `/healthz` and the actual revision/image identity. Currently
+`api_version=0.1.0` alone cannot identify a build; record the packaging identity
+separately until B-34 supplies a comparable served identity. Do not infer that a
+server matches a checkout merely because their API versions agree.
 
 1. **Deployment shape is the reviewed one.** HTTPS terminates in front of the app;
    `SPAGO_COOKIE_SECURE=true`; `SPAGO_AUTH_MODE=required`; `SPAGO_SEED_MODE=none`; a
@@ -447,7 +467,7 @@ A scientist using only the browser must be able to complete, in one sitting:
 7. Save the selection, sign out, sign in again, reopen the project, and export.
 8. Report any defect before the beta is called usable.
 
-Record the outcome per step, with the build identity from `/healthz` and the coverage
+Record the outcome per step, with `/healthz`, the revision/image identity and the coverage
 matrix for the run. A run against the local stack is a rehearsal, not this gate: it
 proves the workflow, not the deployment.
 
@@ -500,8 +520,9 @@ The deployment is one app image plus one database. To roll back:
 - PubChem contributes screening context only; a CID→AID measurement path is not
   implemented (it would require unbounded BioAssay harvesting).
 - BindingDB's REST path supplies no assay description, species or variant context,
-  so those fields are empty for BindingDB records (stated on the retrieval, not
-  presented as the source's omission).
+  so those fields are empty for that access path (stated on the retrieval, not
+  presented as a property of every BindingDB record). The operator snapshot can
+  retain organism and chain context; its coverage must be identified separately.
 - **Assay construct is not part of the contract.** No adapter in this build can map
   a protein construct, so no construct field is declared and none is displayed: a
   construct described in prose by a source is not carried into SPAgo, which is a
@@ -511,8 +532,21 @@ The deployment is one app image plus one database. To roll back:
 - **A number that names more than one stored document cannot be opened by that form.**
   When the corpus holds, say, both `US-8618102-B1` and `US8618102B2`, the tolerant
   lookup answers 409 and lists both instead of choosing; the reader opens one by its
-  stored number. A candidate picker is a backlog item (`LATER`), not a shipped
+  stored number. A candidate picker is backlog B-41 (`LATER`), not a shipped
   control, because nothing reviewed asks for it yet. The same tolerant path costs a
   full metadata scan when the indexed lookup misses — measured at 155 ms on a
   50 000-document corpus (`benchmarks/tolerant-lookup-2026-09-16.md`) — which is why
   it runs only after the exact miss and is unmeasured above that corpus size.
+- **Target display/export parity (B-33).** Static inspection finds that the browser
+  does not send the active target threshold or evidence filter to export. The backend
+  supports an explicit threshold but otherwise uses the deployment default, and has
+  no export evidence-class parameter. Browser reproduction is still required; do not
+  claim a filtered target view and its downloaded artifact have identical semantics.
+- **Saved-work continuity (B-36/B-39).** Mixed projects can hold several targets and
+  families, but reopening selects the first usable item and the existing switcher
+  covers families only. Target modality/evidence/threshold controls are not restored
+  from the URL. These static findings are distinct from the verified single-scope paths.
+- **Regression scope (B-35/B-38).** CI executes a selected non-database subset and
+  frontend typecheck/build; the full PostgreSQL/RDKit suite and browser smoke are not
+  in CI. One recorded successful browser smoke does not cover failed sources, late
+  responses, auth-required persistence or export-content parity.

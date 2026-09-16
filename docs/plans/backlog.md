@@ -1,33 +1,31 @@
 # SPAgo backlog register
 
-Status: **living register — proposals only.** Nothing listed here is approved scope,
-implemented capability or a commitment to build. What this build *does* is stated in
+Status: **living register — open entries are proposals; delivered entries are history.**
+An open entry is not implementation approval or a commitment to build. What this build *does* is stated in
 `docs/online-capability.md`; what it *might* do next is stated here. Classification
 follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 (B-04, B-14, B-17, B-18 delivered; no P1 remains)** — the
-table's head is **B-09** (reviewed target-scope catalog expansion, `NEXT · M`, gated on
-scientific review). Everything else in the table is operator-gated
-(B-11 provider choice, B-21/B-22 source decisions + credentials + ADR) or
-`LATER`-class by design. B-04's outcome: a
-corpus refresh now retracts — never deletes, with the dropping version recorded — the
-mentions, evidence *and measurements* its release no longer contains, and an
-interrupted import's resume is the re-run itself, named in the completed job's summary
-(`docs/plans/2026-09-16-import-refresh-completeness.md`); `AGENTS.md` §10 gained the
-rule (retraction scope = the release's own claim; current-state reads go through the
-current-state views). B-14's CI executed green on GitHub's runners (run 35102219606)
-and does not run the database-dependent majority of the suite. B-18 verified the
-companion's panel-behavior flag in the running worker on an unbranded Chromium and
-restated the click/surface limit with its reason. Nothing here closes a
-`docs/online-capability.md` §6 checkbox. See the update log at the end of this file
-and §4 for the one-sentence arguments.
+Last updated: **2026-09-16 — planning-only product review at `efb1357`.**
+Current stage: a locally implemented and previously exercised product, with selected
+live-source measurements and a local hosted-shape rehearsal; **hosted acceptance and
+independent scientific validation remain open**. Review findings, evidence limits and
+open questions: [product review Q&A](2026-09-16-product-review-qa.md).
+
+The earlier conclusion that only operator-gated work remains is superseded: static
+inspection found export-policy, saved-project navigation and citation-navigation gaps,
+and the existing CI does not run the database suite or browser smoke. **B-31** makes
+the existing hosted gate visible in the table; **B-33** is the first engineering
+candidate. B-31…B-41 are new proposals, B-28 is promoted from a discussion note into a
+ranked LATER item, and B-19/B-21/B-29/B-30 are reclassified with reasons below.
+Nothing in this round runs the queue, changes application code, or closes a §6 box.
 
 ## 0. Standing constraints for everything below
 
-- The operator gate in `docs/online-capability.md` §6 comes first. Nothing in this
-  register displaces it, and no item here may be presented as closing a §6 checkbox.
+- The operator gate in `docs/online-capability.md` §6 comes first. Implementation or
+  documentation completion alone cannot close a checkbox. B-31 records acceptance
+  only when the corresponding real-deployment and human-review artifacts exist.
 - `AGENTS.md` §5 (no Espacenet automation), §6/§33 (no new infrastructure service
   without an ADR and measured need), §23 (dependency + `THIRD_PARTY_NOTICES.md` in the
   same change) apply to every item.
@@ -40,28 +38,58 @@ and §4 for the one-sentence arguments.
 
 ## 1. Priority order
 
+Rank is top-to-bottom within a priority. Order reflects harm to the existing workflow,
+acceptance value and dependencies before coverage breadth or feature count; an empty
+priority group is not a reason to promote its successor. A gated item keeps its product
+priority, while independent engineering can proceed after an implementation round is
+authorized. This planning-only round authorizes none of those actions.
+
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
+| P0 | B-31 | Real hosted pilot acceptance | CORE | M + operator time | real host/TLS, provider/budget, invited scientist; B-32 evidence |
+| P1 | B-33 | Target screen/export filter and potency-policy parity | CORE | S–M | static finding; browser reproduction first |
+| P1 | B-34 | Distinguishable build identity in verification artifacts | CORE | S | build-time identity contract; no provider gate |
+| P1 | B-32 | Scientific cross-read and reproducible coverage cohorts | CORE | M + reviewer time | B-34 for new run identity; independent reviewer for acceptance |
+| P1 | B-35 | Full PostgreSQL/RDKit suite and existing browser smoke in CI | CORE | M | runner Docker/build feasibility; reuse shipped stack |
+| P1 | B-36 | Reopen every saved target/family scope in a mixed project | CORE | M | static finding; browser reproduction first |
+| P1 | B-37 | Summary citation → exact supporting record | CORE | M | typed citation/snapshot navigation contract |
+| P1 | B-30 | Source refresh retraction within an explicit access/query scope | CORE | M | absence semantics first; no cross-path retraction |
+| P2 | B-38 | Browser regression for failures, stale responses and saved work | NEXT | M | reuse B-17; B-35 for automatic execution |
+| P2 | B-19 | Keyboard and dialog accessibility in the existing layout | NEXT | M | browser/assistive-technology evidence |
+| P2 | B-29 | A stored analysis as a project artifact | NEXT | M | B-36/B-37 first; preserve owner and snapshot rules |
+| P2 | B-39 | Reopen a saved investigation with its filters and policy | NEXT | M | bounded private state contract; no sensitive URL payloads |
+| P2 | B-21 | Claim-text source feasibility and evidence design | NEXT | S–M decision; L integration | source/terms/sample decision; integration separately gated |
 | P2 | B-09 | Reviewed target-scope catalog expansion | NEXT | M | scientific review |
-| P2 | B-11 | Second model-provider evaluation and refusal UX | NEXT | M | provider choice (operator) |
-| P2 | B-21 | Claim-text source decision and ingestion plan | LATER | L | source choice + ADR |
-| P2 | B-22 | EPO OPS adapter (bibliographic / family / full-text enrichment) | LATER | L | OPS credentials + ADR |
-| P3 | B-05 | Bulk analytical filtering surface (DuckDB/Parquet) | LATER | L | ADR + dataset |
-| P3 | B-07 | PubChem BioAssay bounded CID→AID path *(owner request group)* | LATER | M–L | bounded design |
+| P2 | B-11 | Refusal explanation, then second-provider evaluation | NEXT | M | explanation ungated; provider/budget gate on live evaluation |
+| P3 | B-40 | Small cross-family SAR comparison with assay comparability | LATER | M–L | reviewed comparison task + matched assay context |
 | P3 | B-08 | BindingDB assay-context enrichment *(owner request group)* | LATER | M | source capability check |
-| P3 | B-30 | A source refresh that retracts what its release no longer contains | LATER | M | absence rule needs its own design |
+| P3 | B-28 | Bounded multi-target snapshot run and change report | LATER | M | B-30 plus measured repeated-batch need |
 | P3 | B-27 | Structure review sheet (fixed-scale cards, scaffold folding, lossless PDF) | LATER | L | user workflow ask |
-| P3 | B-16 | Operator usage visibility (decide: docs-only or small admin view) | LATER | S | — |
-| P3 | B-19 | Accessibility pass on the virtualized table and dialogs | LATER | M | — |
+| P3 | B-05 | Bulk analytical filtering surface (DuckDB/Parquet) | LATER | L | ADR + dataset + measured metadata-search need |
+| P3 | B-22 | EPO OPS adapter (bibliographic / family / full-text enrichment) | LATER | L | B-21/source decision, credentials + ADR |
+| P3 | B-07 | PubChem BioAssay bounded CID→AID path *(owner request group)* | LATER | M–L | bounded design |
+| P3 | B-41 | Pick an exact publication from an ambiguous lookup | LATER | S | validate frequency in pilot; exact-number workaround exists |
 | P3 | B-20 | Chinese UI / i18n | LATER | L | user-base decision |
-| P3 | B-29 | A stored analysis as a project artifact | LATER | M | user workflow ask |
+| P3 | B-16 | Operator usage visibility (decide: docs-only or small admin view) | LATER | S | pilot evidence that API/runbook is insufficient |
 | P3 | B-12 | Multi-worker deployment (shared in-flight model registry) | LATER | M | scaling need |
 | — | — | *(rejected / deliberately out — see §5)* | REJECT | — | — |
 
-P1 = worth doing before or alongside the invited beta because it strengthens the same
-workflow the gate tests. P2 = the next implementation round candidates, in the order
+P0 = required release decision/evidence, including operator work; it is not a feature.
+P1 = correctness and repeatability of the workflow the gate tests, before or alongside
+the invited beta. P2 = the next implementation round candidates, in the order
 shown. P3 = deliberately later; a P3 item needs a decision or a measured need before it
 becomes P2.
+
+**What moved and why.** B-09 is no longer the head: validating the current scientific
+cohort and repairing export/save/evidence continuity precede expanding that cohort.
+B-30 moves P3/LATER → P1/CORE because retries and the snapshot path now coexist, so
+current versus historical rows is an existing correctness question. B-19 and B-29 move
+P3/LATER → P2/NEXT to make the existing workflow operable and its decisions reusable.
+B-21 moves from a broad LATER integration to a NEXT feasibility decision; B-22 moves
+P2 → P3 until that decision justifies OPS. B-11 retains P2, but its refusal UX no longer
+waits for a second provider. B-28 is ranked P3, behind trustworthy refresh semantics.
+B-40/B-41 remain exploratory; they do not displace reliability work. Historical
+delivery counts and measurements below are retained as historical evidence, not rerun.
 
 **Delivered from this register (kept out of the table, with the artifact that closed
 it):**
@@ -265,6 +293,9 @@ ChEMBL's own rows. The recovery path and that defect are the same fix.
   (AGENTS §12).
 - **Acceptance sketch.** New entries change only the targets the user investigates;
   the coverage matrix shows related systems labelled as related.
+- **Order after this review.** Choose the next system from an actual pilot question,
+  after B-32 checks the current cohort. More catalog entries alone do not establish
+  better scientific coverage (`PROMPT.md` §2.1/§2.5).
 - **Class NEXT · P2 · M (review-heavy).**
 
 ### B-10 — Summary archive and retrieval *(owner request)*
@@ -295,18 +326,25 @@ assumption.
   model and citations; a changed threshold/dataset marks the old entry stale.
 - **Class NEXT · P1 · M.**
 
-### B-11 — Second model-provider evaluation and refusal UX
+### B-11 — Refusal explanation, then second model-provider evaluation
 
 - **Problem.** Capability §8: quality/latency/token usage/failure rate are measured for
   **one** provider (DeepSeek `deepseek-flash`); any other endpoint the operator chooses
   is unverified, and an answer rejected twice in a row (one re-sample allowed) still
   fails as 502.
-- **Gate.** The operator picks the provider and budget; the evaluation then records
+- **Two separable steps.** The refusal explanation for the existing provider can be
+  designed and verified with bounded fixture failures now; it need not wait for
+  provider procurement. A second live-provider evaluation remains gated.
+- **Gate for live evaluation.** The operator picks the provider and budget; the evaluation then records
   model id, endpoint fingerprint, per-scope calls, tokens, latency, failures and cache
   behaviour (`benchmarks/online01-llm-eval-2026-09-15.md` is the method).
 - **Scope if built.** Run the same evaluation against a second provider; surface the
   refusal class and the remaining retry budget in the UI instead of a bare 502.
-- **Class NEXT · P2 · M (gate: provider).**
+- **Acceptance.** Transport failure, invalid output and quota refusal remain distinct;
+  the user can tell whether another call will be billed. No automatic retries beyond
+  the current policy. A new provider report measures compatibility, not truth of its
+  answers (B-32), and no endpoint is selected by this plan.
+- **Class NEXT · P2 · M (provider/budget gate applies to live evaluation only).**
 
 ### B-12 — Multi-worker deployment (shared in-flight model registry)
 
@@ -405,12 +443,18 @@ made. Reopening this item means providing one of those two, not re-running the s
 
 ### B-19 — Accessibility pass on the virtualized table and dialogs
 
-- **Problem.** No accessibility record exists; the product leans on a virtualized table
-  (`@tanstack/react-virtual`), dialogs, and keyboard-driven search.
-- **Scope if built.** Keyboard traversal, focus management in dialogs, table semantics
-  and screen-reader labels for the structure/depiction controls; scoped to the existing
-  layout (§18), with a written check list.
-- **Class LATER · P3 · M.**
+- **Evidence.** `CompoundTable.tsx` and `CandidateTable.tsx` place headers outside
+  their `role="table"` container and handle Enter/Space on rows without excluding
+  nested controls. A checkbox's Space may reach the row handler; this is a static
+  finding, pending browser confirmation. `Modal.tsx` already implements focus entry,
+  trapping, Escape and return — do not rebuild what is present.
+- **User gain / scope.** Operate inspection, selection, structure preview and export
+  with the keyboard in the existing layout (`PROMPT.md` §2.5; AGENTS §3/§18).
+- **Acceptance.** Checkbox Space selects without inspecting; row Enter still
+  inspects; virtual scrolling preserves usable focus; headers/cells/row counts are
+  meaningful to assistive technology; modal focus behaviour remains intact. Record
+  the browser, viewport, source mode and actual keyboard/reader checks, not DOM alone.
+- **Class NEXT · P2 · M.** Promoted from LATER because the affected controls already ship.
 
 ### B-20 — Chinese UI / i18n
 
@@ -420,7 +464,7 @@ made. Reopening this item means providing one of those two, not re-running the s
   strings only vs. exports and summaries too).
 - **Class LATER · P3 · L (gate: user base).**
 
-### B-21 — Claim-text source decision and ingestion plan
+### B-21 — Claim-text source feasibility and evidence design
 
 - **Problem.** Claims are a product pillar (PROMPT §2.1) but no claim text is stored:
   `services/ai.py` states "Claim text is not stored in this deployment", capability §5
@@ -430,9 +474,17 @@ made. Reopening this item means providing one of those two, not re-running the s
 - **Gate.** A source decision and an ADR: EPO OPS full text (B-22) versus fields in the
   SureChEMBL bulk path versus another licensed source; plus storage and evidence
   mapping (claim number, paragraph, jurisdiction, language).
-- **Scope if built.** Claim text imported per document with typed evidence records, so
-  a document/target summary can cite a claim instead of declaring it unassessed.
-- **Class LATER · P2 · L (decision first).**
+- **First deliverable, NEXT.** A source/terms decision, bounded representative sample,
+  claim-number/paragraph/language/jurisdiction mapping and ADR with success/failure
+  criteria. Reuse existing evidence inspection; choosing OPS is not assumed. The
+  outcome may be that no available source meets the requirement.
+- **Later integration, not approved here.** Import claim text per document with typed
+  evidence, so a summary can cite the original claim (`PROMPT.md` §2.1) while retaining
+  the legal boundary. This is separate from PDF chemistry and OCSR.
+- **Acceptance of the decision.** A reader can trace each sample claim to the chosen
+  original source and identify missing languages/jurisdictions; costs, terms, provenance
+  and an implementation boundary are recorded. A proposal does not enable claims UI.
+- **Class NEXT · P2 · S–M for the decision; integration L and separately gated.**
 
 ### B-22 — EPO OPS adapter (bibliographic / family / full-text enrichment)
 
@@ -444,7 +496,9 @@ made. Reopening this item means providing one of those two, not re-running the s
 - **Scope if built.** A bounded, cached OPS adapter for family and bibliographic
   enrichment with source name, version, retrieval timestamp and error/rate-limit state,
   surfaced through the existing evidence/provenance rules.
-- **Class LATER · P2 · L (gate: credentials + ADR).**
+- **Class LATER · P3 · L (gate: source decision, credentials + ADR).** B-21 may justify
+  this adapter, or a pilot may establish an independent family-metadata need; its name
+  in the initial technology direction is not sufficient justification.
 
 ### B-23 — Local BindingDB snapshot search (operator dataset, TSV first)
 
@@ -630,14 +684,21 @@ exactly the honesty rule the last three rounds were about.
   with the artifact and the verifier reads them back from it.
 - **Class LATER · P3 · L.**
 
-### B-28 — Batch target run with change diff *(discussion only, not yet an item)*
+### B-28 — Bounded multi-target snapshot run and change report
 
-`scripts/cohort_coverage.py` already loops the acceptance cohort; `BindingDB_IO`
-supports several queries in one pass (`readers/multi.py`). **B-23 has landed**, so a
-batch "investigate N targets, diff against the previous run" operator command is now
-cheap to argue and worth its own small item — it stays a note here so it is not
-invented twice, and it is not in the priority table until the current P1/P2 order is
-worked through.
+- **Evidence.** B-23 streams a whole snapshot for one target; the existing cohort
+  script already loops targets. A repeated portfolio investigation is a plausible
+  operator workflow, not yet a measured requirement for the invited beta.
+- **User gain / scope.** Revisit a small named target set and see added, changed and
+  withdrawn source records, with one snapshot pass where justified (`PROMPT.md`
+  §2.5). Keep target/source/access-path outcomes separate; no scheduler or new service.
+- **Dependencies.** B-30 must define trustworthy absence first; B-34 must identify the
+  run. Establish repeated-batch volume and operator-file access before implementation.
+- **Acceptance sketch.** Bounded multi-target results equal the corresponding single
+  target results; a cancelled/partial scan reports partial progress and no false
+  withdrawals; the diff carries both releases, queries and policies. Measure any
+  scan-time improvement rather than assuming it.
+- **Class LATER · P3 · M.** Now a ranked exploration, not an execution commitment.
 
 ### B-29 — A stored analysis as a project artifact
 
@@ -650,9 +711,14 @@ worked through.
   staleness stated, and include it in the project export. Deletion of the analysis must
   leave the project item readable and marked, as family/compound deletion does today
   (migration 0008's contract).
-- **Why not now.** No reviewed workflow asks for it, and the export already covers "take
-  it out of the app". Build it when a project-level report is actually requested.
-- **Class LATER · P3 · M.**
+- **Priority rationale.** Promote after the existing save/reopen and citation gaps
+  (B-36/B-37): connecting an existing analysis to the selection it explains directly
+  serves the saved-decision end of `PROMPT.md` §1/§2.5. Reuse the project view; do not
+  introduce a report builder or team-sharing system.
+- **Acceptance sketch.** Save a selection and its analysis reference, sign out/in,
+  reopen both without a model call, and export with scope/policy/citations preserved.
+  Owner isolation, stale analysis and unavailable referenced records remain explicit.
+- **Class NEXT · P2 · M.**
 
 ### B-30 — A source refresh that retracts what its release no longer contains
 
@@ -671,13 +737,224 @@ worked through.
   correct but must be tested as such. That is its own round: rules, tests (failure does not
   retract, a re-delivered row comes back), a reported count, and the reason string each
   withdrawn row carries.
-- **Scope if built.** `complete` only; the re-run source's rows only; `retracted_at` +
-  a reason naming the release/date, never a delete; the count reported in the run's own
-  response and the target header; re-delivery clears the retraction (the existing
-  `ON CONFLICT … retracted_at = NULL` already does this).
-- **Class LATER · P3 · M.**
+- **Scope decision first.** Define absence by target + source + access path + query /
+  release coverage, not merely `status=complete` or `source_name`. B-23's REST and
+  snapshot rows share `source_name=bindingdb` but have different record ids and assay
+  keys (`benchmarks/bindingdb-snapshot-2026-09-16.md`); either path must preserve the
+  other's rows. Decide explicitly when a complete-empty answer establishes absence.
+  A complete bounded query is not a claim about a source's entire release.
+- **Scope if built.** Retract only within the established coverage; record reason,
+  release/query identity and count, never delete; clear retraction on re-delivery.
+  Failed/partial asks and unasked targets establish no absence. Document-level corpus
+  withdrawal (a package omitting an entire document) still requires an explicit release
+  manifest and must not be inferred from the ordinary subset-package import.
+- **Acceptance.** Pin no cross-target/source/access-path retraction, failed/partial
+  preservation, complete-empty semantics and re-delivery. Candidate counts, verdict,
+  exports and summary staleness must agree after a refresh. Identity rows stay intact.
+- **Class CORE · P1 · M.** This maintains the truth of the current investigation
+  (`PROMPT.md` §2.1), rather than adding another source.
 
-## 3. Review discussion — what the `BindingDB_IO` implementation changes (2026-09-16)
+### B-31 — Real hosted pilot acceptance
+
+- **Evidence.** Capability §6 is still unchecked. The hosted-shape rehearsal records
+  no real invited scientist and no independent scientific cross-read; its local TLS,
+  restore and model results cannot close a real deployment's gate.
+- **User gain / scope.** A scientist outside the implementation team can complete
+  Search → evidence → interpretation → saved work/export on a known deployment
+  (`PROMPT.md` §1/§2.5; AGENTS §3). This is the existing gate made visible, not new
+  functionality or a new acceptance standard.
+- **Gate / owner.** Operator supplies host/domain/TLS, provider/budget and participants.
+  B-32 supplies the scientific evidence; B-34 binds new runs to their build. Preparation
+  can be planned independently, but credentials, spending and review are not inferred.
+- **Done evidence.** All capability §6 criteria linked to artifacts from the same
+  deployed build: readiness, two-owner isolation, restore, resolved-target coverage,
+  model smoke, latency/cost go/no-go, non-implementer walkthrough, scientific review
+  and defect dispositions. Local rehearsals remain labelled separately.
+- **Class CORE · P0 · M plus operator/participant time.**
+
+### B-32 — Scientific cross-read and reproducible coverage cohorts
+
+- **Evidence.** `scripts/cohort_coverage.py` joins source outcomes to the workspace's
+  whole reference verdict, which can include supplements. The local cohort record
+  reports TSLP 1/2 qualifying, while the isolated rehearsal reports 0/1; they describe
+  different stored data, not conflicting measurements of an identical set. The
+  rehearsal also lacks stored IL-6/IL-6R results. Existing model evaluation mostly
+  checks output structure/citations; it does not establish scientific entailment.
+- **User gain / scope.** Understand exactly what the retrieved set and its summary
+  support (`PROMPT.md` §2.1). Define a small stratified public/synthetic review set:
+  source-only versus supplemented workspaces, direct versus functional evidence,
+  censor directions, stereochemistry, declared patents versus corpus occurrences,
+  thin/empty/failed sources, and an unsupported summary claim. No private data import
+  or new scientific fixture is authorized by this proposal.
+- **Artifact contract.** Carry build identity (B-34), schema, resolved accessions,
+  source/access-path/version, query bounds, policy, modality and supplement inclusion.
+  Report source-only coverage separately from the combined workspace verdict, with
+  denominators and unmatched/no-structure records explicit. Read verification
+  parameters from the artifact rather than hard-coding another configuration.
+- **Existing disclosure defect included.** `services/coverage.py::REPORT_NOTES` still
+  says no BindingDB snapshot is configured in this build. B-23 exists, while B-26 has
+  no dedicated snapshot leg. Make the report describe the actual access paths it can
+  account for; never imply a snapshot hit is a corpus occurrence or a complete
+  publication scan. Correcting this note does not add a patent-led snapshot lookup.
+- **Done evidence / gate.** An independent reader checks sampled structure/stereo,
+  assay/units/target assignment, occurrence and summary-claim support against original
+  sources; record discrepancies, resolutions and limits. A machine can prepare the
+  pack but cannot approve its own independent review. Small sealed fixtures and live
+  observations remain distinct; publish no universal accuracy claim from this sample.
+- **Class CORE · P1 · M plus reviewer time.** Feeds B-31; precedes catalog expansion.
+
+### B-33 — Target screen/export filter and potency-policy parity
+
+- **Evidence.** `App.tsx` sends `thresholdOverride` / `evidenceClassFilter` to candidate
+  and measurement reads, but its target `ExportMenu` props and `ExportMenu.tsx`'s
+  request omit both. The frontend export type also omits them. The backend
+  `ExportRequest` accepts `activity_threshold_nm` and otherwise uses the deployment
+  default; its export contract has no evidence-class filter. Static call-chain
+  finding; downloads have not been reproduced in this planning round.
+- **User gain / scope.** Take the current scientific selection to CSV/SDF with the same
+  meaning (`PROMPT.md` §2.5; AGENTS §3/§11). Carry the active threshold, evidence class
+  and modality through the existing typed export path; define how explicit selections
+  outside a later filter are handled. Reuse the existing export control.
+- **Done evidence.** Reproduce in a browser, then compare current-results and selection
+  downloads at default and changed thresholds/evidence filters: same compound set,
+  activity classes, policy and source records as the requested scope, across pages.
+  Check CSV and SDF contents, empty/invalid input and bounds. A filename assertion
+  alone does not prove this contract. No across-assay potency ranking is introduced.
+- **Class CORE · P1 · S–M.** First engineering candidate: the file may currently lose
+  the user's policy even when its download succeeds.
+
+### B-34 — Distinguishable build identity in verification artifacts
+
+- **Evidence.** `/healthz` exposes `api_version` from `__version__ = "0.1.0"`
+  (`main.py`, `api/routes.py`, `__init__.py`); that cannot distinguish the many builds
+  recorded under this version. Capability §6 asks for build identity, and the browser
+  runner accepts any server at its configured URL.
+- **User gain / scope.** Relate a reported result or defect to the version actually
+  served (the reliability of the whole `PROMPT.md` §1 loop). Inject a revision/build
+  identity at packaging time and carry it through health and run artifacts. Explicitly
+  identify dirty or unknown builds; do not depend on a runtime `.git` directory.
+- **Done evidence.** Two different builds are distinguishable; the recorder compares
+  expected and served identities, reports a mismatch/unknown rather than passing it,
+  and records schema/data/policy alongside them. Historical artifacts remain historical:
+  do not backfill a guessed identity into them. No new service or user panel.
+- **Class CORE · P1 · S.** Enables reliable new evidence for B-31/B-32/B-35/B-38.
+
+### B-35 — Full PostgreSQL/RDKit suite and existing browser smoke in CI
+
+- **Evidence.** B-14 runs `run_checks.sh --no-pg`: four test files plus `TestPlanner`,
+  frontend typecheck/build. This is not every database-free test. B-17's one smoke is
+  outside CI. The repo already builds the cartridge image in `docker/db/Dockerfile`;
+  supplying a new external service is not a prerequisite.
+- **User gain / scope.** Updates keep the patent/structure/evidence/export loop usable
+  (`PROMPT.md` §1). Run the existing full backend check and existing smoke on a clean,
+  isolated runner stack built from this checkout, with synthetic data and no paid calls.
+  Measure runner cost/time; retain logs and failure traces. B-38 adds scenarios later.
+- **Done evidence.** A hosted CI run actually executes the database suite and smoke;
+  unavailable database/required browser fails rather than silently skips. Respect
+  `SPAGO_REQUIRE_TEST_DATABASE` in the older 0006 upgrade helper too (currently it can
+  skip unconditionally). Keep existing 0006/0008 upgrade tests; declare the supported
+  upgrade starting point and check representative retrieval/supplement/retracted data
+  as needed, rather than claiming there are no upgrade tests today.
+- **Gate.** Runner Docker/build capability and time budget verified in that round.
+  Fixture CI is not hosted user acceptance or live-provider validation.
+- **Class CORE · P1 · M.** Extends B-14/B-17's delivered scope, not a rewrite of them.
+
+### B-36 — Reopen every saved scope in a mixed project
+
+- **Evidence.** `SaveCandidatesDialog.tsx` permits appending targets to an existing
+  project. `App.tsx::openProject` picks the first usable item; the switcher enumerates
+  families only, and the target project's banner has no scope switcher. Historical
+  single-target reopening evidence does not cover a mixed project.
+- **User gain / scope.** Recover every saved target/family without remembering the
+  original searches (`PROMPT.md` §1 saved decision / §2.5). Extend the existing project
+  affordance with explicit saved scopes, preserving identity/version snapshots and
+  scoped selection. No permanent project dashboard.
+- **Done evidence.** Save two targets plus one family, sign out/in and navigate all
+  three; retain the correct saved items and visible missing/drift states. Cover an old
+  response arriving after a scope switch, withdrawn candidates and owner isolation.
+  Reproduce the current gap in a browser before choosing the smallest change.
+- **Class CORE · P1 · M.**
+
+### B-37 — Summary citation → exact supporting record
+
+- **Evidence.** `AiPanel.tsx` passes `fact_ref`, but `EvidencePanel.tsx` generally
+  switches tab/expands activity; `TargetEvidencePanel.tsx` has explicit source/verdict
+  focus but otherwise only switches tab. `AnalysesDialog.tsx` renders citations as
+  plain text. A cited measurement can belong to a candidate other than the selected one.
+- **User gain / scope.** Check an explanation against its actual record in one action
+  (`PROMPT.md` §2.1). Resolve typed refs through authorized read contracts, open the
+  correct scope/compound/record in the existing evidence surface, and distinguish the
+  saved snapshot from today's record. No provider call to reopen evidence.
+- **Done evidence.** Family/document/target and archived summaries navigate citations
+  to unselected and not-yet-loaded objects; exact supporting record is identified.
+  Stale, retracted, missing and forbidden records give explicit outcomes rather than
+  displaying unrelated current selection; older fetches cannot replace newer intent.
+- **Class CORE · P1 · M.** Navigable citations are distinct from server validation that
+  the cited identifier existed in the model's input.
+
+### B-38 — Browser regression for failures, stale responses and saved work
+
+- **Evidence.** The single smoke in `apps/web/e2e/smoke.spec.ts` tests a happy path and
+  CSV filename. Prior manual rounds found bugs that unit tests missed; history-dialog
+  empty/error cases remain unexercised in its recorded plan.
+- **User gain / scope.** The same workflow stays trustworthy when a request fails or
+  the scientist changes context (`PROMPT.md` §2.5). Add a few high-risk cases to the
+  existing runner: slow A → fast B selection, unavailable versus empty source, subset
+  retry retaining other sources, save/sign-in/reopen, and actual export contents.
+- **Done evidence.** Loading/empty/error/stale states and recovery are observed with
+  scoped visible controls; record viewport, served build, source mode and bounded route
+  fault injection. Owner-isolation checks use a local auth-required shape. Fixtures and
+  injected failures are labelled; they do not prove live-source behaviour or B-31.
+- **Class NEXT · P2 · M.** Reuse B-17; B-35 can integrate the existing smoke first.
+
+### B-39 — Reopen an investigation with its filters and policy
+
+- **Evidence.** `state/url.ts` carries q/doc/c/t. `App.tsx` keeps modality, evidence
+  filter and threshold override only in React state; refreshing returns those to their
+  defaults. A saved selection is not a saved query definition.
+- **User gain / first scope.** Return to the same target question and verdict settings
+  (`PROMPT.md` §2.5; AGENTS §19). Persist a bounded validated set of target parameters
+  in navigable or owner-scoped saved state. Choose storage deliberately; no SMILES,
+  large result set or sensitive research payload in a URL.
+- **Done evidence.** Refresh, Back/Forward and reopening preserve the same target,
+  evidence class, modality and threshold; changed source data is labelled as a current
+  re-evaluation, not an identical historical result. Invalid/older state has an explicit
+  outcome. Structure-search snapshots are a later scope decision, not bundled here.
+- **Class NEXT · P2 · M.** Depends on clear display/export semantics (B-33).
+
+### B-40 — Small cross-family SAR comparison with assay comparability
+
+- **Opportunity, not an observed defect.** `PROMPT.md` §2.4 promises eventual
+  cross-patent interpretation; current structure search is family-scoped, and assay values remain
+  separate. A chemist may need to compare a small saved shortlist without rebuilding
+  its provenance in a spreadsheet.
+- **Possible first scope.** An explicit shortlist from saved work, deterministic
+  structure/scaffold alignment and side-by-side reported measurements with assay,
+  target, unit and evidence. Mark incomparable assays; do not infer selectivity or rank
+  mixed IC50/Ki/Kd values. Reuse existing tables/drawers; no global chemical-space map.
+- **Gate / acceptance sketch.** A pilot supplies a concrete comparison question and
+  comparable public examples; the reader can trace every compared value and understand
+  why some pairs cannot be compared. Verify against that sample and measure bounded
+  rendering/export cost. B-32/B-36/B-37 should come first.
+- **Class LATER · P3 · M–L.** Differentiation worth exploring, not a general SAR engine.
+
+### B-41 — Pick an exact publication from an ambiguous lookup
+
+- **Evidence.** B-03 correctly refuses an ambiguous normalized number with 409 and
+  names candidate documents; capability §8 mentions a future picker but no separately
+  ranked item existed. The exact stored number already opens a chosen document.
+- **User gain / possible scope.** Select a named candidate in the existing search
+  result instead of retyping (`PROMPT.md` §1 Search → document). Display jurisdiction,
+  kind code and available metadata; never auto-select or merge documents.
+- **Gate / acceptance sketch.** Validate friction in the pilot before implementation;
+  if justified, keyboard selection opens the exact chosen id and retains the match
+  explanation. Zero/one/many and outdated candidates remain explicit.
+- **Class LATER · P3 · S.** Lower than export/save/evidence defects with no workaround.
+
+## 3. Historical review — what the `BindingDB_IO` implementation changed (2026-09-16)
+
+The comparison below describes the checkout **before** B-23…B-26 were delivered.
+Its “SPAgo today” column is historical; current scope is in §1 and the capability page.
 
 Read-only review of `/media/chen/Machine_Disk/Datasets/BindingDB_IO/` (README,
 `AGENTS.md`, `task_plan.md`, `bindingdb_io/{readers/{tsv,lmdb,multi,api},web_supplement,patents,schema,activity,filters,dedupe}.py`,
@@ -721,7 +998,10 @@ modality rules and provenance states are reused rather than reimplemented; and t
 rejected items above stay rejected — this review is an argument for four specific
 ports, not for adopting the source project as a component (AGENTS §2, §6).
 
-## 4. P1 in one sentence each
+## 4. Historical delivery rationale
+
+This section explains the completed queue; it is not the current order. The planning
+review at `efb1357` replaces its old “next item” conclusions with §1 above.
 
 1. **B-13** — *delivered 2026-09-16:* make the §6 gate cheaper to pass and harder to fake.
 2. **B-01** — *delivered 2026-09-16:* make "search real patents" mean more than "search
@@ -764,11 +1044,10 @@ uncompressed with no compression anywhere in the shipped container. Delivered as
 in-process gzip (level 6) plus the re-measurement
 (`benchmarks/asset-compression-2026-09-16.md`): **5,234,921 B instead of 20,269,580 B**
 on that first open, entry JS+CSS 392,253 → 112,461 B, `/healthz` unaffected during cold
-transfers. With it delivered the table has no P1 left, so **B-04** (import refresh
-completeness and interrupted-import resume) becomes the next engineering item, and
-**B-30** stays `LATER` with the reasoning in its entry: absence is only established by a
-complete ask, so a refresh-retraction rule needs its own round — it is not an unfinished
-part of B-06.
+transfers. At that point **B-04** became the next engineering item and was subsequently
+delivered. B-30 was then LATER; the current review promotes it because repeat retrieval
+and multiple access paths now need an explicit current-state rule. Its design remains
+a separate round, not an unfinished part of B-06.
 
 ## 5. Deliberately out (do not treat as queued)
 
@@ -784,6 +1063,9 @@ part of B-06.
   scope until the operator decides otherwise.
 
 ## 6. Update log
+
+Earlier rows preserve what was concluded at that time. The final row and §1 govern
+the present proposal order; a previous “no remaining work” statement is not current.
 
 | Date | Change |
 | --- | --- |
@@ -803,3 +1085,4 @@ part of B-06.
 | 2026-09-16 | **B-18 delivered to the honest extent of this checkout** (the `verify-in-chrome.js` run now asserts `chrome.sidePanel.getPanelBehavior()` → `openPanelOnActionClick: true` in the running worker — previously a failed `setPanelBehavior` was only a silent `console.error`; the run was recorded on this workstation against the unbranded Playwright Chromium build, resolving the item's browser gate here; PROMPT.md, README and the architecture overview updated to the same wording). The physical toolbar click and the side-panel surface chrome stay uncovered, with the reason in the script: automating them needs OS-level input injection (no Xvfb/xdotool on this machine) or a keyboard-shortcut command added to the manifest for the test's own sake — a product change not made. No dependency, no application code changed. **B-18 leaves the table.** Re-sorted, with the moves stated: **B-17 (frontend test harness + one end-to-end smoke) is now the first ungated engineering item**; B-09/B-11/B-21/B-22 keep their operator gates. |
 | 2026-09-16 | **B-14 delivered** (`.github/workflows/checks.yml`: push/PR pipeline calling `scripts/run_checks.sh --no-pg` — the developer entry point itself — with the shipped container's python 3.12 / node 22 and pip/npm caching; README's Development checks section updated). Verified by execution, not by reading: hosted run **35102219606 completed green in 1m07s** on ubuntu-latest. The gate question was argued in the register first: `origin` is GitHub, so GitHub Actions *is* the hosting decision, and a workflow file moving to another host later is a file move. Coverage limit stated in the workflow itself: the database-dependent majority of the suite keeps its scratch-database behaviour — CI does not run the full suite until someone provides a PostgreSQL+RDKit-cartridge CI image; the actions' Node-24 deprecation annotation is cosmetic. **B-14 leaves the table**, and the head moves to **B-09** (gated on scientific review) with **B-17 the first engineering-startable item**. An external register commit (`3f24d9b`, Cursor co-authored) landed mid-round adding B-15's two remaining record lines; its "B-04 becomes the next engineering item" statement predates B-04's delivery and is superseded by this log, not reverted. |
 | 2026-09-16 | **B-17 delivered** (`@playwright/test` dev dependency with the §23 record and rejected alternatives in `THIRD_PARTY_NOTICES.md` §2 in the same change; `apps/web/playwright.config.ts`; `apps/web/e2e/smoke.spec.ts` covering search → family → compound inspection → structure filter → CSV export; `npm run test:e2e`; `test-results/` and `playwright-report/` git-ignored; README's Development checks updated). Verified by execution: the smoke passes in 1.6 s against the rebuilt compose stack (healthz ok, demo-fixture-v1) — a rebuild that also applied migration 0020 to the stack database — and `npm run build` still passes. Two scope notes from the run: (1) the spec's first draft assumed a row click opens a structure drawer; the real affordance is the evidence inspector, and the smoke follows the real UI — no application code changed; (2) the smoke is deliberately **not** wired into CI, because CI has no seeded stack; connecting them is its own later step. **B-17 leaves the table.** Final order after this round: the table's head is **B-09** (gated on scientific review); **B-11, B-21, B-22 keep operator gates** (provider choice; source decisions + credentials + ADRs); everything remaining is `LATER`-class with its gate named. No further engineering-startable item remains in the P2 group — the next move is the operator's (§6 hosted acceptance), or an ungated item must be added to the register first. |
+| 2026-09-16 | **Planning-only product review at `efb1357`** ([Q&A](2026-09-16-product-review-qa.md)). Added B-31…B-41: hosted acceptance, scientific cohort/cross-read, target export parity, build identity, full CI, mixed-project navigation, precise citation navigation, browser failure regression, reproducible target state, bounded SAR comparison and ambiguity selection. B-33 is the first engineering candidate; B-31 remains the operator gate. Promoted B-30 to P1/CORE, B-19/B-29 to P2/NEXT; narrowed B-21 to a P2/NEXT source decision and deferred B-22 to P3; B-09 follows validation of the present cohort; split B-11's ungated explanation from gated provider evaluation; ranked B-28 as P3. Reasons and dependencies are in §1. Corrected stale handoff/capability/architecture claims; preserved historical artifacts and completed-item records. Static source inspection and document consistency only: no application changes, tests, builds, browser/source calls, acceptance execution, commit or push. |

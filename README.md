@@ -2,8 +2,9 @@
 
 **Small molecule patent analysis GO**
 
-SPAgo connects patent search, chemical structures, bioactivity, SAR, claims and source
-evidence in one browser-first workflow. It is built for medicinal and computational
+SPAgo is built to connect patent search, chemical structures, bioactivity, SAR, claims
+and source evidence in one browser-first workflow. Claim-text ingestion and full
+cross-family SAR remain planned. It serves medicinal and computational
 chemists and patent researchers who today move repeatedly between patent websites,
 PDFs, chemistry tables, public databases and general-purpose LLMs.
 
@@ -21,6 +22,12 @@ what this build supports — and deliberately does not — is
 ---
 
 ## Status — 2026-09-16
+
+Planning-only review at `efb1357`: the local product and selected live-source paths
+have historical verification; hosted acceptance and independent scientific review
+remain open. No runtime checks were repeated in that review. See the
+[product review Q&A](docs/plans/2026-09-16-product-review-qa.md) and
+[prioritized backlog](docs/plans/backlog.md) for current findings and proposed work.
 
 **Implemented and locally verified** (per-round records are linked at the end of this
 section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
@@ -94,8 +101,11 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
   startup, saved projects that reopen across sessions and restarts, exact /
   substructure / similarity search on cartridge-indexed chemistry, typed
   targets/assays/measurements with provenance, a thin MV3 Chrome context bridge, and
-  CSV/SDF export whose scope equals exactly the current filter (re-executed
-  server-side, including rows the browser never loaded).
+  CSV/SDF export of family/document selections and structure queries (re-executed
+  server-side, including rows the browser never loaded). Target exports currently
+  omit active threshold/evidence filters (B-33); mixed-project navigation (B-36) and
+  exact summary-citation navigation (B-37) also have static findings awaiting browser
+  reproduction. These limits qualify the broader workflow claim.
 - **Real patent data path:** `scripts/extract_surechembl.py` extracts a patent-family
   package from the official SureChEMBL bulk release (EMBL-EBI FTP, Parquet, CC BY 4.0)
   over HTTP range reads, and `python -m spago_core.import_package <dir>` ingests it with a
@@ -118,10 +128,10 @@ invited-user script — is
 [`docs/plans/2026-09-15-bindingdb-io-port.md`](docs/plans/2026-09-15-bindingdb-io-port.md)
 §6–§7 and [`docs/archive/2026-09-15-product-readiness.md`](docs/archive/2026-09-15-product-readiness.md).
 
-Live coverage is genuinely thin for some acceptance targets (human TSLP has one
-small-molecule candidate in these sources; IL-6R has one, and BindingDB does not answer
-for it). That is reported honestly rather than as promising inhibitor coverage:
-[`benchmarks/online00-coverage-2026-09-15.md`](benchmarks/online00-coverage-2026-09-15.md).
+Recorded source coverage is thin for some acceptance targets; it is not an inhibitor
+guarantee. Source-only coverage and a workspace supplemented by a person are different
+sets. Dated observations and the remaining cohort-validation gap (B-32) are described
+in [`docs/online-capability.md`](docs/online-capability.md) §5/§8.
 
 The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*`
 identifiers). It is not scientific data.
@@ -268,7 +278,7 @@ publication](docs/online-capability.md) for the served contract.
 
 ## How it works
 
-The product loop the implementation is built around:
+The intended product loop (claims and full cross-family SAR are not delivered):
 
 ```text
 Search → patent family → compounds → structure filtering → bioactivity/SAR
@@ -305,7 +315,7 @@ sources, query architecture, UI model, non-goals — is [`PROMPT.md`](PROMPT.md)
 apps/web/                 React + TypeScript workspace (Vite)
 apps/chrome-extension/    optional MV3 context bridge (URL-only detection)
 services/core/            FastAPI service
-  spago_core/adapters/    external sources: SureChEMBL, EPO OPS, ChEMBL, BindingDB,
+  spago_core/adapters/    external sources: SureChEMBL, ChEMBL, BindingDB,
                           PubChem, UniProt, LLM endpoint
   spago_core/chemistry/   deterministic chemistry: RDKit engine, modality, activity classes
   spago_core/services/    discovery, reference verdict, supplements, summaries, export,
@@ -332,9 +342,9 @@ implementation requires it.
 | M0 Foundation and benchmarks | implemented; [`docs/archive/2026-09-14-m0-foundation.md`](docs/archive/2026-09-14-m0-foundation.md) |
 | M1 Patent chemistry viewer | implemented, with the embedded Ketcher editor (cost and behaviour: `benchmarks/online08-structure-editor-2026-09-16.md`) |
 | M2 Structure search | implemented (exact / substructure / similarity, cartridge-indexed) |
-| M3 Bioactivity and SAR | implemented for open sources; see the online capability statement |
+| M3 Bioactivity and SAR | open-source activity/evidence and scoped tables implemented; full cross-family SAR remains later |
 | M4 Chrome companion | thin MV3 bridge; unpacked load, detection, handoff, side-panel render and the panel-behavior flag (`openPanelOnActionClick`, read back from the running worker) verified in a real unbranded Chromium (`apps/chrome-extension/verify-in-chrome.js`); the physical toolbar click and the panel surface chrome are not covered |
-| M5 Evidence-grounded AI | implemented offline and against one live provider |
+| M5 Evidence-grounded AI | scoped summaries/plans implemented offline and against one historically measured provider; scientific entailment and exact citation navigation remain open |
 | ONLINE-00…07 | implemented locally; see **Status** above |
 | ONLINE-04 hosted deployment, ONLINE-05 invited-user acceptance | **open** — gate and script: [capability §6](docs/online-capability.md) |
 | M6 PDF/OCSR fallback | intentionally not started (structured sources first) |

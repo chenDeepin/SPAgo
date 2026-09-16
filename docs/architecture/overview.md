@@ -1,10 +1,13 @@
 # SPAgo Architecture Overview
 
-Status: **implemented shape with the online path (ONLINE-00…07) locally verified and
-hosted acceptance still open**, reviewed against the current checkout at `4c90e13`.
+Status: **implemented shape with historical local/selected live-source verification;
+hosted acceptance still open**, reviewed against checkout `efb1357` on 2026-09-16.
+This was a static, documentation-only review, not a new runtime verification.
 Scope statement: [`docs/online-capability.md`](../online-capability.md). Active
 direction: [`docs/plans/2026-09-15-online-llm.md`](../plans/2026-09-15-online-llm.md).
-The rounds this shape was built through are archived in `docs/archive/`: the M0-only
+Current findings and ordered proposals:
+[`product review Q&A`](../plans/2026-09-16-product-review-qa.md) and
+[`backlog`](../plans/backlog.md). The rounds this shape was built through are archived in `docs/archive/`: the M0-only
 framing in `2026-09-14-m0-foundation.md`, the M1–M5 implementation in
 `2026-09-14-m1-m5-implementation.md`, the readiness and repair rounds in
 `2026-09-15-product-readiness.md` and `2026-09-14-ui-review-next-round.md`. Decisions
@@ -23,7 +26,7 @@ services/core (FastAPI, Python)
     │              structure search · AI summaries
     ├─ adapters/   external-source contracts: patent fixtures,
     │              real SureChEMBL bulk packages, bioactivity fixture,
-    │              ChEMBL (webservice), BindingDB (user-provided TSV),
+    │              UniProt, ChEMBL, BindingDB REST/operator TSV, PubChem,
     │              LLM Chat Completions
     ├─ chemistry/  RDKit engine (canonicalization, InChIKey,
     │              descriptors, Murcko scaffolds, depictions)
@@ -86,11 +89,13 @@ apps/web     (search → family → compounds → evidence/structure search)
   `dataset_info` row registered are still listed and labelled as not an imported
   package; a publication absent from the corpus stays an explicit not-found.
 
-- Demo vs real deployment: `SPAGO_SEED_MODE=none` applies migrations without
-  the demo fixture; real data arrives only via the explicit
+- Demo vs imported corpus: `SPAGO_SEED_MODE=none` applies migrations without
+  the demo fixture; real corpus packages arrive via the explicit
   `python -m spago_core.import_package <dir>` command, which records a durable
   `import_jobs` row (status, file SHA-256 checksums, ingest summary) and is
-  idempotent. `dataset_info` holds every loaded source; the UI badge, empty
+  idempotent. `dataset_info` registers imported package sources; online/snapshot
+  retrievals also enter through their service paths and use `source_retrievals`.
+  The UI badge, empty
   state, table footer and save dialog label data by its actual source.
 - Real SureChEMBL mapping (PROD-01): family/document ids derive from
   SureChEMBL numeric ids; a mention is one (compound, document, patent-field)
@@ -98,6 +103,19 @@ apps/web     (search → family → compounds → evidence/structure search)
   labels are not in the bulk data and display "not provided" instead of being
   invented; every evidence record links to the Espacenet publication page for
   manual verification (a link, never automation).
+- Target-led discovery: UniProt resolution and reviewed scope → bounded source
+  adapters → normalized candidates/assays/measurements and per-source retrieval
+  outcomes. Per-source retry writes only the requested sources. The snapshot adapter
+  is an operator CLI path; no interactive request scans the bulk file. Current target
+  reads use `investigation_measurements`; potency classes/verdicts are computed on read.
+- Patent-led declarations (B-24) live in `patent_source_lookups` /
+  `patent_source_compounds`, not `compound_mentions`. Publication coverage (B-26) reads
+  corpus/declared/supplement legs without upstream calls or a sum across provenance
+  classes. It has no dedicated snapshot leg; its fixed snapshot-unavailable note is
+  stale after B-23 (B-32), even though the operator path exists.
+- Supplement bundles (B-25) record producer, search note, per-row outcomes and
+  confirmation. Unconfirmed proposals remain outside candidates/verdict/exports;
+  human confirmation is a recorded action, and withdrawal preserves history.
 - Import review contract: packages preserve retrieval timestamps and dated source
   versions, validate manifest provenance/checksums/associations, and cap tables
   at 100,000 rows. Unknown source fields remain unknown; source-vs-normalized
@@ -105,9 +123,12 @@ apps/web     (search → family → compounds → evidence/structure search)
   Mentions upsert by stable source-occurrence UUID; local labels are not unique
   identifiers. Import issues are refreshed only for the package documents.
   Global compound version records initial identity ingestion; current scoped
-  source versions come from mentions/evidence. Missing/invalid mapping retraction
-  and interrupted-job recovery are still undefined, so imports are not a complete
-  release-replacement protocol.
+  source versions come from mentions/evidence. B-04 retracts mappings within the
+  package's document coverage and measurements within a complete activity source
+  release, retaining reasons/versions; identity rows persist. Interrupted imports are
+  recovered by an idempotent re-run whose summary names the interrupted jobs.
+  Document absence beyond package coverage and online retrieval absence are not a
+  complete release-replacement protocol (B-30).
 - Saved projects: migration 0008 keeps family/compound UUIDs and saved identity
   snapshots when source rows disappear; project ownership deletion still cascades.
   Per-item source/version lists are scoped to its family. Reads report missing
@@ -137,7 +158,9 @@ apps/web     (search → family → compounds → evidence/structure search)
   (inchikey, canonical SMILES) and the full version list; reading reports
   `source_updated`/`record_missing` drift instead of silently absorbing data
   changes. The UI reopens a project via Projects → Open, restoring the family
-  view and the saved selection.
+  view and the saved selection; a single target's candidates can also reopen without
+  a patent mapping. Navigation across every target/family in a mixed project is
+  incomplete (B-36), and analyses are not yet project artifacts (B-29).
 - AI summaries: default is the offline extractive provider
   (`machine_extracted`). With `SPAGO_LLM_BASE_URL`/`SPAGO_LLM_API_KEY`/
   `SPAGO_LLM_MODEL` configured, the AI tab can call one OpenAI-compatible
@@ -148,7 +171,11 @@ apps/web     (search → family → compounds → evidence/structure search)
   LLM output labeled `llm_inferred`. If the irreducible metadata alone exceeds the 32 KiB
   budget the request fails before any provider call. `GET /api/v1/ai/status` reports
   offline/configured/config_invalid without calling the provider. The planner
-  parses publication-number identifiers only.
+  handles deterministic publication identifiers and reviewed target entities offline;
+  the configured model may propose typed allowlisted operations, validated and shown
+  before explicit execution. Analyses can be listed/reopened/exported without a model
+  call (B-10), with a recomputed staleness check. Exact citation navigation remains
+  incomplete in several UI paths (B-37).
 - LLM execution uses one shared synchronous HTTP client and process-local in-flight
   tracking (two calls, one worker); no provider fallback exists. Failures that may
   not have been billed — timeout, upstream throttle, auth, transport, protocol —
@@ -160,8 +187,9 @@ apps/web     (search → family → compounds → evidence/structure search)
   from other upstream failures (502). See
   [the LLM contract record](../archive/2026-09-14-llm-interface.md) and
   [the live-smoke record](../archive/2026-09-15-llm-live-smoke.md).
-- URL state: `?q=&doc=&c=`; new searches push history entries, selection
-  replaces; Back/Forward restore via popstate.
+- URL state: `?q=&doc=&c=&t=`; new searches push history entries, selection
+  replaces; Back/Forward restore encoded identifiers via popstate. Target modality,
+  evidence-class filter and threshold override remain in component state (B-39).
 - Deployment shape: both published ports bind to loopback by default
   (`SPAGO_APP_BIND`/`SPAGO_DB_BIND`); backup/restore/upgrade are documented and
   drilled in [docs/runbook.md](../runbook.md).
@@ -187,21 +215,20 @@ apps/web     (search → family → compounds → evidence/structure search)
   Verified with a 601-compound synthetic fixture
   (`benchmarks/paging-beyond-cap-2026-09-15.md`); the 150-row historical check is kept
   as a separate, narrower record.
-- Source acceptance remains fixture/local-mock only in the recorded runs;
-  real patent-source coverage and real-model compatibility remain unverified.
-- Real ChEMBL/BindingDB adapter classes currently have no production import caller;
-  seed uses the activity fixture. A real source needs identity mapping, validated
-  import/persistence and per-record source navigation, not just a live adapter call.
-- Export only accepts family/document/explicit IDs; it does not express the active
-  structure query, despite the UI's “Current results” label. The 5000-row limit is
-  currently checked after SQL result materialization. Both need correction before
-  real-data delivery (PROD-02).
-- Project APIs persist records, but the Web App has no project-reopening flow;
-  source-version validation and behavior after source updates remain acceptance
-  gaps (PROD-03). There is no user ownership or project authorization model.
-- Local deployment defaults publish PostgreSQL on all host interfaces even though
-  the app binds to loopback. PROD-04 corrects this and adds verified backup/restore;
-  shared hosting separately requires PROD-08. The first release target is single-user.
+- Source evidence includes real SureChEMBL imports, bounded open-database retrievals,
+  an operator snapshot and one measured model provider. Independent scientific
+  cross-reading and hosted user acceptance remain open; different cohort workspaces
+  must not be treated as identical source-only baselines (B-32).
+- Target export differs from the family/structure export path: the browser currently
+  omits its active threshold and evidence filter, and the backend export contract has
+  no evidence-class parameter (B-33). Static inspection establishes the missing
+  parameters; a browser download reproduction remains to be done.
+- Hosted mode implements invitations, sessions, owner-scoped projects/analyses and
+  quotas; local mode disables auth deliberately. Both published ports default to
+  loopback. A real host/TLS/backup/restore/user run is still required by capability §6.
+- CI uses the selected `--no-pg` check path, not the full database suite or browser
+  smoke (B-35). `/healthz` reports a package API version, not an immutable build
+  identity (B-34). Prior passing runs are not evidence for an unverified server.
 
 ## Performance baseline
 
