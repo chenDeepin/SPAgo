@@ -315,10 +315,15 @@ re-dated. Every row in the response carries `requested_in_run`, and a source tha
 never been asked still reads `not_queried` (a fact, not an empty result). Naming no
 source is refused with 422.
 
-What it does **not** do, and must not be read as: retracting rows a source no longer
-returns. A failed or bound-limited ask establishes no absence, so nothing is
-retracted; whether a *complete* ask should retract the rows it no longer contains is
-register item B-30, not implemented. A stored analysis is a snapshot and stays as it
+What it does **not** do: establish absence. A failed or bound-limited ask retracts
+nothing — an outage must not become a deletion. What a *complete* (or explicitly
+`empty`) ask does (B-30, migration 0021): the candidate rows of that same target,
+source and **access path** that the refreshed release no longer returns are retracted
+— never deleted — with the withdrawing retrieval named in `retracted_reason`; the
+response reports the count per source as `retracted_candidates`, and re-delivery on a
+later run restores the row automatically. Rows of another access path (a snapshot row
+during a REST re-ask, say) and rows with no recorded access path are never retracted.
+A stored analysis is a snapshot and stays as it
 is; the potency verdict is recomputed from the stored rows, so it does reflect the
 retry. In the UI the control appears on the target header's failed/partial chip, with
 that source's own last-run cost beside it.

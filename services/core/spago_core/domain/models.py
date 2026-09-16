@@ -451,6 +451,11 @@ class SourceRetrieval(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     checksum: Optional[str] = None
     retrieved_at: datetime
+    #: B-30: candidates of this source, within this access path, that the
+    #: complete ask whose outcome this row describes retracted because its
+    #: release no longer returned them. Meaningful on a run's response; a
+    #: stored-state read leaves the default and says nothing about any run.
+    retracted_candidates: int = 0
 
 
 class TargetCandidateEntry(BaseModel):

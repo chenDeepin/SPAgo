@@ -398,6 +398,10 @@ export interface SourceRetrieval {
    * means the row reports the source's last stored outcome, which that run did
    * not touch; `null`/absent on a stored-state read, where no run is described. */
   requested_in_run?: boolean | null;
+  /** B-30: candidates of this source, within this access path, that the
+   * complete ask retracted because its release no longer returned them.
+   * Meaningful only on a run response (`requested_in_run` present). */
+  retracted_candidates?: number;
 }
 
 export interface DiscoverResponse {

@@ -394,8 +394,16 @@ export function App() {
   const discoverMutation = useMutation({
     mutationFn: () =>
       api.discoverTarget({ target_id: resolvedTargetId as string, sources: ["chembl", "bindingdb", "pubchem"] }),
-    onSuccess: () => {
-      setDiscoverNote(null);
+    onSuccess: (response) => {
+      const retractedTotal = response.sources.reduce(
+        (sum, entry) => sum + (entry.retracted_candidates ?? 0),
+        0,
+      );
+      setDiscoverNote(
+        retractedTotal > 0
+          ? `The refreshed releases no longer return ${retractedTotal} candidate row(s); they are retracted, not deleted — a later retrieval that returns them restores them.`
+          : null,
+      );
       queryClient.invalidateQueries({ queryKey: ["target-coverage", resolvedTargetId] });
       queryClient.invalidateQueries({ queryKey: ["candidates", resolvedTargetId] });
       queryClient.invalidateQueries({ queryKey: ["target", resolvedTargetId] });
@@ -422,10 +430,15 @@ export function App() {
       const others = response.sources
         .filter((entry) => entry.source_name !== source)
         .map((entry) => entry.source_name);
+      const retracted = row?.retracted_candidates ?? 0;
       setDiscoverNote(
         `Asked ${source} only: ${row?.status ?? "unknown"} · ${row?.records_kept ?? 0} kept of ` +
           `${row?.records_seen ?? 0} seen · ${response.candidates_stored} candidate row(s) ` +
-          `stored by this run.${others.length > 0 ? ` ${others.join(", ")} not asked again — their stored outcomes are unchanged.` : ""}`,
+          `stored by this run.` +
+          (retracted > 0
+            ? ` The refreshed release no longer returns ${retracted} row(s); they are retracted, not deleted.`
+            : "") +
+          `${others.length > 0 ? ` ${others.join(", ")} not asked again — their stored outcomes are unchanged.` : ""}`,
       );
       queryClient.invalidateQueries({ queryKey: ["target-coverage", resolvedTargetId] });
       queryClient.invalidateQueries({ queryKey: ["candidates", resolvedTargetId] });

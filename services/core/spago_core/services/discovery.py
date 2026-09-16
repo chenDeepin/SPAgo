@@ -184,6 +184,10 @@ class TargetDiscoveryService:
         report = DiscoveryReport(
             target_id=target.id, target_key=target.target_key, requested_sources=source_list
         )
+        # B-30: rows persisted by this run carry `retrieved_at` inside the write
+        # transaction; anything still stamped before this timestamp when the
+        # transaction closes belongs to an earlier ask of the same access path.
+        run_started = datetime.now(timezone.utc)
         # Read once, before the write transaction: the outcomes this run is not
         # producing are reported and left exactly as they are.
         stored = {r.source_name: r for r in list_source_retrievals(engine, target.id)}
@@ -270,8 +274,22 @@ class TargetDiscoveryService:
             )
             report.measurements_stored = measurement_ids
 
+            access_paths = {
+                r.source_name: r.source_version
+                for r in report.retrievals
+                if r.source_name in asked and r.source_version
+            }
             report.candidates_stored = self._persist_candidates(
-                conn, target, collected, normalized, retrieval_ids
+                conn, target, collected, normalized, retrieval_ids, access_paths
+            )
+
+            # B-30: a complete (or explicitly empty) ask states what its release
+            # no longer contains. Rows of the same target, source and access
+            # path that this run did not re-deliver are retracted — never
+            # deleted — with the retrieval that withdrew them named in the
+            # reason. Failed, partial and unasked sources establish no absence.
+            self._retract_dropped_candidates(
+                conn, target, run_started, report.retrievals, asked
             )
 
         for candidate in normalized.values():
@@ -814,6 +832,7 @@ class TargetDiscoveryService:
         records: list[ActivityRecord],
         normalized: dict[str, _NormalizedCandidate],
         retrieval_ids: dict[str, uuid.UUID],
+        access_paths: dict[str, str] | None = None,
     ) -> int:
         """One candidate row per (target, source, source record).
 
@@ -823,6 +842,7 @@ class TargetDiscoveryService:
         """
         stored = 0
         seen: set[tuple[str, str]] = set()
+        access_paths = access_paths or {}
         for record in records:
             source = _source_of(record)
             key = (source, record.source_record_id)
@@ -839,15 +859,18 @@ class TargetDiscoveryService:
                     INSERT INTO target_candidates (id, target_id, compound_id, source_name,
                                                    source_record_id, source_molecule_id,
                                                    evidence_class, modality, retrieval_id,
+                                                   source_version,
                                                    dataset_version, retrieved_at)
                     VALUES (:id, :target_id, :compound_id, :source_name,
                             :source_record_id, :source_molecule_id,
                             :evidence_class, :modality, :retrieval_id,
+                            :source_version,
                             :dataset_version, :retrieved_at)
                     ON CONFLICT (target_id, source_name, source_record_id) DO UPDATE
                       SET evidence_class = EXCLUDED.evidence_class,
                           modality = EXCLUDED.modality,
                           retrieval_id = EXCLUDED.retrieval_id,
+                          source_version = EXCLUDED.source_version,
                           retrieved_at = EXCLUDED.retrieved_at,
                           -- A row a refresh retracted and a later retrieval
                           -- brings back is current again (migration 0015).
@@ -867,6 +890,11 @@ class TargetDiscoveryService:
                     "evidence_class": record.evidence_class.value,
                     "modality": candidate.modality.value,
                     "retrieval_id": retrieval_ids.get(source),
+                    # The row's own access-path statement (B-30): the retrieval
+                    # row is shared per (target, source) and its source_version
+                    # is overwritten by whichever path asked last, so this
+                    # column — not the retrieval link — scopes retraction.
+                    "source_version": access_paths.get(source),
                     "dataset_version": target.dataset_version or "external:open-databases",
                     "retrieved_at": datetime.now(timezone.utc),
                 },
@@ -875,6 +903,65 @@ class TargetDiscoveryService:
         return stored
 
     # -- helpers --------------------------------------------------------------
+
+    @staticmethod
+    def _retract_dropped_candidates(
+        conn,
+        target: ResolvedTarget,
+        run_started: datetime,
+        retrievals: list[SourceRetrieval],
+        asked: set[str],
+    ) -> None:
+        """B-30: retract what a complete ask's release no longer contains.
+
+        Absence is established only by an ask that *answered the whole
+        question* — `complete`, or `empty` (the source responded with nothing,
+        which is a positive statement about the release for this query). A
+        `failed` or bound-limited `partial` ask retracts nothing, or an outage
+        would become a deletion.
+
+        Scope is target + source + access path: the candidate rows carry their
+        own `source_version` (migration 0021) because the shared retrieval row
+        cannot answer this — one row per (target, source) whose source_version
+        is overwritten by whichever path asked last. A REST re-ask therefore
+        never retracts snapshot rows and a snapshot pass never retracts REST
+        rows. Rows written before that migration have no access path and are
+        never retracted: an unknown origin must not become an inferred
+        absence. Rows are retracted, never deleted, and re-delivery clears the
+        retraction (the upsert above).
+        """
+        for retrieval in retrievals:
+            if retrieval.source_name not in asked or not retrieval.source_version:
+                continue
+            if retrieval.status not in (RetrievalStatus.COMPLETE, RetrievalStatus.EMPTY):
+                continue
+            reason = (
+                f"superseded by complete retrieval via {retrieval.source_version}"
+                + (f" ({retrieval.dataset_version})" if retrieval.dataset_version else "")
+                + "; the refreshed release no longer returns this record"
+            )
+            rows = conn.execute(
+                text(
+                    """
+                    UPDATE target_candidates tc
+                    SET retracted_at = now(), retracted_reason = :reason
+                    WHERE tc.target_id = :tid
+                      AND tc.source_name = :source
+                      AND tc.source_version = :access_path
+                      AND tc.retracted_at IS NULL
+                      AND tc.retrieved_at < :run_started
+                    RETURNING tc.id
+                    """
+                ),
+                {
+                    "tid": target.id,
+                    "source": retrieval.source_name,
+                    "access_path": retrieval.source_version,
+                    "run_started": run_started,
+                    "reason": reason,
+                },
+            ).fetchall()
+            retrieval.retracted_candidates = len(rows)
 
     def _assay_target_row(
         self,

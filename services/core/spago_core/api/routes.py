@@ -1864,6 +1864,10 @@ class RetrievalResponse(BaseModel):
     #: source's last stored outcome, which this run did not touch. Null on a
     #: stored-state read (`/targets/{id}/coverage`), where no run is described.
     requested_in_run: Optional[bool] = None
+    #: B-30: candidates of this source, within this access path, that the
+    #: complete ask retracted because its release no longer returned them.
+    #: Zero-and-not-requested and a stored-state read are different facts.
+    retracted_candidates: int = 0
 
 
 class ActiveCompoundResponse(BaseModel):
@@ -2064,6 +2068,7 @@ def discover_target(
                 checksum=r.checksum,
                 retrieved_at=r.retrieved_at.isoformat(),
                 requested_in_run=r.source_name in asked,
+                retracted_candidates=r.retracted_candidates,
             )
             for r in report.retrievals
         ],
