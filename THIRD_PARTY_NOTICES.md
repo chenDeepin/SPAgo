@@ -80,6 +80,15 @@ this pin, the `dist/binaryWasm` entry's missing `types` condition (declared in
 **Build / types (dev):** Vite (MIT), `@vitejs/plugin-react` (MIT),
 TypeScript (Apache-2.0), `@types/react` / `@types/react-dom` (MIT).
 
+**End-to-end test harness (dev, B-17):** `@playwright/test` (Apache-2.0,
+Microsoft) drives the one browser smoke of the MVP workflow loop
+(`apps/web/e2e/smoke.spec.ts`) against a seeded stack. Dev-only: it is never
+bundled into the served application, and its browser builds live in the
+developer's Playwright cache (`~/.cache/ms-playwright`), outside the repository.
+Alternatives considered: Cypress (license and architecture heavier for one
+smoke) and component-level Vitest/Testing Library (does not exercise the real
+workflow loop in a real browser). Added in the same change as its first use.
+
 ### Transitive frontend notes
 
 A full `npm` install may pull additional MIT/ISC/Apache-2.0 packages.
