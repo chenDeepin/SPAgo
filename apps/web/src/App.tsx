@@ -112,6 +112,10 @@ export function App() {
   } | null>(null);
   const projectNavigationAbort = useRef<AbortController | null>(null);
   const [openedProjectFamilyId, setOpenedProjectFamilyId] = useState<string | null>(null);
+  // B-36: the target scope an opened mixed project is currently showing, the
+  // sibling of openedProjectFamilyId — a project may hold several targets and
+  // families, and the banner's scope switcher needs to know which one is open.
+  const [openedProjectTargetId, setOpenedProjectTargetId] = useState<string | null>(null);
   // Compounds the opened project saved for the current target. Kept in state, not
   // in the URL: a project can hold many items, and the URL carries the selected
   // one only (AGENTS.md §19). They are passed to the candidate query so a saved
@@ -486,6 +490,7 @@ export function App() {
     if (projectNavigationAbort.current) {
       setOpenedProject(null);
       setOpenedProjectFamilyId(null);
+      setOpenedProjectTargetId(null);
       setProjectError(null);
     }
     projectNavigationAbort.current?.abort();
@@ -498,6 +503,7 @@ export function App() {
     cancelProjectNavigation();
     setOpenedProject(null);
     setOpenedProjectFamilyId(null);
+    setOpenedProjectTargetId(null);
     setProjectError(null);
     setProjectSavedCompoundIds([]);
   }, [cancelProjectNavigation]);
@@ -729,6 +735,8 @@ export function App() {
       projectNavigationAbort.current = controller;
       setOpenedProject(project);
       setOpenedProjectFamilyId(savedFamilyId);
+      setOpenedProjectTargetId(null);
+      setProjectSavedCompoundIds([]);
       setProjectError(null);
       setProjectLoading(true);
       setSelectedIds(new Set());
@@ -767,6 +775,54 @@ export function App() {
     [cancelProjectNavigation, submittedQuery, updateUrl],
   );
 
+  // B-36: reopening one saved target scope of a project, the sibling of
+  // openProjectFamily — a candidate item has no family, so it reopens in the
+  // target investigation it was saved from (ONLINE-00 C). Switching scopes
+  // cancels any in-flight project navigation so an older response cannot
+  // overwrite the scope the reader just chose.
+  const openProjectTarget = useCallback(
+    (project: ProjectDetail, targetId: string) => {
+      cancelProjectNavigation();
+      setOpenedProject(project);
+      setOpenedProjectFamilyId(null);
+      setOpenedProjectTargetId(targetId);
+      setProjectError(null);
+      setSelectedIds(new Set());
+      const items = project.items.filter((it) => it.target_id === targetId);
+      const usable = items.find((it) => !it.record_missing) ?? items[0];
+      if (!usable) {
+        setProjectError("This saved target scope has no items.");
+        return;
+      }
+      structurePagingAbort.current?.abort();
+      setProjectSavedCompoundIds(
+        items
+          .filter((it) => it.compound_id)
+          .map((it) => it.compound_id as string),
+      );
+      setSearchSummary(null);
+      setStructurePaging(false);
+      setStructurePagingError(null);
+      setSubmittedQuery(null);
+      setTargetQuery(usable.target_key ?? usable.target_name ?? "");
+      setEvidenceClassFilter(null);
+      // Defect D2: reopening a project restores the scope the reader was in, not
+      // a wider one. The saved compound is selected and, if the filter excludes
+      // it, comes back as a labelled `outside_filter` row (`candidateItemsQuery`
+      // below) — so the item stays visible without a control moving by itself.
+      updateUrl(
+        {
+          q: usable.target_key ?? null,
+          doc: null,
+          c: usable.compound_id ?? null,
+          t: targetId,
+        },
+        "push",
+      );
+    },
+    [cancelProjectNavigation, updateUrl],
+  );
+
   const openProject = useCallback((project: ProjectDetail) => {
     cancelProjectNavigation();
     setProjectsOpen(false);
@@ -774,6 +830,7 @@ export function App() {
     setProjectError(null);
     setSelectedIds(new Set());
     setOpenedProjectFamilyId(null);
+    setOpenedProjectTargetId(null);
     const first = project.items.find((it) => !it.record_missing) ?? project.items[0];
     if (!first) {
       structurePagingAbort.current?.abort();
@@ -789,41 +846,14 @@ export function App() {
       void openProjectFamily(project, first.family_id);
       return;
     }
-    // A candidate item has no family: reopen it in the target investigation it
-    // was saved from, so a non-patent candidate is as reopenable as a patent
-    // compound (ONLINE-00 C).
     if (first.target_id) {
-      structurePagingAbort.current?.abort();
-      setProjectSavedCompoundIds(
-        project.items
-          .filter((it) => it.target_id === first.target_id && it.compound_id)
-          .map((it) => it.compound_id as string),
-      );
-      setSearchSummary(null);
-      setStructurePaging(false);
-      setStructurePagingError(null);
-      setSubmittedQuery(null);
-      setTargetQuery(first.target_key ?? first.target_name ?? "");
-      setEvidenceClassFilter(null);
-      // Defect D2: reopening a project restores the scope the reader was in, not
-      // a wider one. The saved compound is selected and, if the filter excludes
-      // it, comes back as a labelled `outside_filter` row (`candidateItemsQuery`
-      // below) — so the item stays visible without a control moving by itself.
-      updateUrl(
-        {
-          q: first.target_key ?? null,
-          doc: null,
-          c: first.compound_id ?? null,
-          t: first.target_id,
-        },
-        "push",
-      );
+      openProjectTarget(project, first.target_id);
       return;
     }
     setProjectError(
       "This saved item has neither a patent family nor a target scope, so it cannot be opened.",
     );
-  }, [cancelProjectNavigation, openProjectFamily, updateUrl]);
+  }, [cancelProjectNavigation, openProjectFamily, openProjectTarget, updateUrl]);
 
   useEffect(() => {
     if (!pendingProjectSelection || !patentQuery.data) return;
@@ -833,13 +863,40 @@ export function App() {
     setPendingProjectSelection(null);
   }, [pendingProjectSelection, patentQuery.data, submittedQuery, urlState.doc]);
 
-  const openedProjectFamilies = useMemo(() => {
-    const families = new Map<string, string>();
-    for (const item of openedProject?.items ?? []) {
-      // Candidate items have no family and are reopened through their target.
-      if (item.family_id) families.set(item.family_id, item.family_key ?? item.family_id);
+  // B-36: every saved scope of the opened project — families and target
+  // investigations side by side, each with its saved-item count, so a mixed
+  // project's banner can offer the same switcher both views show. The counts
+  // include missing records on purpose: a scope whose rows all vanished stays
+  // listed and labelled rather than silently dropping out of the project.
+  const openedProjectScopes = useMemo(() => {
+    if (!openedProject) return [] as { kind: "family" | "target"; id: string; label: string; count: number }[];
+    const scopes = new Map<string, { kind: "family" | "target"; id: string; label: string; count: number }>();
+    for (const item of openedProject.items) {
+      if (item.family_id) {
+        const key = `family:${item.family_id}`;
+        const existing = scopes.get(key);
+        if (existing) existing.count += 1;
+        else
+          scopes.set(key, {
+            kind: "family",
+            id: item.family_id,
+            label: item.family_key ?? item.family_id,
+            count: 1,
+          });
+      } else if (item.target_id) {
+        const key = `target:${item.target_id}`;
+        const existing = scopes.get(key);
+        if (existing) existing.count += 1;
+        else
+          scopes.set(key, {
+            kind: "target",
+            id: item.target_id,
+            label: item.target_key ?? item.target_name ?? item.target_id,
+            count: 1,
+          });
+      }
     }
-    return Array.from(families, ([id, label]) => ({ id, label }));
+    return Array.from(scopes.values());
   }, [openedProject]);
 
   const openedProjectVersions = useMemo(() => {
@@ -1032,7 +1089,43 @@ export function App() {
                 <span>
                   Project <strong>{openedProject.name}</strong> · {openedProject.item_count} saved
                   item{openedProject.item_count === 1 ? "" : "s"} · reopened from saved target scope
+                  {openedProjectDrift.missing > 0 && (
+                    <span className="paging-error">
+                      {" "}
+                      · {openedProjectDrift.missing} saved record(s) no longer in the data
+                    </span>
+                  )}
+                  {openedProjectDrift.updated > 0 && (
+                    <span className="paging-error">
+                      {" "}
+                      · {openedProjectDrift.updated} record(s) changed source version since saving
+                    </span>
+                  )}
                 </span>
+                {openedProjectScopes.length > 1 && (
+                  <label>
+                    Saved scope{" "}
+                    <select
+                      className="select-input"
+                      value={openedProjectTargetId ? `target:${openedProjectTargetId}` : ""}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value.startsWith("family:")) {
+                          void openProjectFamily(openedProject, value.slice("family:".length));
+                        } else if (value.startsWith("target:")) {
+                          openProjectTarget(openedProject, value.slice("target:".length));
+                        }
+                      }}
+                    >
+                      {openedProjectScopes.map((scope) => (
+                        <option key={`${scope.kind}:${scope.id}`} value={`${scope.kind}:${scope.id}`}>
+                          {scope.kind === "family" ? "Family " : "Target "}
+                          {scope.label} ({scope.count})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <span className="spacer" />
                 <button className="show-all-occ" onClick={closeProject} aria-label="Close project view">
                   Close project ×
@@ -1341,13 +1434,32 @@ export function App() {
                     </span>
                   )}
                 </span>
-                {openedProjectFamilies.length > 1 && (
+                {openedProjectScopes.length > 1 && (
                   <label>
-                    Saved family{" "}
-                    <select className="select-input" value={openedProjectFamilyId ?? ""}
-                      onChange={(event) => void openProjectFamily(openedProject, event.target.value)}>
-                      {openedProjectFamilies.map((family) => (
-                        <option key={family.id} value={family.id}>{family.label}</option>
+                    Saved scope{" "}
+                    <select
+                      className="select-input"
+                      value={
+                        openedProjectFamilyId
+                          ? `family:${openedProjectFamilyId}`
+                          : openedProjectTargetId
+                            ? `target:${openedProjectTargetId}`
+                            : ""
+                      }
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value.startsWith("family:")) {
+                          void openProjectFamily(openedProject, value.slice("family:".length));
+                        } else if (value.startsWith("target:")) {
+                          openProjectTarget(openedProject, value.slice("target:".length));
+                        }
+                      }}
+                    >
+                      {openedProjectScopes.map((scope) => (
+                        <option key={`${scope.kind}:${scope.id}`} value={`${scope.kind}:${scope.id}`}>
+                          {scope.kind === "family" ? "Family " : "Target "}
+                          {scope.label} ({scope.count})
+                        </option>
                       ))}
                     </select>
                   </label>
