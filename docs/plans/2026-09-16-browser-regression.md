@@ -44,6 +44,17 @@ fix verified by the committed spec on the rebuilt stack (`50caf8f-dirty`).
 coordinator run on the rebuilt stack, viewport 1280×720 default / 1600×1000 for
 target-view specs, stored data only.
 
+**CI shape (found the hard way, run 35125516718):** the first push failed the
+full-stack job because `export-contents` and `source-retry` read *stored*
+investigation rows, which the freshly seeded demo stack does not hold (its only
+target has zero candidates). Both specs now skip loudly on a bare stack
+("no stored IL6 investigation on this stack") instead of failing on absent
+data — manufacturing the rows would mean live source calls, which a browser
+spec must not make. On any workstation with a stored investigation (the beta
+shape) they run. Recorded with it: the IL6-URL specs' *resolve* step reaches
+the live UniProt endpoint even on a fresh stack — free, but an external
+dependency; hermetic resolve fixtures are a later polish.
+
 ## What the specs do not prove
 
 Live-source behaviour (the discover POST is fixture-answered: no real

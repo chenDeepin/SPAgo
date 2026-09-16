@@ -22,6 +22,19 @@ const IL6_URL =
 const THRESHOLD_MICROMOLAR = 5;
 const THRESHOLD_NANOMOLAR = String(THRESHOLD_MICROMOLAR * 1000);
 
+/** This spec reads a *stored* investigation: a freshly seeded demo stack holds
+ * no candidate rows, and manufacturing them here would mean live source calls
+ * (§5/§16 — a test that reaches the network proves a different thing). On a
+ * bare stack it skips loudly instead of failing on absent data. */
+async function requireStoredCandidates(page: import("@playwright/test").Page): Promise<void> {
+  const res = await page.request.get(
+    "/api/v1/targets/5ed5e9f2-c733-543f-96dd-f58ae5a1f618/candidates?limit=1",
+  );
+  const ok = res.ok();
+  const total = ok ? (await res.json()).total : 0;
+  test.skip(!ok || total === 0, "no stored IL6 investigation on this stack (fresh demo seed)");
+}
+
 test.use({ viewport: { width: 1600, height: 1000 } });
 
 /** Minimal quote-aware CSV splitter (standard library only, §23): patent
@@ -69,6 +82,7 @@ function parseCsv(text: string): string[][] {
 test("the candidates CSV matches the menu's count and the applied threshold policy", async ({
   page,
 }) => {
+  await requireStoredCandidates(page);
   await page.goto(IL6_URL);
 
   // The view is up: coverage chips and candidate rows answer from stored data.
