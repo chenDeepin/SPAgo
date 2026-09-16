@@ -74,6 +74,10 @@
 >    half is closed. If summary quality is measured again, add a **second provider**
 >    before quoting numbers. Runner and method:
 >    `benchmarks/online01-llm-eval-2026-09-15.md`.
+> 4. Engineering work that is *not* approved scope is collected, with its priority
+>    order, in `docs/plans/backlog.md`. That register is a proposal list, not a queue:
+>    an item there is not started, promised or authorized until it is deliberately
+>    picked and planned as its own round.
 >
 > Current source coverage is genuinely thin for some acceptance targets (human TSLP has
 > one small-molecule candidate in these sources; IL-6R has one, and BindingDB does not

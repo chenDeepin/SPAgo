@@ -159,6 +159,14 @@ deployment must satisfy. The dated register of what one earlier round did and di
 verify is kept as history in `docs/archive/2026-09-15-beta-acceptance.md` — it records a
 past run, it does not replace this list.
 
+**What hosted acceptance is.** Hosted acceptance is the deliberate decision that a
+*deployed* build may be handed to invited external users. It has two halves that must
+both hold: the operator checklist below (configuration, readiness, restore, model smoke,
+coverage, budget) and the invited-user script further down, executed by a person who did
+not implement the application, using only the browser, in one sitting. A run on the
+local compose stack is a **rehearsal**: it proves the workflow, not the deployment.
+Nothing else — a green test suite, a working demo, a passed review — substitutes for it.
+
 - [ ] Host/domain chosen; HTTPS terminated; `SPAGO_COOKIE_SECURE=true`.
 - [ ] `SPAGO_AUTH_MODE=required`, `SPAGO_SEED_MODE=none`, database listener private.
 - [ ] Model endpoint, model id and monthly token budget recorded; both quota
@@ -180,6 +188,60 @@ past run, it does not replace this list.
       stereochemistry and occurrence fields against the original sources.
 - [ ] Latency and cost targets for the chosen host and model defined, then
       measured for a go/no-go.
+
+### Success criteria
+
+All of the following must hold, each closed by an artifact rather than an assertion —
+a checked box without the output, report or record that produced it is not evidence.
+The run record names the build identity from `/healthz`.
+
+1. **Deployment shape is the reviewed one.** HTTPS terminates in front of the app;
+   `SPAGO_COOKIE_SECURE=true`; `SPAGO_AUTH_MODE=required`; `SPAGO_SEED_MODE=none`; a
+   connection attempt to the database port from outside fails.
+2. **Readiness is clean.** `/api/v1/readyz` returns `ready` with an empty `notes`
+   array, and `/healthz` reports the recorded `api_version`.
+3. **Budget is bounded and known.** Model endpoint, model id and monthly token budget
+   are recorded; both quota limits are non-zero; `/api/v1/usage` accounting works;
+   the operator's latency/cost targets (§H9) are filled in *and* measured — a go/no-go
+   decision is written down.
+4. **One provider is real from this host.** The model smoke (per scope: family,
+   document, target) is recorded with model id, endpoint fingerprint, token usage,
+   latency, failure rate and cache behaviour. Other endpoints stay unverified.
+5. **Coverage is re-recorded on this build.** The acceptance-target matrix is produced
+   by `scripts/cohort_coverage.py` on the deployed build, with the chosen potency
+   threshold recorded next to it and every source's outcome explicit (`complete` /
+   `partial` / `empty` / `failed` / `not_queried`).
+6. **Restore is rehearsed.** A backup is taken and restored per §H7 with ownership
+   counts matching; the rehearsal result is part of the run record.
+7. **Isolation is verified.** With two accounts, one owner cannot see the other's
+   projects.
+8. **A non-implementer completes the script.** The invited user finishes all eight
+   steps in one sitting; every defect they report is fixed or recorded with an owner
+   and a decision before the beta is called usable.
+9. **The chemistry has been read by a human.** An independent reader checks retrieved
+   structures, stereochemistry and occurrence fields against the original sources;
+   discrepancies are recorded and either fixed or accepted as documented limitations.
+
+### What a pass does not prove
+
+State these limits whenever the acceptance run is quoted:
+
+- **Not scientific truth.** A valid schema and a valid citation are not correctness;
+  only the items in the cross-read sample were checked by a human.
+- **Not general provider compatibility.** One endpoint, host and model were tested.
+- **Not coverage completeness.** Thin coverage for a target stays a coverage fact, not
+  a negative result, and no source is claimed to be exhaustive.
+- **Not a legal or druggability conclusion.** The reference verdict remains a count
+  under a stated policy.
+- **Not the unsupported capabilities.** Multi-worker operation and everything listed
+  in §5 remain unsupported regardless of the run.
+
+### If a criterion fails
+
+Record the failure in the active plan with its owner, impact and date; fix it and
+re-run the affected criterion — or narrow the invited cohort and add the limitation to
+§5 of this page. An unchecked box is a fail, and no failure is closed by editing the
+box; it is closed by the artifact that shows the criterion now holds.
 
 ### Acceptance script for the invited-beta run
 

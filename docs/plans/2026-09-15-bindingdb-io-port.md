@@ -71,6 +71,15 @@ Verified by reading the listed files, not by assumption:
 | K | XLSX writer | **REJECT** | SPAgo exports CSV/SDF; a second tabular format is duplicate surface |
 | L | Trusting a source's `molecule_type` label | **REJECT** | already deliberately not trusted (`chemistry/modality.py`) |
 
+**Follow-up, 2026-09-16 (read-only re-review).** The snapshots this plan deferred as J
+are now carried as backlog items with an argued priority: `docs/plans/backlog.md` §2
+B-23 (local snapshot search, TSV first), B-24 (patent→compound ChEMBL search, the one
+capability here that works in a hosted deployment), B-25 (supplement bundle import),
+B-26 (patent coverage audit) and B-27 (card sheet + PDF, still LATER). Two rules learned
+in that review are now normative: `AGENTS.md` §7 (operator snapshot files) and §12
+(agent-assisted retrieval, mandatory note, no unreviewed promotion to `user_curated`).
+The verdicts above are unchanged except J, which is superseded by B-23.
+
 ## 4. Wave 1 — implementation spec (CORE)
 
 ### 4.1 Chemistry: `services/core/spago_core/chemistry/activities.py` (new)
