@@ -114,6 +114,33 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   "taken back by you" list with that reason and time. If the withdrawal empties the
   compound's live rows for the target, the compound leaves the candidate list and
   the withdrawal says so. Re-adding the same row restores it — identity, not a copy.
+- **A whole set of rows arrives as one artifact, and a proposal stays a proposal
+  (B-25).** `POST /api/v1/targets/{id}/supplements/bundle` takes a
+  `supplement-bundle-v1` JSON file: an envelope (`produced_by`, `produced_by_kind`,
+  `searched`, optional `generated_at` and `uniprot`) plus up to 200 `records`. The
+  envelope is required — a bare list of rows is refused — because it is the note
+  AGENTS.md §12 asks of retrieved-and-transcribed material, and the producer's own
+  kind decides what the rows are:
+  `human` → `user_curated` on arrival, exactly like the one-row path; `agent` →
+  `llm_inferred` and `external` → `machine_extracted`, stored, readable and counted
+  as `unreviewed_supplements`, with **no `target_candidates` row**, so an
+  unconfirmed proposal cannot move the verdict's counts, the candidate list, an
+  export or a summary. `POST …/supplement-imports/{import_id}/confirm` is the one
+  recorded act that flips those rows to `user_curated` and admits their live
+  compounds (who and when are stored; confirming twice answers "already confirmed"
+  rather than writing a second confirmation), and a row the reviewer rejects is
+  taken back with the same mandatory-reason control.
+  The run itself is stored (`supplement_imports`): the envelope, the counts, the
+  per-row answers including every **refused** row and its reason, and the record ids
+  the review works from. A row is refused rather than repaired when it contradicts
+  itself (`value` and `ic50_nm` disagreeing, two endpoints for one number, a value
+  that is not a number), when a stated `inchikey` disagrees with the structure SPAgo
+  computed, or when a record carries no note — `reference`/`url` is carried into the
+  note when present and never invented. `uniprot`, when the file states it, must
+  match the target it is sent to or the whole bundle is refused. Re-importing the
+  identical file is recognised as the same artifact (`repeated_of`), and a re-posted
+  row is an update, never a duplicate. Provenance never downgrades: an agent's
+  re-post cannot turn a person's row into a proposal.
 - Save and reopen a candidate with no patent mapping; it keeps its target scope,
   source versions and identity snapshot.
 

@@ -105,6 +105,7 @@ RESETTABLE_TABLES = (
     "project_items",
     "projects",
     "target_candidates",
+    "supplement_imports",
     "target_supplement_remarks",
     "source_retrievals",
     "measurements",

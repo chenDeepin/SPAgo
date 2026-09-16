@@ -328,15 +328,17 @@ def _reason(
     truncated: bool,
     supplement_remarks: int = 0,
     withdrawn_supplements: int = 0,
+    unreviewed_supplements: int = 0,
 ) -> str:
     """A deterministic sentence with the numbers behind the verdict."""
     threshold = policy.threshold_label
+    tail = _remark_suffix(supplement_remarks, withdrawn_supplements, unreviewed_supplements)
     if actives:
         base = (
             f"{actives} of {compounds} in-scope compound(s) at or below {threshold}; "
             "the retrieved set can serve as a potency reference for this target."
         )
-        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        return base + tail
     if compounds == 0:
         base = "No stored measurement for this target."
         if records_without_structure:
@@ -344,57 +346,59 @@ def _reason(
                 f" {records_without_structure} source record(s) reported a value without a "
                 "public structure and are counted as rejections, not as measurements."
             )
-        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        return base + tail
     if actives_outside_scope:
         base = (
             f"Only {actives_outside_scope} compound(s) outside the modality scope are at or "
             f"below {threshold}; no in-scope compound is."
         )
-        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        return base + tail
     if measurements and measurements == not_applicable:
         base = (
             f"{compounds} compound(s) have {measurements} record(s) that are not potency "
             f"measurements (kinetic, percent or non-concentration units); none of them can "
             f"be compared with {threshold}."
         )
-        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        return base + tail
     if compounds < policy.min_compounds:
         base = (
             f"{compounds} in-scope compound(s) with {measurements} record(s): none at or "
             f"below {threshold}, and fewer than the {policy.min_compounds} compounds this "
             "policy treats as a usable set (sparse and weak)."
         )
-        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        return base + tail
     if weak:
         base = (
             f"{compounds} in-scope compound(s): none at or below {threshold} "
             f"({weak} measured above it, {unknown} undecided)."
         )
-        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        return base + tail
     if unknown:
         base = (
             f"{compounds} in-scope compound(s): no measurement decides {threshold} "
             f"({unknown} censored or undecided record(s))."
         )
-        return base + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        return base + tail
     if truncated:
         return (
             f"None of the first {MAX_VERDICT_MEASUREMENTS} records decides {threshold}; "
             "the measurement set was truncated, so this verdict is not complete."
         )
     return (
-        f"{compounds} in-scope compound(s): no measurement at or below {threshold}."
-        + _remark_suffix(supplement_remarks, withdrawn_supplements)
+        f"{compounds} in-scope compound(s): no measurement at or below {threshold}." + tail
     )
 
 
-def _remark_suffix(supplement_remarks: int, withdrawn: int = 0) -> str:
-    """ONLINE-07/08: hand-added rows without a structure are part of the picture.
+def _remark_suffix(supplement_remarks: int, withdrawn: int = 0, unreviewed: int = 0) -> str:
+    """ONLINE-07/08 + B-25: hand-added rows are part of the picture, whatever their state.
 
     Counted in the verdict rather than left in a dialog, because a reader who sees
     "no active" must also see that someone recorded a claim SPAgo cannot draw — and,
     since a user may take a row back, how many hand-added rows are no longer counted
-    (migration 0015).
+    (migration 0015). The same reason requires a *proposal* to be visible: rows an
+    agent produced are stored but are not part of this investigation until a human
+    confirms them, so a verdict that stayed silent about them would read as "nothing
+    was found" while a file sits there unread (AGENTS.md §10/§12).
     """
     parts: list[str] = []
     if supplement_remarks:
@@ -406,6 +410,11 @@ def _remark_suffix(supplement_remarks: int, withdrawn: int = 0) -> str:
         parts.append(
             f"{withdrawn} hand-added row(s) were withdrawn by the user and are not "
             "counted."
+        )
+    if unreviewed:
+        parts.append(
+            f"{unreviewed} proposed row(s) from an agent or script are stored but not "
+            "part of this investigation until a person reviews and confirms them."
         )
     return (" " + " ".join(parts)) if parts else ""
 
@@ -464,6 +473,20 @@ def _withdrawn_supplement_count(
     return count_withdrawn_supplements(engine, target_ids)
 
 
+def _unreviewed_supplement_count(
+    engine: Engine, target_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Stored-but-unconfirmed rows from agent/script bundles, per target (B-25).
+
+    Reported beside the verdict's own counts and never merged into them: a proposal
+    that moved the numbers would be a model's assertion acting as evidence before a
+    person read it (AGENTS.md §10/§12).
+    """
+    from spago_core.services.supplements import count_unreviewed_supplements
+
+    return count_unreviewed_supplements(engine, target_ids)
+
+
 def _verdict_for(
     *,
     target_id: uuid.UUID,
@@ -475,6 +498,7 @@ def _verdict_for(
     truncated: bool,
     supplement_remarks: int = 0,
     withdrawn_supplements: int = 0,
+    unreviewed_supplements: int = 0,
 ) -> ReferenceVerdict:
     in_scope = [row for row in rows if _in_scope(row, policy)]
     potency = [row for row in in_scope if row.activity_class is not ActivityClass.NOT_APPLICABLE]
@@ -519,6 +543,7 @@ def _verdict_for(
             truncated=truncated,
             supplement_remarks=supplement_remarks,
             withdrawn_supplements=withdrawn_supplements,
+            unreviewed_supplements=unreviewed_supplements,
         ),
         policy=policy,
         compounds=len(best),
@@ -542,6 +567,9 @@ def _verdict_for(
         #: ONLINE-08: hand-added rows the user took back, reported rather than
         #: silently absent from the counts.
         withdrawn_supplements=withdrawn_supplements,
+        #: B-25: rows a bundle proposed and no person has confirmed. Stored, readable,
+        #: and deliberately outside every count above.
+        unreviewed_supplements=unreviewed_supplements,
         source_declared_patents=sorted(
             {row.document_patent_number for row in in_scope if row.document_patent_number}
         ),
@@ -641,6 +669,9 @@ def reference_verdict(
         withdrawn_supplements=_withdrawn_supplement_count(engine, [target.id]).get(
             target.id, 0
         ),
+        unreviewed_supplements=_unreviewed_supplement_count(engine, [target.id]).get(
+            target.id, 0
+        ),
         truncated=truncated,
     )
 
@@ -662,6 +693,7 @@ def reference_verdicts(
     without = _records_without_structure_many(engine, [t.id for t in targets])
     remarks = _supplement_remark_count(engine, [t.id for t in targets])
     withdrawn = _withdrawn_supplement_count(engine, [t.id for t in targets])
+    unreviewed = _unreviewed_supplement_count(engine, [t.id for t in targets])
     return {
         target.id: _verdict_for(
             target_id=target.id,
@@ -672,6 +704,7 @@ def reference_verdicts(
             records_without_structure=without.get(target.id, 0),
             supplement_remarks=remarks.get(target.id, 0),
             withdrawn_supplements=withdrawn.get(target.id, 0),
+            unreviewed_supplements=unreviewed.get(target.id, 0),
             # A shared cap can truncate one target's rows; every verdict from a
             # truncated read says so instead of reporting partial counts as final.
             truncated=truncated,

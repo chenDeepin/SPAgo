@@ -465,6 +465,9 @@ export interface ReferenceVerdict {
    * Counted separately from `records_without_structure`: one is a source that
    * could not supply a structure, the other is a person who added a claim. */
   supplement_remarks: number;
+  /** B-25: rows a bundle (agent or script) proposed and no person has confirmed.
+   * Stored and readable, and deliberately outside every count above. */
+  unreviewed_supplements: number;
   source_declared_patents: string[];
   truncated: boolean;
 }
@@ -558,6 +561,91 @@ export interface SupplementWithdrawal {
   reason: string;
   compound_id?: string | null;
   candidate_retracted: boolean;
+}
+
+/** B-25: one stored row of an import, as it stands now.
+ *
+ * Read back rather than remembered, so the review panel shows a row that has since
+ * been taken back instead of repeating the import's own answer. */
+export interface SuppliedRowState {
+  kind: "measurement" | "remark";
+  record_id: string;
+  name: string;
+  note?: string | null;
+  activity_type?: string | null;
+  value?: number | null;
+  unit?: string | null;
+  relation?: string | null;
+  doi?: string | null;
+  pmid?: string | null;
+  patent_number?: string | null;
+  compound_id?: string | null;
+  inchikey?: string | null;
+  /** Computed on read under the deployment policy, never stored. */
+  activity_class?: ActivityClass | null;
+  activity_class_rule?: string | null;
+  live: boolean;
+  retracted_at?: string | null;
+  retracted_reason?: string | null;
+}
+
+/** B-25: one import run — the artifact that arrived and what became of it.
+ *
+ * `produced_by_kind` is the whole difference between a person's own rows and a
+ * proposal: `human` rows are `user_curated` on arrival, `agent`/`external` rows stay
+ * `llm_inferred`/`machine_extracted` and are outside the investigation until a person
+ * confirms them (a separate, recorded act). */
+export interface SupplementImportReport {
+  id: string;
+  target_id: string;
+  bundle_hash: string;
+  bundle_version: number;
+  produced_by: string;
+  produced_by_kind: "human" | "agent" | "external";
+  searched: string;
+  generated_at?: string | null;
+  received: number;
+  measurements: number;
+  remarks: number;
+  rejected: number;
+  compounds_created: number;
+  compounds_reused: number;
+  updated_rows: number;
+  record_ids: string[];
+  /** Per-row answers, including the rows the import refused and why. */
+  rows: SupplementRowOutcome[];
+  provenance_state: string;
+  submitted_by?: string | null;
+  created_at: string;
+  confirmed_at?: string | null;
+  confirmed_by?: string | null;
+  awaiting_review: boolean;
+  /** Set when this exact bundle was imported for this target before. */
+  repeated_of?: string | null;
+  stored: SuppliedRowState[];
+}
+
+/** The bundle envelope a producer writes: rows plus the run that produced them. */
+export interface SupplementBundleInput {
+  bundle_version?: number;
+  produced_by: string;
+  produced_by_kind: "human" | "agent" | "external";
+  searched: string;
+  generated_at?: string | null;
+  uniprot?: string | null;
+  records: Record<string, unknown>[];
+}
+
+/** What one confirmation admitted to the investigation. */
+export interface SupplementConfirmation {
+  import_id: string;
+  target_id: string;
+  rows: number;
+  candidates_created: number;
+  confirmed_at: string;
+  confirmed_by?: string | null;
+  /** True when the import was already confirmed: not a second act. */
+  already_confirmed: boolean;
 }
 
 /** What one compound's own reports support under the stated threshold. */

@@ -414,6 +414,10 @@ class ReferenceVerdict(BaseModel):
     #: ONLINE-08: hand-added rows the user took back, reported next to the counts
     #: instead of an unexplained gap.
     withdrawn_supplements: int = 0
+    #: B-25: rows a bundle proposed (an agent or a script) that no person has
+    #: confirmed yet. They are stored and readable, and they are *not* in any count
+    #: above — a proposal must not move a verdict before a human reads it.
+    unreviewed_supplements: int = 0
     source_declared_patents: list[str] = Field(default_factory=list)
     truncated: bool = False
 
@@ -521,6 +525,11 @@ class SupplementRow(BaseModel):
     doi: Optional[str] = Field(default=None, max_length=200)
     pmid: Optional[str] = Field(default=None, max_length=20)
     patent_number: Optional[str] = Field(default=None, max_length=40)
+    #: Optional identity assertion by the producer (B-25). Checked against the
+    #: structure SPAgo computes, never trusted: a disagreement refuses the row,
+    #: because a row whose stated identity and drawn structure differ would be a
+    #: structure nobody can vouch for (§11).
+    inchikey: Optional[str] = Field(default=None, max_length=40)
 
     @model_validator(mode="after")
     def _a_value_states_its_endpoint(self) -> "SupplementRow":
@@ -630,3 +639,150 @@ class SupplementRemark(BaseModel):
     #: withdrawn, when and why is part of the record (migration 0015).
     retracted_at: Optional[datetime] = None
     retracted_reason: Optional[str] = None
+
+
+# --- B-25: a bundle of rows, and the review that admits it -----------------------
+
+#: The bundle schema version. Refused when it does not match, so an old file cannot be
+#: read as if it meant something it does not.
+SUPPLEMENT_BUNDLE_VERSION = 1
+
+
+class SupplementBundle(BaseModel):
+    """A file of literature rows with the run that produced it (B-25).
+
+    The envelope is the difference between a set of rows and an *artifact*: it states
+    who or what produced the rows, what was searched, and when — the note AGENTS.md §12
+    requires of agent-assisted retrieval. A bare JSON list is refused on purpose, so a
+    producer learns the shape instead of having rows arrive with no provenance.
+
+    ``produced_by_kind`` decides how the rows are stored, and that is the whole point:
+    a bundle a person wrote is their own statement (``user_curated``), a bundle an agent
+    or a script wrote is a **proposal** that a human confirms as a separate, recorded
+    action. Nothing here interprets the rows; classes are computed on read.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    bundle_version: int = Field(default=SUPPLEMENT_BUNDLE_VERSION)
+    #: Who or what produced these rows (free text: a person, a model, a tool).
+    produced_by: str = Field(min_length=1, max_length=300)
+    #: `human` — the producer's own reading; `agent` — a model proposed them;
+    #: `external` — a script or another tool wrote them.
+    produced_by_kind: Literal["human", "agent", "external"]
+    #: What was searched, in the producer's own words ("PubMed + Google Patents;
+    #: queries: TSLP inhibitor, ..."). Required: a reader must be able to re-find
+    #: the rows, and a search that cannot be stated was not a search.
+    searched: str = Field(min_length=1, max_length=2000)
+    #: As stated by the producer; free text, never parsed into a date the file did
+    #: not claim.
+    generated_at: Optional[str] = Field(default=None, max_length=100)
+    #: Optional identity guard: when given, it must match the endpoint's target, or
+    #: the whole bundle is refused. This is how an agent's file for one target cannot
+    #: be imported into another by accident.
+    uniprot: Optional[str] = Field(default=None, max_length=40)
+    #: The rows themselves, in any of the accepted shapes (see the alias table).
+    records: list[dict] = Field(default_factory=list, max_length=MAX_SUPPLEMENT_ROWS)
+
+    @model_validator(mode="after")
+    def _a_bundle_says_what_it_is(self) -> "SupplementBundle":
+        if self.bundle_version != SUPPLEMENT_BUNDLE_VERSION:
+            raise ValueError(
+                f"bundle_version {self.bundle_version} is not supported "
+                f"(this build reads version {SUPPLEMENT_BUNDLE_VERSION})"
+            )
+        if not self.records:
+            raise ValueError("a bundle must carry at least one record")
+        return self
+
+
+class SupplementImportReport(BaseModel):
+    """The stored record of one import: the run, what it refused, and its review state.
+
+    ``provenance_state`` is what the rows were stored with. Anything but
+    ``user_curated`` means the rows are proposals: stored, readable, counted
+    separately, and **not part of the investigation** until ``confirmed_at`` is set.
+    """
+
+    id: uuid.UUID
+    target_id: uuid.UUID
+    bundle_hash: str
+    bundle_version: int
+    produced_by: str
+    produced_by_kind: Literal["human", "agent", "external"]
+    searched: str
+    generated_at: Optional[str] = None
+    received: int = 0
+    measurements: int = 0
+    remarks: int = 0
+    rejected: int = 0
+    compounds_created: int = 0
+    compounds_reused: int = 0
+    updated_rows: int = 0
+    record_ids: list[str] = Field(default_factory=list)
+    outcomes: list[SupplementRowOutcome] = Field(default_factory=list)
+    provenance_state: ProvenanceState
+    submitted_by: Optional[str] = None
+    created_at: datetime
+    confirmed_at: Optional[datetime] = None
+    confirmed_by: Optional[str] = None
+    #: Set when this exact bundle (same hash) was imported for this target before,
+    #: so a repeated import is visibly a repeat rather than a surprise.
+    repeated_of: Optional[uuid.UUID] = None
+    #: The current stored state of this import's rows. Read back rather than
+    #: remembered: a row may have been withdrawn since, and the report must show that.
+    stored: list["SuppliedRowState"] = Field(default_factory=list)
+
+
+class SuppliedRowState(BaseModel):
+    """One stored row of an import, as it stands now.
+
+    Both kinds (measurement / remark) share this shape because the reviewer's question
+    is one question — what is stored, under which provenance, and is it still live —
+    and it must not depend on whether the row carried a structure.
+    """
+
+    kind: Literal["measurement", "remark"]
+    record_id: str
+    name: str = ""
+    note: Optional[str] = None
+    activity_type: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    relation: Optional[str] = None
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    patent_number: Optional[str] = None
+    compound_id: Optional[uuid.UUID] = None
+    inchikey: Optional[str] = None
+    #: The row's class under the deployment policy, computed on read — never stored.
+    activity_class: Optional[ActivityClass] = None
+    activity_class_rule: Optional[str] = None
+    #: False once the row has been taken back (it stays readable).
+    live: bool = True
+    retracted_at: Optional[datetime] = None
+    retracted_reason: Optional[str] = None
+
+
+class SupplementBundleImport(BaseModel):
+    """What one bundle import did: the run's report plus the per-row answers."""
+
+    report: SupplementImportReport
+    #: True when the report's rows are proposals that no human has confirmed yet.
+    awaiting_review: bool = False
+
+
+class SupplementConfirmation(BaseModel):
+    """The recorded act of a human admitting an import's rows to the investigation."""
+
+    import_id: uuid.UUID
+    target_id: uuid.UUID
+    #: How many stored rows this confirmation covered (measurements + remarks).
+    rows: int = 0
+    #: Candidates created by this confirmation (one per live compound of the import).
+    candidates_created: int = 0
+    confirmed_at: datetime
+    confirmed_by: Optional[str] = None
+    #: True when the import had already been confirmed: answering "already confirmed"
+    #: is not the same as writing a second confirmation (AGENTS.md §22).
+    already_confirmed: bool = False

@@ -42,6 +42,16 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
   and InChIKey identity as a retrieved structure, `user_curated` provenance that nothing
   promotes, and a separate remark table for rows whose structure is not public (never
   counted as a measurement). There is no delete path yet; a corrected row is re-submitted.
+- **A set of rows as one reviewed artifact (B-25).** `POST /targets/{id}/supplements/bundle`
+  takes a `supplement-bundle-v1` file (envelope: `produced_by`, `produced_by_kind`,
+  `searched`, optional `uniprot`; up to 200 records) so an agent's or a colleague's reading
+  arrives with the run that produced it. A file a person wrote is their own statement; a
+  file an agent or a script produced is a **proposal** — stored, readable, counted as
+  `unreviewed_supplements`, and outside the verdict, the candidates, the exports and the
+  summaries until a person confirms the import in a separate, recorded act
+  (`POST …/supplement-imports/{id}/confirm`). Every run is stored with its per-row answers,
+  including the rows it refused and why; re-importing the same file is marked as a repeat;
+  provenance never downgrades.
 - **Scoped, cited summaries (ONLINE-01)** for a patent family, one document or a target,
   with separate prompt versions and cache keys per scope, and an offline extractive
   provider that needs no model.

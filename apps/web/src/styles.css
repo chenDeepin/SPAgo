@@ -1941,3 +1941,83 @@ button.dataset-badge:hover {
 .declared-actions .fineprint {
   margin: 0;
 }
+
+/* --- B-25: a bundle of literature rows, and the review that admits it ------------ */
+
+.bundle-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bundle-textarea {
+  min-height: 160px;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre;
+  overflow: auto;
+}
+
+.bundle-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bundle-report {
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The run that just arrived: marked so it is not mistaken for history. */
+.bundle-report-fresh {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.bundle-report-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bundle-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.bundle-refusals li {
+  border-left: 2px solid var(--danger);
+  padding-left: 6px;
+}
+
+.bundle-review {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: var(--border-w) solid var(--border);
+  padding-top: 6px;
+}
+
+/* A proposal is not an ordinary badge: it is rows that are not in the verdict yet. */
+.badge-warn {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+/* The gate's own trigger: shown only when the sources' set does not reach it. */
+.reference-trigger {
+  margin: 4px 0 0;
+  max-width: 90ch;
+}

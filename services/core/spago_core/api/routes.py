@@ -21,7 +21,12 @@ from spago_core.services import bioactivity as services_bioactivity
 from spago_core.adapters import SureChemblFixtureAdapter
 from spago_core.chemistry import StructureParseError, depict_svg
 from spago_core.config import Settings, get_settings
-from spago_core.domain import MAX_SUPPLEMENT_ROWS, PatentDocument, PatentFamily
+from spago_core.domain import (
+    MAX_SUPPLEMENT_ROWS,
+    PatentDocument,
+    PatentFamily,
+    SupplementBundle,
+)
 from spago_core.queries import compound_counts_by_document
 from spago_core.services import AmbiguousError, NotFoundError
 
@@ -1777,6 +1782,9 @@ class ReferenceVerdictResponse(BaseModel):
     #: ONLINE-07: hand-added rows that carry a value but no public structure.
     supplement_remarks: int = 0
     withdrawn_supplements: int = 0
+    #: B-25: rows a bundle (agent or script) proposed and no person has confirmed.
+    #: Stored and readable, and deliberately outside every count above.
+    unreviewed_supplements: int = 0
     source_declared_patents: list[str] = []
     truncated: bool = False
 
@@ -1810,6 +1818,7 @@ def _verdict_payload(verdict) -> ReferenceVerdictResponse:
         records_without_structure=verdict.records_without_structure,
         supplement_remarks=verdict.supplement_remarks,
         withdrawn_supplements=verdict.withdrawn_supplements,
+        unreviewed_supplements=verdict.unreviewed_supplements,
         source_declared_patents=verdict.source_declared_patents,
         truncated=verdict.truncated,
     )
@@ -2251,6 +2260,7 @@ def add_target_supplements(
     request: Request,
     engine=Depends(get_engine),
     settings: Settings = Depends(get_settings),
+    user: auth_svc.AuthUser = Depends(current_user),
 ):
     """Add literature/patent rows by hand to a target.
 
@@ -2428,6 +2438,7 @@ def withdraw_target_supplement(
     body: SupplementWithdrawalRequest,
     request: Request,
     engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
 ):
     """Take back a row this user added by hand (ONLINE-08).
 
@@ -2452,6 +2463,279 @@ def withdraw_target_supplement(
         compound_id=uuid.UUID(result.compound_id) if result.compound_id else None,
         candidate_retracted=result.candidate_retracted,
         reason=result.reason,
+    )
+
+
+# --- B-25: importing a set of literature rows as one artifact, and reviewing it ------
+
+
+class SuppliedRowStateResponse(BaseModel):
+    """One stored row of an import as it stands now: readable whatever its state."""
+
+    kind: str
+    record_id: str
+    name: str = ""
+    note: Optional[str] = None
+    activity_type: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    relation: Optional[str] = None
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    patent_number: Optional[str] = None
+    compound_id: Optional[uuid.UUID] = None
+    inchikey: Optional[str] = None
+    #: Computed on read under the deployment's policy, never stored.
+    activity_class: Optional[str] = None
+    activity_class_rule: Optional[str] = None
+    live: bool = True
+    retracted_at: Optional[str] = None
+    retracted_reason: Optional[str] = None
+
+
+class SupplementImportReportResponse(BaseModel):
+    """The stored record of one import: who produced it, what it refused, its review."""
+
+    id: uuid.UUID
+    target_id: uuid.UUID
+    bundle_hash: str
+    bundle_version: int
+    produced_by: str
+    produced_by_kind: str
+    searched: str
+    generated_at: Optional[str] = None
+    received: int = 0
+    measurements: int = 0
+    remarks: int = 0
+    rejected: int = 0
+    compounds_created: int = 0
+    compounds_reused: int = 0
+    updated_rows: int = 0
+    record_ids: list[str] = []
+    rows: list[SupplementRowOutcomeResponse] = []
+    provenance_state: str
+    submitted_by: Optional[str] = None
+    created_at: str
+    confirmed_at: Optional[str] = None
+    confirmed_by: Optional[str] = None
+    #: True when these rows are proposals: stored, readable, outside the investigation.
+    awaiting_review: bool = False
+    #: Set when this same bundle was imported for this target before.
+    repeated_of: Optional[uuid.UUID] = None
+    #: The rows as they stand *now* (may have been withdrawn since the import).
+    stored: list[SuppliedRowStateResponse] = []
+
+
+class SupplementBundleImportResponse(BaseModel):
+    report: SupplementImportReportResponse
+
+
+class SupplementConfirmationResponse(BaseModel):
+    import_id: uuid.UUID
+    target_id: uuid.UUID
+    rows: int = 0
+    candidates_created: int = 0
+    confirmed_at: str
+    confirmed_by: Optional[str] = None
+    already_confirmed: bool = False
+
+
+def _import_report_payload(
+    report, *, awaiting_review: bool
+) -> SupplementImportReportResponse:
+    """One stored import as the response model: the run, its answers, its rows now."""
+    return SupplementImportReportResponse(
+        id=report.id,
+        target_id=report.target_id,
+        bundle_hash=report.bundle_hash,
+        bundle_version=report.bundle_version,
+        produced_by=report.produced_by,
+        produced_by_kind=report.produced_by_kind,
+        searched=report.searched,
+        generated_at=report.generated_at,
+        received=report.received,
+        measurements=report.measurements,
+        remarks=report.remarks,
+        rejected=report.rejected,
+        compounds_created=report.compounds_created,
+        compounds_reused=report.compounds_reused,
+        updated_rows=report.updated_rows,
+        record_ids=report.record_ids,
+        rows=[
+            SupplementRowOutcomeResponse(
+                index=outcome.index,
+                status=outcome.status,
+                name=outcome.name,
+                record_id=outcome.record_id,
+                compound_id=outcome.compound_id,
+                inchikey=outcome.inchikey,
+                activity_class=(
+                    outcome.activity_class.value if outcome.activity_class else None
+                ),
+                reused_compound=outcome.reused_compound,
+                reasons=outcome.reasons,
+            )
+            for outcome in report.outcomes
+        ],
+        provenance_state=report.provenance_state.value,
+        submitted_by=report.submitted_by,
+        created_at=report.created_at.isoformat(),
+        confirmed_at=report.confirmed_at.isoformat() if report.confirmed_at else None,
+        confirmed_by=report.confirmed_by,
+        awaiting_review=awaiting_review,
+        repeated_of=report.repeated_of,
+        stored=[
+            SuppliedRowStateResponse(
+                kind=state.kind,
+                record_id=state.record_id,
+                name=state.name,
+                note=state.note,
+                activity_type=state.activity_type,
+                value=state.value,
+                unit=state.unit,
+                relation=state.relation,
+                doi=state.doi,
+                pmid=state.pmid,
+                patent_number=state.patent_number,
+                compound_id=state.compound_id,
+                inchikey=state.inchikey,
+                activity_class=(
+                    state.activity_class.value if state.activity_class else None
+                ),
+                activity_class_rule=state.activity_class_rule,
+                live=state.live,
+                retracted_at=state.retracted_at.isoformat() if state.retracted_at else None,
+                retracted_reason=state.retracted_reason,
+            )
+            for state in report.stored
+        ],
+    )
+
+
+@router.post(
+    "/targets/{target_id}/supplements/bundle",
+    response_model=SupplementBundleImportResponse,
+    status_code=201,
+)
+def import_target_supplement_bundle(
+    target_id: uuid.UUID,
+    body: SupplementBundle,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    """Import a whole literature artifact: rows plus the run that produced them.
+
+    The part that makes this a workflow and not a paste box (B-25):
+
+    * the file states who produced the rows and what was searched, and the report
+      keeps that with the rows — the note a reader needs to re-find them (AGENTS.md §12);
+    * a file a person wrote is their own statement; a file an agent or a script wrote is
+      a **proposal**. Those rows are stored, readable and counted separately, and they
+      join no verdict, selection, export or summary until a person confirms the import
+      at `…/supplement-imports/{id}/confirm`;
+    * a row SPAgo refuses is answered for with its reasons, per row, in the stored
+      report — never silently dropped.
+
+    The `record_ids` in the answer are the ids the withdrawal path accepts, so a row
+    admitted here can be taken back the same way as a hand-typed one.
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.reference import policy_from_settings
+    from spago_core.services.supplements import BundleRefused, import_supplement_bundle
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+        result = import_supplement_bundle(
+            engine,
+            target_id,
+            body,
+            threshold_nm=policy_from_settings(settings).threshold_nm,
+            submitted_by=(user.display_name or user.email),
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except BundleRefused as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return SupplementBundleImportResponse(
+        report=_import_report_payload(result.report, awaiting_review=result.awaiting_review)
+    )
+
+
+@router.get(
+    "/targets/{target_id}/supplement-imports",
+    response_model=list[SupplementImportReportResponse],
+)
+def target_supplement_imports(
+    target_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    settings: Settings = Depends(get_settings),
+):
+    """Import runs for this target, newest first, with their rows as they stand now.
+
+    A reader reopening a session must be able to see what arrived, who produced it and
+    whether it has been reviewed — an unreviewed import that scrolled out of a dialog
+    would otherwise be an invisible set of rows.
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.reference import policy_from_settings
+    from spago_core.services.supplements import list_supplement_imports
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [
+        _import_report_payload(
+            report,
+            awaiting_review=(
+                report.provenance_state.value != "user_curated" and report.confirmed_at is None
+            ),
+        )
+        for report in list_supplement_imports(
+            engine, target_id, threshold_nm=policy_from_settings(settings).threshold_nm
+        )
+    ]
+
+
+@router.post(
+    "/targets/{target_id}/supplement-imports/{import_id}/confirm",
+    response_model=SupplementConfirmationResponse,
+)
+def confirm_target_supplement_import(
+    target_id: uuid.UUID,
+    import_id: uuid.UUID,
+    request: Request,
+    engine=Depends(get_engine),
+    user: auth_svc.AuthUser = Depends(current_user),
+):
+    """Admit an import's rows to the investigation after a person has read them.
+
+    One recorded act with one meaning: the rows' provenance becomes `user_curated` and
+    their live compounds join the investigation's candidates — the table migration 0015
+    defines scope by. Nothing else changes, and the rows themselves are untouched, so
+    the review leaves the file's own answer readable beside the human's (AGENTS.md §10).
+    """
+    from spago_core.services import NotFoundError
+    from spago_core.services.supplements import confirm_supplement_import
+
+    try:
+        _get_target_service(request).get_target(engine, target_id)
+        result = confirm_supplement_import(
+            engine, target_id, import_id, confirmed_by=(user.display_name or user.email)
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return SupplementConfirmationResponse(
+        import_id=result.import_id,
+        target_id=result.target_id,
+        rows=result.rows,
+        candidates_created=result.candidates_created,
+        confirmed_at=result.confirmed_at.isoformat(),
+        confirmed_by=result.confirmed_by,
+        already_confirmed=result.already_confirmed,
     )
 
 

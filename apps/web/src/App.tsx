@@ -140,7 +140,9 @@ export function App() {
   const [saveCandidatesOpen, setSaveCandidatesOpen] = useState(false);
   // ONLINE-07: the add-rows dialog. Offered from the reference strip, so the one
   // write path for a person's own reading sits where a thin set is visible.
-  const [supplementOpen, setSupplementOpen] = useState(false);
+  // Which pane of the add-rows dialog is open, if any (B-25 added the bundle pane:
+  // one dialog, because both are "rows this target does not have yet").
+  const [supplementOpen, setSupplementOpen] = useState<false | "rows" | "bundle">(false);
   // ONLINE-06: the potency threshold is a *policy*, so a session-level override
   // is explicit state rather than a hidden default. `null` = deployment policy.
   const [thresholdOverride, setThresholdOverride] = useState<number | null>(null);
@@ -1023,7 +1025,7 @@ export function App() {
                     setSelectedIds(new Set());
                   }}
                   onSelectCompound={handleSelectCompound}
-                  onAddRows={() => setSupplementOpen(true)}
+                  onAddRows={(mode = "rows") => setSupplementOpen(mode)}
                 />
 
                 <div className="candidate-filters">
@@ -1527,6 +1529,7 @@ export function App() {
           targetKey={targetDetailQuery.data.target_key}
           onClose={() => setSupplementOpen(false)}
           onSelectCompound={handleSelectCompound}
+          initialMode={supplementOpen === "bundle" ? "bundle" : "rows"}
         />
       )}
 

@@ -13,8 +13,8 @@ interface ReferenceStripProps {
   onApplyThreshold: (micromolar: number | null) => void;
   /** Opens the compound's evidence in the existing inspector. */
   onSelectCompound: (compoundId: string) => void;
-  /** Opens the add-rows dialog (ONLINE-07). */
-  onAddRows: () => void;
+  /** Opens the add-rows dialog (ONLINE-07), or its bundle pane (B-25). */
+  onAddRows: (mode?: "rows" | "bundle") => void;
 }
 
 const MICROMOLAR_TO_NANOMOLAR = 1000;
@@ -116,8 +116,20 @@ export function ReferenceStrip({
         <span className="reference-reason">{verdict.reason}</span>
       </div>
 
-      <div className="reference-counts">
-        <span>
+      {/* B-25: the moment the gate fails is the moment a person decides whether to
+          supply rows themselves. Saying so here is the trigger; the rows still enter
+          through the same dialog, and a set a model produced stays a proposal until a
+          person confirms it. */}
+      {!verdict.qualifies && (
+        <p className="fineprint reference-trigger">
+          The sources' set does not reach the gate for this target. Rows you add by hand
+          are stored as your own and counted separately from the sources' records; a set
+          an agent or a script produced is stored for your review and stays outside this
+          verdict until you confirm it.
+        </p>
+      )}
+
+      <div className="reference-counts">        <span>
           <strong>{verdict.compounds}</strong> in-scope compound
           {verdict.compounds === 1 ? "" : "s"}
         </span>
@@ -148,6 +160,15 @@ export function ReferenceStrip({
           <span title="Rows a person added by hand that carry a value but no public structure. Kept as remarks: never counted as compounds or measurements, never drawn.">
             {verdict.supplement_remarks} literature remark
             {verdict.supplement_remarks === 1 ? "" : "s"} added by hand
+          </span>
+        )}
+        {verdict.unreviewed_supplements > 0 && (
+          <span
+            className="reference-warn"
+            title="Rows a bundle (an agent or a script) proposed. They are stored and readable, and they are outside every count above until a person reviews and confirms them."
+          >
+            {verdict.unreviewed_supplements} proposed row
+            {verdict.unreviewed_supplements === 1 ? "" : "s"} awaiting your review
           </span>
         )}
         {verdict.potential_duplicates > 0 && (
@@ -207,10 +228,19 @@ export function ReferenceStrip({
                 </button>
               )}
               {/* ONLINE-07: the one place a person's own reading enters SPAgo, offered
-                  where the thin set is visible rather than in a global menu. */}
-              <button className="btn btn-quiet" onClick={onAddRows}>
+                  where the thin set is visible rather than in a global menu. B-25 adds
+                  the sibling control only when there is something to review: a proposal
+                  the reader has not seen must not be invisible, and must not be silently
+                  confirmed either. */}
+              <button className="btn btn-quiet" onClick={() => onAddRows("rows")}>
                 Add a row by hand
               </button>
+              {verdict.unreviewed_supplements > 0 && (
+                <button className="btn btn-quiet" onClick={() => onAddRows("bundle")}>
+                  Review {verdict.unreviewed_supplements} proposed row
+                  {verdict.unreviewed_supplements === 1 ? "" : "s"}
+                </button>
+              )}
         <span className="fineprint">
           Policy {verdict.policy.version}
           {thresholdOverrideMicromolar != null ? " · threshold set in this session" : ""} ·{" "}

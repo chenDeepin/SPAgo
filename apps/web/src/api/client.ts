@@ -454,4 +454,28 @@ export const api = {  // --- ONLINE-03: hosted access ---
       { reason },
       signal,
     ),
+  /** B-25: import a whole artifact — rows plus the run that produced them. */
+  importSupplementBundle: (
+    targetId: string,
+    bundle: import("./types").SupplementBundleInput,
+    signal?: AbortSignal,
+  ) =>
+    postJson<{ report: import("./types").SupplementImportReport }>(
+      `/api/v1/targets/${targetId}/supplements/bundle`,
+      bundle,
+      signal,
+    ),
+  /** Import runs for this target, newest first, with their rows as they stand now. */
+  supplementImports: (targetId: string, signal?: AbortSignal) =>
+    getJson<import("./types").SupplementImportReport[]>(
+      `/api/v1/targets/${targetId}/supplement-imports`,
+      signal,
+    ),
+  /** The recorded act of admitting an import's rows to the investigation. */
+  confirmSupplementImport: (targetId: string, importId: string, signal?: AbortSignal) =>
+    postJson<import("./types").SupplementConfirmation>(
+      `/api/v1/targets/${targetId}/supplement-imports/${importId}/confirm`,
+      {},
+      signal,
+    ),
 };

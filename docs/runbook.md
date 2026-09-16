@@ -178,6 +178,65 @@ headline — the not-usable records were returned by the source and could not be
 compared with a potency threshold (kinetic constants, values without a numeric
 field, rows without a structure), which is different from "the source has nothing".
 
+### 2.5 A set of literature rows as one bundle (B-25)
+
+When an agent, a colleague or a script has produced a set of literature rows for a
+target (a paper's table, a patent example, a supplementary file), they are handed
+over as one `supplement-bundle-v1` JSON file and imported with:
+
+```bash
+curl -s -X POST "$SPAGO_BASE/api/v1/targets/$TARGET_ID/supplements/bundle" \
+    -H 'Content-Type: application/json' \
+    --data-binary @paper-rows.json | python3 -m json.tool
+```
+
+The file must state who produced it and what was searched:
+
+```json
+{
+  "bundle_version": 1,
+  "produced_by": "literature agent (web search, 2026-09-16)",
+  "produced_by_kind": "agent",
+  "searched": "PubMed 'CDK4 inhibitor IC50' + the paper's Table 2/3",
+  "generated_at": "2026-09-16T09:00:00Z",
+  "uniprot": "P11802",
+  "records": [
+    { "name": "compound 7", "smiles": "Nc1ncnc(Nc2ccccc2)c1", "ic50_nm": 10,
+      "note": "Table 2, CDK4/cyclin D1 IC50; read 2026-09-16",
+      "doi": "10.1016/s0960-894x(03)00203-8" }
+  ]
+}
+```
+
+What to expect, and what to check:
+
+| `produced_by_kind` | Stored as | In the investigation? |
+| --- | --- | --- |
+| `human` | `user_curated` | yes, on arrival — identical to the one-row path |
+| `agent` | `llm_inferred` | no — counted as `unreviewed_supplements` until confirmed |
+| `external` | `machine_extracted` | no — as above |
+
+- The reply's `report.outcomes` answers **every** record, including the refused ones
+  with their reasons. `rejected > 0` is not a failure of the import: the rest of the
+  file was stored. Fix the refused record and re-submit — a re-post updates the row,
+  it does not duplicate it.
+- Confirm a proposal only after reading the rows:
+  `POST /api/v1/targets/{id}/supplement-imports/{import_id}/confirm`. That is the act
+  that makes the rows part of the investigation (`user_curated` plus the candidates);
+  it records who and when. Confirming twice answers "already confirmed" and changes
+  nothing.
+- `GET …/supplement-imports` reads the runs back, with each row's current state — so
+  a row withdrawn since the import shows as withdrawn here too.
+- A record with no `note`, with a contradictory value
+  (`value` and `ic50_nm` disagreeing), or with an `inchikey` that disagrees with the
+  structure SPAgo computed is refused rather than repaired. A stated `uniprot` that
+  does not match the target refuses the whole file — that is the guard against
+  importing an agent's file into the wrong investigation.
+- Do not present an imported set as a literature review of the target: it is what
+  this file claimed, with this producer, after this search string (`AGENTS.md` §11
+  and §12). The verdict's `unreviewed_supplements` count is the honest state of the
+  proposal before a person confirms it.
+
 ## 3. Backup
 
 Backs up everything scientific: projects, saved items, evidence, source

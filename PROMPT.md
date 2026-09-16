@@ -43,10 +43,33 @@
 >   are **not** covered. Latency/cost targets are the operator's to fill in:
 >   `docs/runbook.md` §H9.
 >
+> **Delivered after that baseline (2026-09-16 backlog rounds, each with its plan file,
+> tests and browser evidence; back to commit history for the exact set):**
+> - **B-13** gate support kit: `scripts/restore_check.sh` + the §H2 ingress-duty table.
+> - **B-01** corpus scale-up: `scripts/corpus_batch.py`, `spago_core.corpus_status`,
+>   `GET /api/v1/corpus` and the top-bar corpus dialog.
+> - **B-10** analyses read back: `GET /api/v1/analyses`, `/analyses/{id}`,
+>   `/analyses/{id}/export` and the **Analyses** dialog — no provider call to reopen.
+> - **B-02** reference coverage: a disjoint per-retrieval tally of how each kept record's
+>   document reference resolved (`source_retrievals.reference_counts`,
+>   `docs/plans/2026-09-16-source-declared-linkage.md`), rendered in the target header.
+> - **B-24** patent-led declared sets: `POST/GET /api/v1/patents/{number}/source-compounds`
+>   (+ CSV/SDF export) and the patent view's declared-compound panel, on a publication the
+>   corpus does not hold.
+> - **B-03** tolerant publication entry: one versioned shape rule
+>   (`publication-number-tolerant-v1`) mirrored in the client, exact-first lookup, an
+>   ambiguity reported as 409 with candidates named.
+> - **B-25** supplement bundles: `POST /targets/{id}/supplements/bundle`, the import
+>   report and `POST …/supplement-imports/{id}/confirm` — an agent's rows are a
+>   **proposal** (stored, readable, counted as `unreviewed_supplements`, outside the
+>   candidates/verdict/exports) until a person confirms the import in a recorded act.
+>
 > **Two facts to keep straight.** The reference verdict is a **count under a stated
 > policy — not a biological or legal conclusion**: on live data TSLP has no
-> small-molecule active in these sources, and no live row carries a source-declared
-> patent number yet (that rendering path is fixture-tested only). A hand-added row is
+> small-molecule active in these sources. Source-declared patent linkage **is** now
+> measured live (B-02: 135 of IL6's 166 kept records carry a source-declared patent;
+> TSLP's are DOI-only; EGFR has 1,210 records citing a document ChEMBL does not return).
+> A hand-added row is
 > `user_curated` and cannot be deleted; a corrected row is re-submitted, which replaces
 > the earlier one; taking a row back is a recorded retraction with a reason.
 >
@@ -77,7 +100,9 @@
 > 4. Engineering work that is *not* approved scope is collected, with its priority
 >    order, in `docs/plans/backlog.md`. That register is a proposal list, not a queue:
 >    an item there is not started, promised or authorized until it is deliberately
->    picked and planned as its own round.
+>    picked and planned as its own round. Its current head is **B-26** (per-publication
+>    coverage audit, P1), then B-23 (operator-gated snapshot search) and B-06
+>    (per-source re-run); the register's update log records every move and why.
 >
 > Current source coverage is genuinely thin for some acceptance targets (human TSLP has
 > one small-molecule candidate in these sources; IL-6R has one, and BindingDB does not
