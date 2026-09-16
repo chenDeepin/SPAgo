@@ -21,13 +21,15 @@ what this build supports — and deliberately does not — is
 
 ---
 
-## Status — 2026-09-16
+## Status — 2026-09-17
 
-Planning-only review at `efb1357`: the local product and selected live-source paths
-have historical verification; hosted acceptance and independent scientific review
-remain open. No runtime checks were repeated in that review. See the
-[product review Q&A](docs/plans/2026-09-16-product-review-qa.md) and
-[prioritized backlog](docs/plans/backlog.md) for current findings and proposed work.
+Implementation round 1 delivered the product-review queue on top of the local product
+and the selected live-source paths; the current checkout passes the full backend suite
+(831 tests) and the frontend production build. **Hosted acceptance and the independent
+scientific cross-read remain open and operator-gated** (B-31/B-32, checklist in
+[`docs/online-capability.md`](docs/online-capability.md) §6). See the
+[archived product review](docs/archive/2026-09-16-product-review-qa.md),
+[prioritized backlog](docs/plans/backlog.md) and the per-round records below.
 
 **Implemented and locally verified** (per-round records are linked at the end of this
 section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
@@ -102,10 +104,10 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
   substructure / similarity search on cartridge-indexed chemistry, typed
   targets/assays/measurements with provenance, a thin MV3 Chrome context bridge, and
   CSV/SDF export of family/document selections and structure queries (re-executed
-  server-side, including rows the browser never loaded). Target exports currently
-  omit active threshold/evidence filters (B-33); mixed-project navigation (B-36) and
-  exact summary-citation navigation (B-37) also have static findings awaiting browser
-  reproduction. These limits qualify the broader workflow claim.
+  server-side, including rows the browser never loaded). Target exports carry the
+  screen's active threshold, evidence class and row set (B-33); a mixed project reopens
+  every saved scope through one switcher (B-36); and a summary citation opens the exact
+  record it names (B-37).
 - **Real patent data path:** `scripts/extract_surechembl.py` extracts a patent-family
   package from the official SureChEMBL bulk release (EMBL-EBI FTP, Parquet, CC BY 4.0)
   over HTTP range reads, and `python -m spago_core.import_package <dir>` ingests it with a
@@ -117,20 +119,23 @@ deployment, no invited user has completed the workflow, and the live model smoke
 **one** provider (DeepSeek `deepseek-flash`) rather than compatibility in general. A
 source refresh retracts — never deletes, with the dropping version recorded — the
 mentions, evidence and measurements its release no longer contains, scoped to the
-documents the package holds and to the whole activity source for bioactivity; a
-document a release stops carrying entirely is not retracted. An interrupted import is
+documents the package holds and to the whole activity source for bioactivity; an online
+investigation retracts the same way only when an ask answered the whole question
+(`complete`/`empty`), scoped to its target, source and access path (B-30); a document a
+release stops carrying entirely is not retracted. An interrupted import is
 marked `interrupted`, and the resume is re-running the same command: idempotent, no
 duplicate rows, with the summary naming the interrupted job(s) it completed. The gate a
 deployment must pass — checklist and the
 invited-user script — is
 [`docs/online-capability.md`](docs/online-capability.md) §6; round records are
-[`docs/plans/2026-09-15-online-llm.md`](docs/plans/2026-09-15-online-llm.md) §4,
-[`docs/plans/2026-09-15-bindingdb-io-port.md`](docs/plans/2026-09-15-bindingdb-io-port.md)
+[`docs/archive/2026-09-15-online-llm.md`](docs/archive/2026-09-15-online-llm.md) §4,
+[`docs/archive/2026-09-15-bindingdb-io-port.md`](docs/archive/2026-09-15-bindingdb-io-port.md)
 §6–§7 and [`docs/archive/2026-09-15-product-readiness.md`](docs/archive/2026-09-15-product-readiness.md).
 
 Recorded source coverage is thin for some acceptance targets; it is not an inhibitor
 guarantee. Source-only coverage and a workspace supplemented by a person are different
-sets. Dated observations and the remaining cohort-validation gap (B-32) are described
+sets; the cohort pack reports both verdicts separately (B-32), and the independent
+human cross-read remains open. Dated observations are described
 in [`docs/online-capability.md`](docs/online-capability.md) §5/§8.
 
 The dataset shipped with this repo is a **synthetic demo fixture** (`DEMO-*`
@@ -162,10 +167,11 @@ unreachable database or missing cartridge fails the run instead of skipping), bu
 the app image with its build identity, verifies what `/healthz` serves with
 `scripts/build_identity.py`, and runs the end-to-end browser smoke against the seeded
 compose stack — the same deployment shape a user runs, on synthetic data and with no
-paid model calls. One end-to-end browser smoke of the
-MVP loop (search → family → compound → structure filter → export) also runs locally
-with `npm run test:e2e` in `apps/web` against the seeded compose stack
-(`SPAGO_BASE_URL` overrides `http://127.0.0.1:8000`).
+paid model calls. The browser suite also runs locally
+with `npm run test:e2e` in `apps/web` against the seeded compose stack: the MVP smoke
+plus failed-source, stale-response, per-source retry, save/reopen and export-content
+specs; the two stored-data specs skip loudly on a bare stack instead of failing on
+absent data (`SPAGO_BASE_URL` overrides `http://127.0.0.1:8000`).
 
 ### Distinguishable builds
 

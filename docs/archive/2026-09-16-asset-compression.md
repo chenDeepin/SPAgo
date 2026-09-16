@@ -1,5 +1,7 @@
 # B-15 — Compress served assets (Ketcher first open)
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Round opened 2026-09-16. Class **NEXT · P1 · S–M**. Register entry:
 `docs/plans/backlog.md` §B-15. Measurement it answers:
 `benchmarks/online08-structure-editor-2026-09-16.md` (first dialog open 20,269,580 B raw,

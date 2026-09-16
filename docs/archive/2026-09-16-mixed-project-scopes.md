@@ -1,5 +1,7 @@
 # B-36 — Reopen every saved target/family scope in a mixed project
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-36 · Class CORE · P1.
 
 ## Vision alignment

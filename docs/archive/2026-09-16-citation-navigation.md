@@ -1,5 +1,7 @@
 # B-37 — Summary citation → exact supporting record
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-37 · Class CORE · P1.
 
 ## Vision alignment

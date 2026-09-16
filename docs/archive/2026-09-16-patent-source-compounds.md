@@ -1,5 +1,7 @@
 # B-24 — Patent-led compound discovery (plan, 2026-09-16)
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Backlog item `docs/plans/backlog.md` B-24, the P1 item after B-02. Vision check: it serves
 `PROMPT.md` §2 (the user enters a patent and sees its compounds) and `AGENTS.md` §8/§9/§10/§11.
 What a user can do afterwards that they cannot do now: open a publication SPAgo never

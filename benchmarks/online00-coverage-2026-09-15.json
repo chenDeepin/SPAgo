@@ -1,6 +1,6 @@
 {
  "recorded_at": "2026-09-15T04:49:07.010136+00:00",
- "plan": "docs/plans/2026-09-15-online-llm.md \u00a72 ONLINE-00, acceptance: dated source-by-target coverage matrix",
+ "plan": "docs/archive/2026-09-15-online-llm.md \u00a72 ONLINE-00, acceptance: dated source-by-target coverage matrix",
  "invocation": "TargetResolutionService.resolve(query, species, include_related=True) then TargetDiscoveryService.investigate(target, sources=('chembl','bindingdb','pubchem'))",
  "targets": [
   {

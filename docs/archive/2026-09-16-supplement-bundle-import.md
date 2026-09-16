@@ -1,5 +1,7 @@
 # B-25 — Literature supplement bundle import (agent-produced rows)
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 **Round:** 2026-09-16 (after B-03) · **Class NEXT · P1** · **Owner:** coordinating agent
 **Backlog entry:** `docs/plans/backlog.md` §2 B-25 (promoted to P1 when the B-03 round
 emptied the P1 group; §4 there argues the promotion)

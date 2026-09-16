@@ -1,5 +1,7 @@
 # B-04 — Import refresh completeness and interrupted-import resume
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Date: 2026-09-16 · Backlog item: B-04 (NEXT, P2 head, ungated) · Status: **delivered
 2026-09-16** — full suite 773 → 779 all passing; backlog §1 records the artifact.
 

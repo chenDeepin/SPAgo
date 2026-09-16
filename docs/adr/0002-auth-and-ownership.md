@@ -3,7 +3,7 @@
 - Status: accepted for the hosted beta (ONLINE-03)
 - Date: 2026-09-15
 - Supersedes: none
-- Related: `docs/plans/2026-09-15-online-llm.md` §2 (ONLINE-03), AGENTS.md §6, §7, §23, §35
+- Related: `docs/archive/2026-09-15-online-llm.md` §2 (ONLINE-03), AGENTS.md §6, §7, §23, §35
 
 ## Problem
 

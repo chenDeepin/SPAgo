@@ -84,7 +84,7 @@ record (verified with `py_compile`).
 | Restored (text only) | `docs/archive/2026-09-15-beta-acceptance.md` | Recovered from `61f0686^`, with a header explaining that the screenshots stay out of Git and that the test counts are stale |
 | New | `docs/archive/2026-09-16-docs-consolidation.md` | This file (archived 2026-09-16, with the round it records) |
 | Hardened | `.gitignore` | See 4.3 |
-| Reference fixes | `docs/architecture/overview.md` (status block + 2 links), `docs/online-capability.md`, `docs/design/2026-09-14-ui-direction.md` (3 links), `docs/plans/2026-09-15-online-llm.md` (5 links), `docs/plans/2026-09-15-bindingdb-io-port.md`, `benchmarks/online01-llm-eval-2026-09-15.md`, `benchmarks/paging-beyond-cap-2026-09-15.md`, `services/core/spago_core/config.py`, `services/core/spago_core/services/ai.py`, `services/core/tests/test_llm_adapter.py`, `services/core/tests/test_online04_usage.py` | All now point at the archived location |
+| Reference fixes | `docs/architecture/overview.md` (status block + 2 links), `docs/online-capability.md`, `docs/design/2026-09-14-ui-direction.md` (3 links), `docs/archive/2026-09-15-online-llm.md` (5 links), `docs/archive/2026-09-15-bindingdb-io-port.md`, `benchmarks/online01-llm-eval-2026-09-15.md`, `benchmarks/paging-beyond-cap-2026-09-15.md`, `services/core/spago_core/config.py`, `services/core/spago_core/services/ai.py`, `services/core/tests/test_llm_adapter.py`, `services/core/tests/test_online04_usage.py` | All now point at the archived location |
 
 Kept active in `docs/plans/`: `2026-09-15-online-llm.md` (direction + ONLINE-00…05
 record) and `2026-09-15-bindingdb-io-port.md` (ONLINE-06/07 record, §6.5/§7.4 open).

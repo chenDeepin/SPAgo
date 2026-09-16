@@ -1,12 +1,12 @@
 # Porting the BindingDB_IO target-vs-ligand process into SPAgo — next-round plan
 
+> Archived 2026-09-17 — the port is delivered (B-23…B-26); **B-27**, **B-28** and **B-08** stay in the register. The "Implementation record" at the end is the as-built record.
+
 Date: 2026-09-15. Baseline: working tree of this checkout (ONLINE-00…05 uncommitted,
 per `PROMPT.md`). Source reviewed: `/media/chen/Machine_Disk/Datasets/BindingDB_IO/`
 (read-only; nothing in that project was modified).
 
-Status: **plan**. The "Implementation record" section at the end is filled in after
-the work is done, so this file is both the pre-work plan and the post-work record
-(user workflow rule 5).
+Status: **implemented** — B-23…B-26 delivered; the "Implementation record" section at the end is the as-built record, while B-27/B-28/B-08 remain register items.
 
 ---
 

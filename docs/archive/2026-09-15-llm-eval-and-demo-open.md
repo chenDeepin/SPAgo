@@ -2,7 +2,7 @@
 
 > Archived 2026-09-16 (both parts implemented and measured; §7.1 closes the
 > citation defect it found). Record cited by `docs/online-capability.md` and
-> `docs/plans/2026-09-15-online-llm.md` §4.
+> `docs/archive/2026-09-15-online-llm.md` §4.
 
 Status: **implementation plan, owner-approved scope** (owner selected both items
 after the browser check in `2026-09-15-llm-live-smoke.md` §10). Working tree stays
@@ -132,7 +132,7 @@ input, one business day).
 - Evaluation: one baseline run per scope with `--samples 3` (≈ ≤18 provider calls),
   recorded in `benchmarks/`; the runner's own dry-run output is kept.
 - Docs: this record gets the results section; `docs/online-capability.md` §8
-  (demo-hint gap), the live-smoke record §10.5 and `docs/plans/2026-09-15-online-llm.md`
+  (demo-hint gap), the live-smoke record §10.5 and `docs/archive/2026-09-15-online-llm.md`
   §4.5 are updated to point at what is now fixed or measured.
 
 ## 5. Part C — the baseline's first finding, and the fix it justifies
@@ -333,7 +333,7 @@ Code — frontend: `apps/web/src/components/TargetHeader.tsx` (exported
 `apps/web/src/api/types.ts` (`CitationRef.kind` union + `source_name`),
 `apps/web/src/styles.css` (`.coverage-chip-focused`).
 Docs: `benchmarks/online01-llm-eval-2026-09-15.md`, `benchmarks/README.md`,
-`docs/online-capability.md`, `docs/plans/2026-09-15-online-llm.md` §4.5,
+`docs/online-capability.md`, `docs/archive/2026-09-15-online-llm.md` §4.5,
 `PROMPT.md` handoff, this file.
 
 Commands, with results:

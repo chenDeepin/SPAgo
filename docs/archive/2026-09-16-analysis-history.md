@@ -1,5 +1,7 @@
 # B-10 — Summary archive and retrieval (delivered 2026-09-16)
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Backlog item: `docs/plans/backlog.md` B-10, the top P1 item after B-01. Vision check
 before starting and before closing: it serves `PROMPT.md` §2 (the analyst loop ends in
 "AI-assisted interpretation → saved project") and §1's provenance rule — an analysis a

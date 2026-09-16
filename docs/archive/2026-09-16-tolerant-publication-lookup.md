@@ -1,5 +1,7 @@
 # B-03 — Tolerant publication-number lookup
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 **Round:** 2026-09-16 (after B-24) · **Class NEXT · P1** · **Owner:** coordinating agent
 **Backlog entry:** `docs/plans/backlog.md` §3 B-03
 **Vision served:** `PROMPT.md` §1/§2 (patent → family is the first step of the loop) and

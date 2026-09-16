@@ -1,13 +1,14 @@
 # SPAgo Architecture Overview
 
 Status: **implemented shape with historical local/selected live-source verification;
-hosted acceptance still open**, reviewed against checkout `efb1357` on 2026-09-16.
-This was a static, documentation-only review, not a new runtime verification.
-Scope statement: [`docs/online-capability.md`](../online-capability.md). Active
-direction: [`docs/plans/2026-09-15-online-llm.md`](../plans/2026-09-15-online-llm.md).
-Current findings and ordered proposals:
-[`product review Q&A`](../plans/2026-09-16-product-review-qa.md) and
-[`backlog`](../plans/backlog.md). The rounds this shape was built through are archived in `docs/archive/`: the M0-only
+hosted acceptance still open**, refreshed 2026-09-17 against checkout `232080a`
+(full backend suite 831 passed; frontend build clean). No hosted deployment was
+re-checked in this documentation round.
+Scope statement: [`docs/online-capability.md`](../online-capability.md).
+Completed round records, with the remaining queue:
+[`backlog`](../plans/backlog.md) and the archived
+[`product review Q&A`](../archive/2026-09-16-product-review-qa.md) /
+[`ONLINE plan`](../archive/2026-09-15-online-llm.md). The rounds this shape was built through are archived in `docs/archive/`: the M0-only
 framing in `2026-09-14-m0-foundation.md`, the M1–M5 implementation in
 `2026-09-14-m1-m5-implementation.md`, the readiness and repair rounds in
 `2026-09-15-product-readiness.md` and `2026-09-14-ui-review-next-round.md`. Decisions
@@ -111,8 +112,8 @@ apps/web     (search → family → compounds → evidence/structure search)
 - Patent-led declarations (B-24) live in `patent_source_lookups` /
   `patent_source_compounds`, not `compound_mentions`. Publication coverage (B-26) reads
   corpus/declared/supplement legs without upstream calls or a sum across provenance
-  classes. It has no dedicated snapshot leg; its fixed snapshot-unavailable note is
-  stale after B-23 (B-32), even though the operator path exists.
+  classes. It has no dedicated snapshot leg, and its runtime note now names the access
+  paths it can account for (corrected in B-32).
 - Supplement bundles (B-25) record producer, search note, per-row outcomes and
   confirmation. Unconfirmed proposals remain outside candidates/verdict/exports;
   human confirmation is a recorded action, and withdrawal preserves history.
@@ -127,8 +128,9 @@ apps/web     (search → family → compounds → evidence/structure search)
   package's document coverage and measurements within a complete activity source
   release, retaining reasons/versions; identity rows persist. Interrupted imports are
   recovered by an idempotent re-run whose summary names the interrupted jobs.
-  Document absence beyond package coverage and online retrieval absence are not a
-  complete release-replacement protocol (B-30).
+  Document-level corpus absence beyond a package's own coverage stays unclaimed; online
+  retrieval absence follows B-30's rule (only a `complete`/`empty` ask, scoped to
+  target + source + access path, never deleting; migration 0021).
 - Saved projects: migration 0008 keeps family/compound UUIDs and saved identity
   snapshots when source rows disappear; project ownership deletion still cascades.
   Per-item source/version lists are scoped to its family. Reads report missing
@@ -159,8 +161,9 @@ apps/web     (search → family → compounds → evidence/structure search)
   `source_updated`/`record_missing` drift instead of silently absorbing data
   changes. The UI reopens a project via Projects → Open, restoring the family
   view and the saved selection; a single target's candidates can also reopen without
-  a patent mapping. Navigation across every target/family in a mixed project is
-  incomplete (B-36), and analyses are not yet project artifacts (B-29).
+  a patent mapping, and a mixed project reopens every saved scope (families and targets)
+  through one switcher with drift labels (B-36). A stored analysis is attachable to a
+  project and reopens with its staleness stated, without a provider call (B-29).
 - AI summaries: default is the offline extractive provider
   (`machine_extracted`). With `SPAGO_LLM_BASE_URL`/`SPAGO_LLM_API_KEY`/
   `SPAGO_LLM_MODEL` configured, the AI tab can call one OpenAI-compatible
@@ -174,8 +177,8 @@ apps/web     (search → family → compounds → evidence/structure search)
   handles deterministic publication identifiers and reviewed target entities offline;
   the configured model may propose typed allowlisted operations, validated and shown
   before explicit execution. Analyses can be listed/reopened/exported without a model
-  call (B-10), with a recomputed staleness check. Exact citation navigation remains
-  incomplete in several UI paths (B-37).
+  call (B-10), with a recomputed staleness check. A citation opens the exact record it
+  names across the target panel, family panel and analyses archive (B-37).
 - LLM execution uses one shared synchronous HTTP client and process-local in-flight
   tracking (two calls, one worker); no provider fallback exists. Failures that may
   not have been billed — timeout, upstream throttle, auth, transport, protocol —
@@ -187,9 +190,10 @@ apps/web     (search → family → compounds → evidence/structure search)
   from other upstream failures (502). See
   [the LLM contract record](../archive/2026-09-14-llm-interface.md) and
   [the live-smoke record](../archive/2026-09-15-llm-live-smoke.md).
-- URL state: `?q=&doc=&c=&t=`; new searches push history entries, selection
-  replaces; Back/Forward restore encoded identifiers via popstate. Target modality,
-  evidence-class filter and threshold override remain in component state (B-39).
+- URL state: `?q=&doc=&c=&t=` plus the target view's `ev`/`mod`/`th` (validated on read;
+  unknown values drop to the deployment default). New searches push history entries,
+  selection replaces; Back/Forward restore encoded identifiers and per-entry target
+  filter state via popstate (B-39). Structure-search snapshots are not in URL state.
 - Deployment shape: both published ports bind to loopback by default
   (`SPAGO_APP_BIND`/`SPAGO_DB_BIND`); backup/restore/upgrade are documented and
   drilled in [docs/runbook.md](../runbook.md).
@@ -218,17 +222,18 @@ apps/web     (search → family → compounds → evidence/structure search)
 - Source evidence includes real SureChEMBL imports, bounded open-database retrievals,
   an operator snapshot and one measured model provider. Independent scientific
   cross-reading and hosted user acceptance remain open; different cohort workspaces
-  must not be treated as identical source-only baselines (B-32).
-- Target export differs from the family/structure export path: the browser currently
-  omits its active threshold and evidence filter, and the backend export contract has
-  no evidence-class parameter (B-33). Static inspection establishes the missing
-  parameters; a browser download reproduction remains to be done.
+  must not be treated as one source-only baseline — the cohort pack reports source-only
+  and combined verdicts separately, and the human cross-read is still open (B-32).
+- Target export carries the screen's active threshold, evidence class and row set, with
+  the policy in every row (B-33, browser-reproduced then verified).
 - Hosted mode implements invitations, sessions, owner-scoped projects/analyses and
   quotas; local mode disables auth deliberately. Both published ports default to
   loopback. A real host/TLS/backup/restore/user run is still required by capability §6.
-- CI uses the selected `--no-pg` check path, not the full database suite or browser
-  smoke (B-35). `/healthz` reports a package API version, not an immutable build
-  identity (B-34). Prior passing runs are not evidence for an unverified server.
+- CI runs the existing `--no-pg` check on every push and a `full-stack` job that builds
+  the shipped database image, runs the full backend suite and the browser smoke, and
+  verifies the served build identity (B-35). `/healthz` carries a packaging-time
+  `build_id` (B-34); an `unknown` identity fails the recorder, and prior passing runs
+  are not evidence for an unverified server.
 
 ## Performance baseline
 

@@ -1,5 +1,7 @@
 # B-01 — Corpus scale-up workflow (delivered 2026-09-16)
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Backlog item: `docs/plans/backlog.md` B-01 (top P1 after the hosted-acceptance
 rehearsal). Vision check before starting, and again before closing: this serves
 `PROMPT.md` §1 (`patents → families → structures → …` over *real* sources) and §2

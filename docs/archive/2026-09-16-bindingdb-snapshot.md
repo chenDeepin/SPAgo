@@ -1,5 +1,7 @@
 # B-23 — Local BindingDB snapshot search (TSV first)
 
+> Archived 2026-09-17 — B-23 delivered; the operator gate on the file's terms, its location and any future release is unchanged. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Round opened 2026-09-16. Class **NEXT · P1 · M (TSV)**. Register entry:
 `docs/plans/backlog.md` §B-23. Port source (read-only, author's own project):
 `/media/chen/Machine_Disk/Datasets/BindingDB_IO/bindingdb_io/readers/{tsv,multi}.py`,

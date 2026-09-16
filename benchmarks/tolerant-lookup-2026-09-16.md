@@ -52,7 +52,7 @@ The scan split into its two phases (same statement the service runs, timed on it
   way. There is no cheap negative answer; the honest one is the cost.
 - **The cost scales linearly with the corpus, and this is the number that will change.**
   At 500 000 documents this path would be ~1.5 s, which is the point at which the
-  decision recorded in the plan (`docs/plans/2026-09-16-tolerant-publication-lookup.md`
+  decision recorded in the plan (`docs/archive/2026-09-16-tolerant-publication-lookup.md`
   §3) has to be revisited — a normalized column, a corpus-size guard that refuses to
   scan above a bound, or a SQL-side comparison. It is not a problem at today's corpus
   size and it should not be "fixed" before then (§37).

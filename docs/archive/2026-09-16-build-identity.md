@@ -1,5 +1,7 @@
 # B-34 — Distinguishable build identity in verification artifacts
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-34 · Class CORE · P1.
 
 ## Vision alignment

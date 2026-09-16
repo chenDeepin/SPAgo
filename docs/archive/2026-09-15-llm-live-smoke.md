@@ -1,7 +1,7 @@
 # Live LLM smoke with a real provider (DeepSeek) — 2026-09-15
 
 > Archived 2026-09-16 (execution record, closed). Cited as evidence by
-> `docs/online-capability.md` and `docs/plans/2026-09-15-online-llm.md` §4; the
+> `docs/online-capability.md` and `docs/archive/2026-09-15-online-llm.md` §4; the
 > provider-compatibility findings in §9 stay binding.
 
 Status: **execution record.** Opens PROD-07 / ONLINE-01 item "one real model
@@ -432,7 +432,7 @@ above.
 Resolved in the demo-open round by an explicit control rather than by loosening
 the identifier rule: `EmptyState` and the 404 message now render an action that
 opens the sample record through the same server lookup a search uses
-(`docs/plans/2026-09-15-llm-eval-and-demo-open.md` §2; browser-verified on the
+(`docs/archive/2026-09-15-llm-eval-and-demo-open.md` §2; browser-verified on the
 landing and 404 paths, and absent for non-synthetic datasets).
 
 ### 10.6 Re-verification of the retry on the current tree

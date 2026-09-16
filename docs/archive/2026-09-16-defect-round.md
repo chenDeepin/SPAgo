@@ -13,7 +13,7 @@ commit: `9848e5c`.
 Inputs: the user's request (point three acceptance pointers at
 `docs/online-capability.md`; walk the product as a real external user with the browser;
 fix the defects; then deliver the remaining backlog by priority), the ONLINE-07
-findings section of `docs/plans/2026-09-15-bindingdb-io-port.md` §8, and the
+findings section of `docs/archive/2026-09-15-bindingdb-io-port.md` §8, and the
 browser pass recorded in §2 below.
 
 ---
@@ -27,7 +27,7 @@ the archived register:
 | Pointer | Before | After |
 | --- | --- | --- |
 | `PROMPT.md` §20 "First Engineering Task" | "the next work is ONLINE-04/ONLINE-05 in the beta acceptance record" | "the gate the next work has to satisfy is `docs/online-capability.md` §6" |
-| `docs/plans/2026-09-15-online-llm.md` §4 | gate in capability §6 **and** the dated register linked as the record | gate + script in capability §6; that section is what a deployment is checked against |
+| `docs/archive/2026-09-15-online-llm.md` §4 | gate in capability §6 **and** the dated register linked as the record | gate + script in capability §6; that section is what a deployment is checked against |
 | `docs/online-capability.md` §6 | "The gate itself. The dated register … is [the beta acceptance record]" | "This section is the gate: this checklist and the script below"; the archived register is named as history, not as the gate |
 
 `PROMPT.md` (handoff block, ×2) and `README.md` (± the milestone table) already

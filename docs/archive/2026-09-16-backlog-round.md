@@ -10,7 +10,7 @@ commit: `194e953` (defect round).
 Inputs: the user's request (deliver the remaining backlog in priority order and pass
 acceptance tests), `PROMPT.md` (handoff block, §14 milestone states, §19), the defect
 round's §4 backlog, `docs/online-capability.md` §5/§6/§8, and the open items in
-`docs/plans/2026-09-15-bindingdb-io-port.md` §6.5 and §7.4.
+`docs/archive/2026-09-15-bindingdb-io-port.md` §6.5 and §7.4.
 
 ## 1. What the backlog actually contains
 
@@ -92,7 +92,7 @@ by `services/core/benchmarks/chembl_projection.py` against live EBI, two targets
 - Latency: **no improvement**; the projected variant was equal (TSLP, +31 ms) or
   slower (EGFR, +950 ms, consistent across repeats).
 - Consequence applied: the "dominant upstream cost" claim in
-  `docs/plans/2026-09-15-bindingdb-io-port.md` §6.5 was corrected — the projection
+  `docs/archive/2026-09-15-bindingdb-io-port.md` §6.5 was corrected — the projection
   cuts bandwidth, not wait time; the page count (`max_activities`) is the latency
   lever. The projection is kept and pinned by a request-capturing test.
 

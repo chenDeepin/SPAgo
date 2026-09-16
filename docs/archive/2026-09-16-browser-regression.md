@@ -1,5 +1,7 @@
 # B-38 — Browser regression for failures, stale responses and saved work
 
+> Archived 2026-09-17 — B-38 delivered; the screen-reader pass from B-19 is register item **B-44**, and the hermetic resolve fixtures named below are **B-45**.
+
 Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-38 · Class NEXT · P2.
 
 ## Vision alignment

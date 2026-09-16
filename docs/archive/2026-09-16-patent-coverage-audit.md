@@ -1,5 +1,7 @@
 # B-26 — Patent coverage audit (per publication, from stored rows)
 
+> Archived 2026-09-17 — B-26 delivered; the snapshot leg stays open behind B-23's operator gate and B-32 owns the report-note correction. Delivered record: [backlog register](../plans/backlog.md) §1–§2.
+
 **Round:** 2026-09-16 (after B-25) · **Class NEXT · P1** · **Owner:** coordinating agent
 **Backlog entry:** `docs/plans/backlog.md` §2 B-26 (promoted to P1 when the B-25 round
 emptied the P1 group; §4 there argues the promotion)

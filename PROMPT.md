@@ -1,10 +1,17 @@
 # SPAgo — Product Contract and Current Handoff
 
-> **Current handoff — 2026-09-16, implementation round 1 (owner-authorized queue).
-> ** The product-review round's P1 engineering group and the P2 group's ungated
-> items — including B-38's browser regression specs, whose round found and fixed a
-> false-empty coverage state — are delivered; the exact records with their evidence
-> are in [backlog §1](docs/plans/backlog.md#1-priority-order).
+> **Current handoff — 2026-09-17, documentation and archival round (no product
+> change).** Every plan delivered in the 2026-09-16 rounds was re-checked against the
+> current checkout and moved to `docs/archive/`; [backlog
+> §1](docs/plans/backlog.md#1-priority-order) is the delivery record, and the durable
+> pages (capability, architecture, README) no longer name delivered items as open
+> gaps. `docs/plans/` holds this register plus the two active plans (B-21's decision
+> dossier, B-32's machine-half plan). The register gained **B-44** (the screen-reader
+> announcement pass B-19 left unperformed — the head of P2 and the one engineering
+> item the next round can start without an operator decision) and **B-45** (P3:
+> hermetic fixtures for the stored-data browser specs); **B-11**'s remaining half was
+> reclassified `LATER`/P3 — a second provider adds no capability the acceptance gate
+> asks for.
 >
 > **Actual stage.** A locally implemented product with browser-verified workflow
 > correctness, a full CI gate (every push runs the whole backend suite against the
@@ -13,20 +20,21 @@
 > scientist and the independent human cross-read remain open and operator-gated (B-31,
 > B-32's second half).** A local rehearsal or a green CI run never closes them.
 >
-> **Delivered this round:** B-33 (target export/screen policy parity, browser-reproduced
-> then fixed), B-34 (distinguishable build identity in `/healthz` with a recorder that
-> fails on mismatch), B-35 (CI `full-stack` job; the 0006 helper respects the
-> required-database gate), B-42 (short-viewport table collapse), B-36 (every saved scope
-> of a mixed project reopens through one switcher), B-32's machine half (the cohort pack:
-> source-only vs combined verdicts, TSLP's historical "1/2 vs 0/1" now machine-visible
-> as one supplement row), B-37 (a citation opens the exact record it names, across the
-> target panel, family panel and analyses archive), B-30 (a complete refresh retracts
-> what its release no longer returned, scoped by target+source+access path, migration
-> 0021), B-19 (table keyboard semantics and header ownership; screen-reader pass open),
-> B-29 (stored analyses as project artifacts, migration 0022), B-39 (the target view's
-> evidence class, modality and threshold travel in the URL state), B-11's ungated half
-> (refusal class and retry budget in the 502 detail), and B-21's feasibility decision
-> document (the source/terms choice itself is the operator's).
+> **Delivered in the 2026-09-16 rounds, per item with its evidence and stated
+> limits:** B-33 (target export/screen policy parity, browser-reproduced then fixed),
+> B-34 (distinguishable build identity in `/healthz` with a recorder that fails on
+> mismatch), B-35 (CI `full-stack` job), B-42 (short-viewport table collapse), B-36
+> (every saved scope of a mixed project reopens through one switcher), B-32's machine
+> half (the cohort pack: source-only vs combined verdicts, TSLP's historical
+> "1/2 vs 0/1" now machine-visible as one supplement row), B-37 (a citation opens the
+> exact record it names), B-30 (a complete refresh retracts what its release no longer
+> returned, scoped by target+source+access path, migration 0021), B-19's keyboard
+> half (table header ownership and nested-control keys), B-29 (stored analyses as
+> project artifacts, migration 0022), B-39 (target-view filters and policy travel in
+> the URL state), B-38 (browser regression for failures, stale responses and saved
+> work), B-11's ungated half (refusal class and retry budget in the 502 detail), and
+> B-21's feasibility decision document (the source/terms choice itself is the
+> operator's).
 >
 > **Limits that matter to the product loop:**
 > - B-30's retraction needs a *complete* or *empty* ask; failed/partial asks and other
@@ -34,9 +42,10 @@
 >   path are never retracted. Document-level corpus absence stays unclaimed.
 > - The cohort pack is machine-prepared evidence, not an independent review; B-31's
 > gate needs the human cross-read the pack is shaped for.
-> - The retraction run note and the screen-reader pass were not browser-reproduced
->   (the reasons are in their plans). B-43 (a patent search from a target view pushes
->   two history entries) is recorded with a workaround.
+> - The retraction run note was not browser-reproduced (the reason is in its plan).
+>   The screen-reader announcement pass was **not** performed — it is now item
+>   **B-44** — and B-43 (a patent search from a target view pushes two history
+>   entries) is recorded with a workaround.
 > - One live model provider remains historically measured; second-provider evaluation
 >   stays gated on an explicit choice and budget. Claims text needs the operator's
 >   B-21 decision (OPS registration/terms) before any integration (B-22 stays P3).
@@ -48,13 +57,15 @@
 > `docs/online-capability.md` §6 — host/TLS, readiness, owner isolation, restore,
 > provider smoke, source coverage, latency/cost, invited scientist and independent
 > reader, now with the build-identity recorder and the cohort pack as its tooling.
-> Operator-only decisions stay explicit. 2. The remaining register items are gated
-> (B-21 decision, B-09 scientific review, B-11 provider) or P3 as ranked; the
-> register records why.
+> Operator-only decisions stay explicit. 2. The next implementation round starts
+> with **B-44** (ungated, S) when it is authorized; the remaining register items are
+> operator-gated (B-21 decision, B-09 scientific review) or P3 as ranked — B-11's
+> second-provider half is now among the P3 group. The register records why.
 >
 > **Evidence map:** scope and hosted gate `docs/online-capability.md`; operations
 > `docs/runbook.md` §H1–H10; per-item delivery records in `docs/plans/backlog.md`
-> and its linked plans/benchmarks; the cohort pack `benchmarks/cohort-pack-2026-09-16.*`.
+> with their plans and benchmarks under `docs/archive/`; the cohort pack
+> `benchmarks/cohort-pack-2026-09-16.*`.
 > Older rounds in `docs/archive/` are historical records, not the current work queue.
 > The rest of this document is the standing product contract; aspirational capabilities
 > are not implementation claims.

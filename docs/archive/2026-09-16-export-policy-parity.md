@@ -1,5 +1,7 @@
 # B-33 — Target screen/export filter and potency-policy parity
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-33 · Class CORE · P1.
 
 ## Vision alignment

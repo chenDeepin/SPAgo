@@ -1,5 +1,7 @@
 # B-19 + B-29 — Table keyboard accessibility; a stored analysis as a project artifact
 
+> Archived 2026-09-17 — B-19 and B-29 delivered; the screen-reader announcement pass is register item **B-44**.
+
 Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-19, B-29 · Class NEXT · P2.
 
 ## Vision alignment

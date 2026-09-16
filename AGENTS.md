@@ -35,6 +35,8 @@ durable UI references `docs/design/`.
 - Root `PROMPT.md` is the stable current handoff, not a scratch log: read its active references before implementing, and do not turn unreviewed design ideas into approved scope.
 - Record unresolved defects and review feedback in the active plan before planning the next stage; changed-file lists, commands, results and temporary restrictions belong there, not here.
 - Close a round by archiving completed or superseded work under `docs/archive/` with its verification and remaining issues preserved, and update the referring links and handoff pointers. No empty indexes, no archiving unrelated history for consistency.
+- A plan file moves to `docs/archive/` in the same change that removes its item from the register, and a plan stays in `docs/plans/` only while it still holds work the register lists (an operator decision it serves, or an open engineering item). If a delivered item's acceptance is partly unperformed or operator-gated, that remainder becomes a named register item before the plan is archived; an open acceptance check that lives only in an archived plan's prose is a lost item.
+- Delivering an item includes correcting every durable page that still names it as an open gap (`docs/online-capability.md`, `docs/architecture/overview.md`, `README.md`): a stale gap statement is a documentation defect, not history.
 - Update the durable contract when architecture, ownership, API behavior or a reviewed UI design changes. Documentation existing does not make a proposal or a mockup implemented.
 
 ## Delegate and report precisely
@@ -363,6 +365,8 @@ All schema changes require migrations; never rely on manual database modificatio
 # 27. Test Pyramid
 
 Required categories: unit, chemistry correctness, adapter contract, database integration, API integration, frontend interaction, end-to-end, performance regression.
+
+Frontend interaction acceptance on a virtualized data table has two passes: keyboard operability (row/header semantics, nested controls) and an assistive-technology announcement pass. A role/ARIA change or a DOM assertion closes neither by itself; record which pass was performed, and keep an unperformed pass as an open register item rather than a delivered claim.
 
 Maintain sealed fixtures for known patent cases. Scientific correctness tests are as important as software tests.
 

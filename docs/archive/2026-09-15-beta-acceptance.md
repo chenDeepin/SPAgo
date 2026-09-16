@@ -4,11 +4,11 @@
 > and was deleted from HEAD in `61f0686` together with the screenshots of that round
 > (those stay out of Git: a screenshot of a running build shows a live target's rows).
 > The text is restored here because `PROMPT.md`, `README.md` and
-> `docs/plans/2026-09-15-online-llm.md` cite it as the verified/open register, and its
+> `docs/archive/2026-09-15-online-llm.md` cite it as the verified/open register, and its
 > §5 is the script the next stage runs. **The counts below are as of 2026-09-15 and are
 > stale** (the suite has since grown past 500 tests); the ONLINEd records in
-> `docs/plans/2026-09-15-online-llm.md` §4 and
-> `docs/plans/2026-09-15-bindingdb-io-port.md` are the current verification state.
+> `docs/archive/2026-09-15-online-llm.md` §4 and
+> `docs/archive/2026-09-15-bindingdb-io-port.md` are the current verification state.
 > §4 "Not verified" remains the live gate.
 
 Status: **implementation complete; hosted acceptance NOT yet performed.** This

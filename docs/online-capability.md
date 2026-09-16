@@ -1,12 +1,14 @@
 # SPAgo capability and coverage — invited beta
 
 Status: **local implementation with historical verification; hosted acceptance open**.
-Documentation reviewed at `efb1357` on 2026-09-16; no runtime checks were repeated in
-this planning-only round. “Supported” below refers to the implemented scope with the
-limits stated here, not an accepted hosted deployment. Tests, local browser records and
-selected live-source measurements prove different things; §6 remains the release gate.
-Current findings and proposed work: [product review](plans/2026-09-16-product-review-qa.md)
-and [backlog](plans/backlog.md).
+Documentation refreshed 2026-09-17 against implementation round 1 (`232080a`); the full
+backend suite ran green on that checkout (**831 passed**) and the frontend build is clean,
+but no browser run or hosted deployment was re-checked in this documentation round.
+“Supported” below refers to the implemented scope with the limits stated here, not an
+accepted hosted deployment. Tests, local browser records and selected live-source
+measurements prove different things; §6 remains the release gate. Current proposals:
+[backlog](plans/backlog.md); the dated review that produced this queue is
+[archived here](archive/2026-09-16-product-review-qa.md).
 
 Update this page whenever a capability or a source version changes. The
 `Rollback` section at the end is part of the release, not an afterthought.
@@ -15,9 +17,9 @@ Update this page whenever a capability or a source version changes. The
 
 | Component | Version / identity |
 | --- | --- |
-| Application | reviewed checkout `efb1357`; `/healthz` reports package `api_version=0.1.0` plus a packaging-time `build_id`/`build_source` (B-34): `git describe --always --dirty` when built with `scripts/build_app.sh`, an explicit `unknown` from a plain compose build; images built before B-34 carry no `build_id` field |
+| Application | reviewed checkout `232080a`; `/healthz` reports package `api_version=0.1.0` plus a packaging-time `build_id`/`build_source` (B-34): `git describe --always --dirty` when built with `scripts/build_app.sh`, an explicit `unknown` from a plain compose build; images built before B-34 carry no `build_id` field |
 | Database | PostgreSQL 15 + RDKit cartridge 4.2.0 |
-| Schema | migrations 0001–0020 present (forward-only); verify the deployed schema separately |
+| Schema | migrations 0001–0022 present (forward-only); verify the deployed schema separately |
 | UniProt | `rest.uniprot.org/uniprotkb/search` (REST, `uniprot-rest-uniprotkb`) |
 | ChEMBL | `www.ebi.ac.uk/chembl/api/data` (`chembl-web-services`), including the bounded `document.json` lookup that supplies patent/DOI/PMID, with the activity response projected to the mapped fields |
 | BindingDB | `bindingdb.org/rest/getLigandsByUniprot` (`bindingdb-rest`) |
@@ -53,9 +55,12 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   extraction method, provenance state, source link when the source supplies one.
 - CSV/SDF export by family, document, structure query or explicit selection, with
   patent numbers, labels, evidence references and dataset versions attached.
-- Target-candidate export, including candidates with no patent mapping. The target UI
-  currently omits its threshold override and evidence-class filter from the export
-  request; parity with an actively filtered target view is not established (B-33, §8).
+- Target-candidate export, including candidates with no patent mapping. The downloaded
+  file carries the screen's active scope: the evidence-class filter and the threshold
+  override travel in the request, the results-scope row set uses the same existence
+  clause the screen uses (an explicit selection names its own rows), and every row
+  states `reference_threshold_nM` and `reference_policy_version` — browser-reproduced
+  before the fix and verified after (B-33).
 - **Loaded-corpus inventory** (`GET /api/v1/corpus`, and the same view behind the
   top-bar dataset badge): families, documents, compounds, mentions, evidence and
   measurements per dataset version, read from the corpus tables on the request,
@@ -102,10 +107,12 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   only where the all-source refresh is the wrong tool (a `failed` or `partial` chip), and
   the cost shown before clicking is that source's own last run — pages, records seen and
   wall time — not an estimate. A run that names no source is refused (422). What a retry
-  does **not** do: retract a row the source no longer returns (a failed or bounded ask
-  establishes no absence, and deciding when a complete ask does is a separate item,
-  register B-30), or rewrite a stored summary — the verdict is recomputed from the stored
-  rows, and an analysis remains the snapshot it was.
+  does **not** do: rewrite a stored summary — the verdict is recomputed from the stored
+  rows, and an analysis remains the snapshot it was. A *complete* (or explicitly `empty`)
+  ask retracts, within its own target + source + **access path**, the candidate rows its
+  release no longer returned (B-30, migration 0021): the withdrawing retrieval is named,
+  nothing is deleted, re-delivery clears the retraction, and failed/partial asks, other
+  access paths and rows with no recorded path are provably untouched.
 - **How far that linkage actually reaches, per retrieval.** Each retrieval stores a
   disjoint tally over the records it kept — `patent_declared`, `doi_only`,
   `pmid_only`, and the reasons a reference is missing (`the document declares no
@@ -164,8 +171,9 @@ counts and outcomes are stored in `source_retrievals` and exportable via
   row is an update, never a duplicate. Provenance never downgrades: an agent's
   re-post cannot turn a person's row into a proposal.
 - Save and reopen a candidate with no patent mapping; it keeps its target scope,
-  source versions and identity snapshot. Historical verification covers the single
-  target path; navigation among all scopes in a mixed project remains a gap (B-36).
+  source versions and identity snapshot. Every saved scope of a mixed project — families
+  and targets with saved items — reopens through one "Saved scope" switcher, including
+  all-missing scopes, with drift labels (B-36, browser-verified).
 
 ## 3b. Supported: what a source declares for a publication (patent-led)
 
@@ -250,9 +258,9 @@ which leg, and which leg nobody has asked:
 - **Coverage limits.** The corpus leg can only report documents SPAgo imported (the
   true sibling set needs a bibliographic source, B-22). B-23's target-led snapshot tool
   exists, but this audit has no dedicated snapshot leg or patent-led snapshot scan.
-  Its fixed runtime note saying the build has no configured snapshot is stale and
-  tracked in B-32; this documentation correction does not change that output.
-  `not_queried` is never an absent verdict.
+  The report's runtime note now describes the access paths it can account for; the
+  earlier fixed "no snapshot configured" wording was corrected in B-32. `not_queried`
+  is never an absent verdict.
 - **Two surfaces, one rule.** The patent view's *Coverage* strip (collapsed to one line,
   on the family view and on the 404 "the corpus does not hold it" path, where coverage is
   the question the reader actually has) and `scripts/patent_coverage.py` for an operator
@@ -275,9 +283,11 @@ family's publication set, or a substitute for asking a source. See *Not supporte
   operation allowlist, shown for review, and executed only on explicit action.
 - Deterministic identifier requests (publication numbers, reviewed target
   entities) work with no model configured at all.
-- Citation validation checks the stored input reference. Exact navigation from every
-  citation to its supporting record is not complete: several active callbacks only
-  change tabs, and archived-analysis citations are text (B-37).
+- A citation opens the exact record it names (B-37): a measurement citation selects the
+  cited compound and highlights its row (or states that the record is not in today's
+  stored rows), an evidence citation opens that record, a family citation selects it, and
+  a stored analysis's citations reopen their scope at the record — all stored reads with
+  no provider call.
 
 ## 5. Not supported (deliberate limits)
 
@@ -289,7 +299,9 @@ family's publication set, or a substitute for asking a source. See *Not supporte
   the earlier run). These are dated observations, not a live coverage guarantee.
   The local workspace includes supplements; the isolated `*-accept` cohort uses
   different stored data and lacks IL-6/IL-6R. Its TSLP verdict is 0/1 while the local
-  workspace's is 1/2; neither is a substitute for a source-only baseline (B-32).
+  workspace's is 1/2; the cohort pack now reports source-only and combined verdicts
+  separately (B-32), so these are readable as different stored data rather than one
+  source-coverage number, and the independent human cross-read remains open.
   In the recorded source retrieval, 110 of 111 qualifying ChEMBL activities are
   peptides and one genuine small molecule remains; **IL-6R is the thin one** (one
   in-scope compound whose only record is not a potency, and BindingDB failed for
@@ -307,8 +319,10 @@ family's publication set, or a substitute for asking a source. See *Not supporte
   structure-less remark for the same claim. Taking a row back is a recorded
   retraction with a required reason, not a deletion: the row stays readable, the
   verdict reports it as withdrawn. B-04 applies recorded retraction within its corpus
-  package / complete activity-release scope; missing rows after online investigation
-  retries are not yet retracted (B-30). The
+  package / complete activity-release scope; an online investigation retracts the same
+  way since B-30 — only an ask that answered the whole question (`complete` or `empty`),
+  scoped to target + source + access path, and never a `failed`/partial ask or a row
+  whose origin path was never recorded. The
   UI has no physical delete, so no count changes without a reason on the row.
 - **The reference verdict is a count, not a biological conclusion.** "2 of 3
   in-scope compounds at or below 10 µM" states what the retrieved records support
@@ -503,8 +517,12 @@ The deployment is one app image plus one database. To roll back:
   end in LLM mode in [record](archive/2026-09-15-llm-live-smoke.md) and again for the
   per-source citation chip in
   [record](archive/2026-09-15-llm-eval-and-demo-open.md) §7.1). Any other endpoint the
-  operator chooses is unverified, and an answer rejected twice in a row (one content
-  re-sample is allowed) still fails as 502. Hosted acceptance still requires the
+  operator chooses is unverified; the second-provider evaluation sits at `LATER`/P3 in
+  the register (B-11) because a second endpoint measures compatibility, and the §6 gate
+  needs one provider real. A request whose content is rejected twice (one re-sample is
+  allowed) still fails 502, but the detail now names the refusal class and the spent
+  retry budget, and the panel offers an explicit Retry for the next billed call
+  (delivered 2026-09-16). Hosted acceptance still requires the
   operator's own smoke run.
 - A summary's citations are validated against the exact snapshot sent, so a
   citation the model cannot express is refused rather than stored. The target
@@ -544,16 +562,18 @@ The deployment is one app image plus one database. To roll back:
   full metadata scan when the indexed lookup misses — measured at 155 ms on a
   50 000-document corpus (`benchmarks/tolerant-lookup-2026-09-16.md`) — which is why
   it runs only after the exact miss and is unmeasured above that corpus size.
-- **Target display/export parity (B-33).** Static inspection finds that the browser
-  does not send the active target threshold or evidence filter to export. The backend
-  supports an explicit threshold but otherwise uses the deployment default, and has
-  no export evidence-class parameter. Browser reproduction is still required; do not
-  claim a filtered target view and its downloaded artifact have identical semantics.
-- **Saved-work continuity (B-36/B-39).** Mixed projects can hold several targets and
-  families, but reopening selects the first usable item and the existing switcher
-  covers families only. Target modality/evidence/threshold controls are not restored
-  from the URL. These static findings are distinct from the verified single-scope paths.
-- **Regression scope (B-35/B-38).** CI executes a selected non-database subset and
-  frontend typecheck/build; the full PostgreSQL/RDKit suite and browser smoke are not
-  in CI. One recorded successful browser smoke does not cover failed sources, late
-  responses, auth-required persistence or export-content parity.
+- **Evidence continuity is delivered, with two named residuals.** Mixed projects
+  reopen every saved scope (B-36), a citation opens the exact record it names (B-37),
+  and a target view's evidence class, modality and threshold travel in the URL (B-39);
+  structure-search snapshots in the URL are a later scope decision, not bundled there.
+  Unperformed: an assistive-technology announcement pass on the virtualized tables
+  (B-44; the keyboard/header pass is browser-verified), and hermetic fixtures for the
+  stored-data browser specs, which resolve IL-6 through the live (free) UniProt
+  endpoint today (B-45).
+- **Regression scope.** CI now runs the full backend suite against the shipped
+  PostgreSQL+RDKit image and the browser smoke against the seeded compose stack
+  (B-35), and the specs cover failed sources, stale responses, per-source retry,
+  save/reopen and export-content parity (B-38); two stored-data specs skip loudly on
+  a bare stack instead of failing on absent data. Not covered: live sources, hosted
+  mode, and the screen-reader pass (B-44). Opening a patent from a target view pushes
+  two history entries — a polish defect with a press-Back-twice workaround (B-43).

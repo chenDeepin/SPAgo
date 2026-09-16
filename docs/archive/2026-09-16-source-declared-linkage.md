@@ -1,5 +1,7 @@
 # B-02 — Live source-declared patent linkage (plan, 2026-09-16)
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Backlog item `docs/plans/backlog.md` B-02, the P1 item after B-10. Vision check: it
 serves `PROMPT.md` §2 (`patents → structures → bioactivity → evidence`) and `AGENTS.md`
 §9/§10/§11 — the product's central relation is "this compound, in this document", and

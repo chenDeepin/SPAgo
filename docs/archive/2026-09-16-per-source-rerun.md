@@ -1,5 +1,7 @@
 # B-06 — Per-source re-run for target investigations
 
+> Archived 2026-09-17 — round closed. Delivered record and open remainder: [backlog register](../plans/backlog.md) §1–§2.
+
 Round opened 2026-09-16. Class **NEXT · P1 · S–M** (owner request group). Register entry:
 `docs/plans/backlog.md` §B-06. Base path this builds on: ONLINE-00 / ONLINE-06 / ONLINE-07,
 migration 0015.

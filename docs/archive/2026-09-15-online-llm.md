@@ -1,7 +1,9 @@
 # Online SPAgo with LLM enhancement — next implementation plan
 
+> Archived 2026-09-17 — ONLINE-00…05 implemented (§4 is the record). The hosted gate remains open as **B-31/B-32** and `docs/online-capability.md` §6.
+
 Date: 2026-09-15. Baseline: `41ef768`; working tree was clean before this planning update.
-Status: next-stage plan, not implemented or deployed. User direction: focus the next version on online use with LLM enhancement, connected to open databases for small-molecule inhibitor investigation of TSLP, CD40L, IL-6/IL-6R and further user-selected targets.
+Status: **implemented** (ONLINE-00…05; §4 is the verification record). Hosted acceptance stays open as register items B-31/B-32 and in `docs/online-capability.md` §6. User direction: focus the next version on online use with LLM enhancement, connected to open databases for small-molecule inhibitor investigation of TSLP, CD40L, IL-6/IL-6R and further user-selected targets.
 
 ## 1. Q&A and product decision
 

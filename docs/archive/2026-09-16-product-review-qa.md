@@ -1,8 +1,10 @@
 # 产品进度与 backlog 复核 Q&A — 2026-09-16
 
+> 已归档 2026-09-17 — 本轮复核已完成，所有发现已在 register（`docs/plans/backlog.md` §1–§2）中分派；B-31/B-32 仍由 operator 把关。Q1–Q3 是实施第 1 轮之前的日期快照，不是当前状态；当前状态以 capability 文档和 register 为准。原文中的链接已按归档位置更新。
+
 状态：**计划与文档阶段已整理；没有进入实施。** 核查基线：`efb1357`
 （`main`，开始时工作区干净）。用户本轮明确要求不执行，只检查、规划、更新文档。
-当前排序以 [backlog §1](backlog.md#1-priority-order) 为准；这里记录判断依据、边界和开放问题。
+当前排序以 [backlog §1](../plans/backlog.md#1-priority-order) 为准；这里记录判断依据、边界和开放问题。
 
 ## Q1. 产品现在到底处于什么阶段？
 
