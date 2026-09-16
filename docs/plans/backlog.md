@@ -31,7 +31,6 @@ file.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-01 | Corpus scale-up workflow: batch extract/import + "what is loaded" surface | NEXT | M | — |
 | P1 | B-10 | Summary archive and retrieval *(owner request)* | NEXT | M | — |
 | P1 | B-02 | Live source-declared patent linkage + candidate→corpus match display | NEXT | M | upstream source behaviour |
 | P2 | B-24 | Patent-led compound discovery via ChEMBL patent search | NEXT | M | upstream source behaviour |
@@ -69,11 +68,18 @@ it):**
 
 | ID | Delivered | Artifact |
 | --- | --- | --- |
+| B-01 | 2026-09-16 | `scripts/corpus_batch.py` (chunked extract → import with resumable `STATE.json`, per-chunk status, non-zero exit and an explicit missing-number list when the corpus does not hold the requested set); `spago_core.corpus_status` (terminal surface; `--patents` exits non-zero and prints every number that is not loaded) and `GET /api/v1/corpus` behind the top-bar dataset badge (`CorpusDialog.tsx`) — counts read from the corpus tables, per dataset version, with failed/interrupted imports and unregistered versions reported. |
 | B-13 | 2026-09-16 | `scripts/restore_check.sh` (dumps, restores, compares the §H7 counts, fails non-zero on mismatch, verified against the rehearsal stack and against a deliberate mismatch) and the §H2 ingress-duty table (compression, TLS, throttling, logs, backup schedule) in `docs/runbook.md`. |
 
 ## 2. Items
 
 ### B-01 — Corpus scale-up workflow (batch extract/import, loaded-corpus surface)
+
+**Delivered 2026-09-16** (`docs/plans/backlog.md` §1 artifact table). The problem and
+scope below are kept as the record of what was asked; the shipped shape differs in two
+places worth naming: the batch loop runs on the operator's host rather than inside the
+service (no new worker, §6/§22), and the "what is loaded" surface reads counts from the
+corpus tables on every request instead of maintaining a counter.
 
 - **Problem.** "Search real patents" today means "search what an operator imported".
   `scripts/extract_surechembl.py` takes one publication per run and
@@ -536,8 +542,9 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 
 ## 4. P1 in one sentence each
 
-1. **B-13** — make the §6 gate cheaper to pass and harder to fake.
-2. **B-01** — make "search real patents" mean more than "search what was imported".
+1. **B-13** — *delivered 2026-09-16:* make the §6 gate cheaper to pass and harder to fake.
+2. **B-01** — *delivered 2026-09-16:* make "search real patents" mean more than "search
+   what was imported".
 3. **B-10** — let a scientist keep and find the analysis they already paid for.
 4. **B-02** — prove the patent-linkage claim on live data, or state exactly how far it
    reaches.
@@ -562,3 +569,4 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 | 2026-09-16 | Register created (planning-only stage). Items grounded by reading `PROMPT.md`, `AGENTS.md`, `docs/online-capability.md`, `docs/runbook.md`, the active plans, and the current checkout (`services/core`, `apps/web`, `scripts/`, `migrations/`). Owner request recorded: target-led open-database work (ChEMBL/BindingDB/PubChem) and LLM-summary archive/retrieval enter the backlog as B-06…B-09, B-07, B-08 and B-10. No code changed. |
 | 2026-09-16 | Second planning-only stage. `BindingDB_IO` reviewed read-only; §3 added with the adopt/defer/reject argument; new items B-23 (local snapshot search), B-24 (patent-led ChEMBL compounds), B-25 (supplement bundle import), B-26 (patent coverage audit), B-27 (review sheet, LATER) and the B-28 note recorded; priority table and P2 order updated. `AGENTS.md` gained the snapshot, agent-retrieval, repository-hygiene and acceptance/verifier rules; `docs/online-capability.md` §6 gained the hosted-acceptance definition and success criteria. No application code changed. |
 | 2026-09-16 | **B-13 delivered** after the hosted-acceptance rehearsal: `scripts/restore_check.sh` (scripted §H7 rehearsal; verified against the rehearsal stack and against a deliberate mismatch) and the §H2 "ingress duties" table (TLS, compression with the measured 20.3 MB → 4.95 MB figure, throttling, logs, backup schedule). The rehearsal also produced `docs/plans/2026-09-16-hosted-acceptance-rehearsal.md` and five defect fixes (target-summary bounds, rejected-call token accounting, transport-failure outcome, drill mode, §H7 column name). |
+| 2026-09-16 | **B-01 delivered** (`scripts/corpus_batch.py`, `spago_core.corpus_status`, `GET /api/v1/corpus` + `CorpusDialog.tsx`). No re-sorting needed: the priority order below is unchanged, and B-10 is now the top P1 item. Two scope notes recorded: the batch loop is an operator-side chunker (no queue service, §6/§22), and the corpus counts are computed per request rather than maintained — the measured cost is in the plan file, and a corpus large enough to need counters is a measured problem, not a guess. |

@@ -139,6 +139,49 @@ export interface DatasetEntry {
   retrieved_at: string;
 }
 
+/** What the loaded corpus covers, by dataset version (B-01). Every number is a
+ * count over the corpus tables, so a number absent here was never imported. */
+export interface CorpusSourceRow {
+  dataset_version: string;
+  source_name: string | null;
+  synthetic: boolean;
+  /** False for a version recorded per row by a source lookup instead of an
+   * operator-imported package. */
+  registered: boolean;
+  release_label: string | null;
+  retrieved_at: string | null;
+  notes: string | null;
+  files: number;
+  families: number;
+  documents: number;
+  compounds: number;
+  mentions: number;
+  evidence: number;
+  measurements: number;
+  issues: number;
+}
+
+export interface CorpusResponse {
+  generated_at: string;
+  sources: CorpusSourceRow[];
+  totals: Record<string, number>;
+  imports: {
+    queued: number;
+    running: number;
+    completed: number;
+    failed: number;
+    interrupted: number;
+    last_finished_at: string | null;
+    last_error: {
+      source_name: string;
+      dataset_version: string;
+      error: string;
+      finished_at: string | null;
+    } | null;
+  };
+  notes: string[];
+}
+
 /* --- M1: projects + save --- */
 
 export interface ProjectSummary {

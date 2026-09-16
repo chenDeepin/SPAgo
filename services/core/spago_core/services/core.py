@@ -5,8 +5,11 @@ Interactive lookups happen here, server-side and paged (default 100, hard cap
 """
 from __future__ import annotations
 
+import csv
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -369,3 +372,268 @@ def list_ingestion_issues(engine: Engine) -> list[dict]:
             )
         ).mappings().all()
     return [dict(r) for r in rows]
+
+
+#: The versioned patent-corpus tables, as `kind: table`. Every one of them carries
+#: `dataset_version`; a corpus surface that counted only some of them would
+#: understate what a search can reach (B-01).
+_CORPUS_KINDS = {
+    "families": "patent_families",
+    "documents": "patent_documents",
+    "compounds": "compounds",
+    "mentions": "compound_mentions",
+    "evidence": "evidence_records",
+    "measurements": "measurements",
+}
+
+#: Tables that also carry `source_name`, used to name a version whose source is
+#: not registered in `dataset_info` (target investigations record it per row).
+_VERSION_SOURCE_TABLES = ("measurements", "assays", "targets")
+
+
+def read_publication_list(path: Path, column: str | None = None) -> list[str]:
+    """Publication numbers from an operator's list file, in order, deduplicated.
+
+    One number per line, or a CSV/TSV export with `column` naming the field. A
+    `#` comment and a blank line are ignored. Values are kept exactly as written:
+    normalizing a number here would hide a wrong number from a coverage report,
+    which is the one thing this list is used for (B-01).
+    """
+    lines = [
+        ln
+        for ln in path.read_text(encoding="utf-8").splitlines()
+        if ln.strip() and not ln.lstrip().startswith("#")
+    ]
+    if not lines:
+        return []
+    delimiter = "\t" if "\t" in lines[0] else ("," if "," in lines[0] else None)
+    numbers: list[str] = []
+    if delimiter is None:
+        # A single-column export has no delimiter to detect; its label row, if
+        # any, must not be checked as if it were a publication number.
+        if _looks_like_header(lines[0:1]):
+            lines = lines[1:]
+        numbers = [ln.strip() for ln in lines]
+    else:
+        rows = list(csv.reader(lines, delimiter=delimiter))
+        header = rows[0]
+        header_is_label = _looks_like_header(header)
+        index = 0
+        if column is not None:
+            if column.isdigit():
+                index = int(column)
+            elif column in header:
+                index = header.index(column)
+            else:
+                raise ValueError(
+                    f"column {column!r} is not in {path.name} (header: {', '.join(header)})"
+                )
+        elif len(header) > 1:
+            raise ValueError(
+                f"{path.name} has {len(header)} columns; name the one holding publication "
+                f"numbers with --column (header: {', '.join(header)})"
+            )
+        start = 1 if (header_is_label or column is not None) else 0
+        for row in rows[start:]:
+            if index < len(row) and row[index].strip():
+                numbers.append(row[index].strip())
+    seen: set[str] = set()
+    unique: list[str] = []
+    for number in numbers:
+        if number in seen:
+            continue
+        seen.add(number)
+        unique.append(number)
+    return unique
+
+
+#: Header labels an exported patent list uses; a first row matching one is a
+#: label, not a publication number, and is skipped.
+_PUBLICATION_HEADERS = {
+    "patent", "patents", "patent_number", "patent number", "pn", "publication",
+    "publication_number", "publication number", "number", "publicationnumber",
+}
+
+
+def _looks_like_header(fields: list[str]) -> bool:
+    return any(field.strip().lower().replace("_", " ") in _PUBLICATION_HEADERS for field in fields[:2])
+
+
+def publications_in_corpus(engine: Engine, numbers: Sequence[str]) -> set[str]:
+    """Which of these publication numbers the loaded corpus actually holds.
+
+    Exact and read-only: a number absent from the result was never imported, which
+    is the fact an operator needs before concluding anything about a patent (B-01).
+    """
+    if not numbers:
+        return set()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT publication_number FROM patent_documents "
+                "WHERE publication_number = ANY(:numbers)"
+            ),
+            {"numbers": list(numbers)},
+        ).all()
+    return {r[0] for r in rows}
+
+
+def corpus_summary(engine: Engine) -> dict:
+    """What is actually loaded, by dataset version: the surface that makes
+    "search real patents" mean "search this corpus, with these versions" (B-01).
+
+    Counts are read from the tables themselves — never from a cached counter —
+    so the surface cannot disagree with the data it describes. Each metric is one
+    grouped scan, which is proportionate while the patent corpus lives in
+    PostgreSQL (AGENTS.md §7: bulk datasets stay in DuckDB/Parquet); a corpus
+    large enough for that to hurt is a measured problem with an obvious fix
+    (maintained counters), not a reason to guess the numbers now.
+    """
+    kinds_sql = " UNION ALL ".join(
+        f"SELECT '{kind}' AS kind, dataset_version, count(*) AS n, "
+        f"count(*) FILTER (WHERE "
+        + (
+            "retracted_at IS NOT NULL"
+            if table in ("compound_mentions", "evidence_records")
+            else "false"
+        )
+        + f") AS retracted FROM {table} GROUP BY dataset_version"
+        for kind, table in _CORPUS_KINDS.items()
+    )
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(f"SELECT * FROM ({kinds_sql}) t")
+        ).mappings().all()
+        registered = conn.execute(
+            text(
+                """
+                SELECT source_name, dataset_version, synthetic, release_label,
+                       retrieved_at, files, notes
+                  FROM dataset_info
+                """
+            )
+        ).mappings().all()
+        per_version_source: dict[str, str] = {}
+        for table in _VERSION_SOURCE_TABLES:
+            for r in conn.execute(
+                text(f"SELECT DISTINCT dataset_version, source_name FROM {table}")
+            ).mappings():
+                per_version_source.setdefault(r["dataset_version"], r["source_name"])
+        issues = conn.execute(
+            text(
+                "SELECT dataset_version, count(*) AS n FROM ingestion_issues "
+                "GROUP BY dataset_version"
+            )
+        ).mappings().all()
+        imports = conn.execute(
+            text(
+                """
+                SELECT status, count(*) AS n, max(finished_at) AS last_finished_at
+                  FROM import_jobs GROUP BY status
+                """
+            )
+        ).mappings().all()
+        last_error = conn.execute(
+            text(
+                """
+                SELECT error, source_name, dataset_version, finished_at
+                  FROM import_jobs
+                 WHERE status = 'failed'
+                 ORDER BY finished_at DESC NULLS LAST
+                 LIMIT 1
+                """
+            )
+        ).mappings().first()
+
+    by_version: dict[str, dict] = {}
+    for r in rows:
+        entry = by_version.setdefault(
+            r["dataset_version"],
+            {"dataset_version": r["dataset_version"], **{k: 0 for k in _CORPUS_KINDS}},
+        )
+        entry[r["kind"]] = int(r["n"])
+    for r in issues:
+        entry = by_version.setdefault(
+            r["dataset_version"],
+            {"dataset_version": r["dataset_version"], **{k: 0 for k in _CORPUS_KINDS}},
+        )
+        entry["issues"] = int(r["n"])
+
+    registry = {r["dataset_version"]: dict(r) for r in registered}
+    sources = []
+    for version, entry in by_version.items():
+        info = registry.get(version) or {}
+        files = info.get("files") or {}
+        sources.append(
+            {
+                **{k: entry.get(k, 0) for k in _CORPUS_KINDS},
+                "issues": entry.get("issues", 0),
+                "dataset_version": version,
+                "source_name": info.get("source_name") or per_version_source.get(version),
+                "synthetic": bool(info.get("synthetic", False)),
+                "release_label": info.get("release_label"),
+                "retrieved_at": (
+                    info["retrieved_at"].isoformat()
+                    if info.get("retrieved_at") is not None
+                    else None
+                ),
+                "notes": info.get("notes"),
+                "files": len(files) if isinstance(files, dict) else 0,
+                "registered": version in registry,
+            }
+        )
+    # Registered sources first, then by size: an operator scanning this reads the
+    # packages they imported before the per-row versions of a target investigation.
+    sources.sort(
+        key=lambda s: (
+            not s["registered"],
+            -(s["families"] + s["documents"] + s["compounds"]),
+            s["dataset_version"],
+        )
+    )
+
+    totals = {k: sum(int(s[k]) for s in sources) for k in _CORPUS_KINDS}
+    totals["issues"] = sum(int(s["issues"]) for s in sources)
+    status_counts = {r["status"]: int(r["n"]) for r in imports}
+    last_finished = [r["last_finished_at"] for r in imports if r["last_finished_at"] is not None]
+    notes = []
+    unregistered = [s["dataset_version"] for s in sources if not s["registered"]]
+    if unregistered:
+        notes.append(
+            "Not a registered import package (recorded per row by a source lookup): "
+            + ", ".join(sorted(unregistered))
+        )
+    if status_counts.get("interrupted"):
+        notes.append(
+            f"{status_counts['interrupted']} import job(s) were interrupted; "
+            "`python -m spago_core.import_package --status` lists them."
+        )
+    return {
+        "sources": sources,
+        "totals": totals,
+        "imports": {
+            "queued": status_counts.get("queued", 0),
+            "running": status_counts.get("running", 0),
+            "completed": status_counts.get("completed", 0),
+            "failed": status_counts.get("failed", 0),
+            "interrupted": status_counts.get("interrupted", 0),
+            "last_finished_at": (
+                max(last_finished).isoformat() if last_finished else None
+            ),
+            "last_error": (
+                {
+                    "source_name": last_error["source_name"],
+                    "dataset_version": last_error["dataset_version"],
+                    "error": last_error["error"],
+                    "finished_at": (
+                        last_error["finished_at"].isoformat()
+                        if last_error["finished_at"] is not None
+                        else None
+                    ),
+                }
+                if last_error is not None
+                else None
+            ),
+        },
+        "notes": notes,
+    }

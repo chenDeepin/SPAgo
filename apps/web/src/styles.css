@@ -121,6 +121,74 @@ button {
   flex: 0 0 7px;
 }
 
+/* The badge is the control: it opens the loaded-corpus inventory (B-01). */
+button.dataset-badge {
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.dataset-badge:hover {
+  border-color: var(--accent);
+  color: var(--text-1);
+}
+
+/* ---------- loaded corpus dialog (B-01) ---------- */
+
+.corpus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.corpus-row {
+  border: var(--border-w) solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.corpus-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.corpus-version {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.corpus-source {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.corpus-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.corpus-count strong {
+  color: var(--text-1);
+}
+
+.corpus-count-warn strong {
+  color: var(--warn, #b45309);
+}
+
+.corpus-totals {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
 /* ---------- search row ---------- */
 
 .searchrow {

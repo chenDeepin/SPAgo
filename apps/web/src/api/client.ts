@@ -110,6 +110,8 @@ export const api = {
   health: (signal?: AbortSignal) => getJson<import("./types").HealthResponse>("/healthz", signal),
   datasetInfo: (signal?: AbortSignal) =>
     getJson<import("./types").DatasetInfoResponse>("/api/v1/datasets/info", signal),
+  corpus: (signal?: AbortSignal) =>
+    getJson<import("./types").CorpusResponse>("/api/v1/corpus", signal),
   patent: (publicationNumber: string, signal?: AbortSignal) =>
     getJson<import("./types").PatentResponse>(
       `/api/v1/patents/${encodeURIComponent(publicationNumber)}`,

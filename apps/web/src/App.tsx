@@ -15,6 +15,7 @@ import { ExportMenu } from "./components/ExportMenu";
 import { FamilySidebar } from "./components/FamilySidebar";
 import { PlanCard } from "./components/PlanCard";
 import { SignInGate } from "./components/SignInGate";
+import { CorpusDialog } from "./components/CorpusDialog";
 import { ProjectsDialog } from "./components/ProjectsDialog";
 import { ResolutionState } from "./components/ResolutionState";
 import { SaveCandidatesDialog } from "./components/SaveCandidatesDialog";
@@ -94,6 +95,7 @@ export function App() {
   const [sarMode, setSarMode] = useState(false);
   const [searchSummary, setSearchSummary] = useState<StructureSearchSummary | null>(null);
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [corpusOpen, setCorpusOpen] = useState(false);
   const [openedProject, setOpenedProject] = useState<ProjectDetail | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
   // Selection restored by an opened project, applied once its family is on
@@ -882,7 +884,10 @@ export function App() {
   return (
     <SignInGate>
     <div className="app">
-      <TopBar onOpenProjects={() => { cancelProjectNavigation(); setProjectsOpen(true); }} />
+      <TopBar
+        onOpenProjects={() => { cancelProjectNavigation(); setProjectsOpen(true); }}
+        onOpenCorpus={() => setCorpusOpen(true)}
+      />
       <SearchBar
         initialQuery={activeQuery ?? ""}
         submitted={activeQuery}
@@ -1442,6 +1447,8 @@ export function App() {
       {projectsOpen && (
         <ProjectsDialog onClose={() => setProjectsOpen(false)} onOpen={openProject} />
       )}
+
+      {corpusOpen && <CorpusDialog onClose={() => setCorpusOpen(false)} />}
 
       {saveCandidatesOpen && resolvedTargetId && targetDetailQuery.data && (
         <SaveCandidatesDialog

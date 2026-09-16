@@ -42,6 +42,13 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 - CSV/SDF export by family, document, structure query or explicit selection, with
   patent numbers, labels, evidence references and dataset versions attached.
 - Target-candidate export, including candidates with no patent mapping.
+- **Loaded-corpus inventory** (`GET /api/v1/corpus`, and the same view behind the
+  top-bar dataset badge): families, documents, compounds, mentions, evidence and
+  measurements per dataset version, read from the corpus tables on the request,
+  with failed/interrupted import jobs and per-row‑recorded versions named. It
+  exists so "no result" can be distinguished from "never imported"; the operator
+  side of growing that corpus is `scripts/corpus_batch.py` and
+  `python -m spago_core.corpus_status` (runbook §2.1–2.2).
 
 ## 3. Supported: target-led investigation (OPEN databases)
 

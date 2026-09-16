@@ -3,12 +3,14 @@ import { api } from "../api/client";
 
 interface TopBarProps {
   onOpenProjects?: () => void;
+  onOpenCorpus?: () => void;
 }
 
 /** The dataset badge shows the *actual* loaded sources (PROD-01): synthetic
  * demo data is labeled as demo; imported real sources show their real name,
- * and multiple datasets are counted rather than hidden behind one label. */
-export function TopBar({ onOpenProjects }: TopBarProps) {
+ * and multiple datasets are counted rather than hidden behind one label. The
+ * badge is also the button that opens the corpus inventory (B-01). */
+export function TopBar({ onOpenProjects, onOpenCorpus }: TopBarProps) {
   const { data: health } = useQuery({
     queryKey: ["health"],
     queryFn: ({ signal }) => api.health(signal),
@@ -37,26 +39,38 @@ export function TopBar({ onOpenProjects }: TopBarProps) {
         </button>
       )}
       {latest && (
-        <div
+        <button
+          type="button"
           className="dataset-badge"
+          onClick={onOpenCorpus}
+          disabled={!onOpenCorpus}
+          aria-haspopup="dialog"
           title={
-            latest.synthetic
+            (latest.synthetic
               ? "This deployment serves the synthetic demo fixture dataset. Identifiers and structures are illustrative, not scientific data."
               : `Source: ${latest.source_name} · ${latest.dataset_version}. Retrieved ${new Date(
                   latest.retrieved_at,
-                ).toLocaleString()}.`
+                ).toLocaleString()}.`) +
+            (onOpenCorpus ? " Click for the loaded corpus inventory." : "")
           }
         >
           <span className="dot" aria-hidden="true" />
           {latest.synthetic ? "Demo dataset" : latest.source_name} · {latest.dataset_version}
           {others > 0 ? ` (+${others} more)` : ""}
-        </div>
+        </button>
       )}
       {!latest && health?.dataset_version && (
-        <div className="dataset-badge">
+        <button
+          type="button"
+          className="dataset-badge"
+          onClick={onOpenCorpus}
+          disabled={!onOpenCorpus}
+          aria-haspopup="dialog"
+          title={onOpenCorpus ? "Click for the loaded corpus inventory." : undefined}
+        >
           <span className="dot" aria-hidden="true" />
           dataset · {health.dataset_version}
-        </div>
+        </button>
       )}
     </header>
   );

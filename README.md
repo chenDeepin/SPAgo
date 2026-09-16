@@ -114,6 +114,28 @@ and set `SPAGO_SEED_MODE=none` so the demo fixture is never mixed in. Coverage i
 to what you imported; an uncovered publication number returns an explicit not-found.
 Backup, restore and upgrade steps are in [`docs/runbook.md`](docs/runbook.md).
 
+**A list of patents, in one run.** Scaling that to a screening set or a portfolio is
+`scripts/corpus_batch.py`, which chunks a publication list, extracts and imports each
+chunk, and keeps a resumable `STATE.json` — a re-run skips what already landed:
+
+```bash
+services/core/.venv/bin/python scripts/corpus_batch.py \
+    --patents my-patents.txt --release 2026-09-08 --workdir var/batch-2026-09-16
+```
+
+It exits non-zero and prints every requested publication that is **not** in the corpus
+when the run ends, so "loaded" is never assumed.
+
+**What is loaded.** `GET /api/v1/corpus` reports counts per dataset version, read from
+the corpus tables; the top-bar dataset badge opens the same view
+(`Loaded corpus`). From a terminal, the identical numbers and a list check:
+
+```bash
+python -m spago_core.corpus_status                        # table of versions and counts
+python -m spago_core.corpus_status --patents my-patents.txt   # exits 1, lists what is missing
+python -m spago_core.corpus_status --json > corpus.json    # for a run record
+```
+
 ### Optional LLM summaries
 
 Set `SPAGO_LLM_BASE_URL`, `SPAGO_LLM_MODEL` and, if the endpoint requires it,

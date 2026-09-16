@@ -66,6 +66,52 @@ Practical notes:
   evidence record links to the Espacenet publication page for manual
   verification (SPAgo never automates or scrapes Espacenet).
 
+### 2.1 Loading many families at once (B-01)
+
+A screening set or a competitor's portfolio is a list, not a single case.
+`scripts/corpus_batch.py` chunks that list, extracts and imports each chunk, and
+keeps a resumable state file, so an interrupted run continues where it stopped
+instead of re-downloading:
+
+```bash
+# my-patents.txt: one publication number per line (`#` comments allowed), or a
+# CSV/TSV export with --column naming the field.
+services/core/.venv/bin/python scripts/corpus_batch.py \
+    --patents my-patents.txt --release 2026-09-08 \
+    --workdir var/batch-2026-09-16 --per-package 20
+```
+
+What it guarantees, and what it does not:
+
+- A chunk counts as done only when its import job reports `completed` against the
+  database. A package written to disk is not chemistry in the corpus.
+- At the end the **database** is asked which requested publications it holds
+  (`spago_core.corpus_status` asks the same question): the run exits non-zero and
+  prints every number that is not loaded, so a partial corpus cannot be mistaken
+  for a complete one. `STATE.json` carries the same list under `missing`, plus
+  `unfinished_chunks` and the captured error per failed chunk.
+- A failed chunk can be re-run with `--retry-failed`; completed chunks are always
+  skipped. `--dry-run` prints the plan without touching the network.
+- It is sequential on purpose: SureChEMBL extraction is bandwidth-bound and the
+  release index is the shared bottleneck. Run two workdirs in parallel only if the
+  network is not the constraint.
+
+### 2.2 What is loaded, and whether a list is covered
+
+```bash
+docker compose exec app python -m spago_core.corpus_status          # per-version table
+docker compose exec app python -m spago_core.corpus_status --json > corpus-2026-09-16.json
+docker compose exec app python -m spago_core.corpus_status --patents my-patents.txt
+#   → exits 1 and prints every number that is NOT in the corpus
+```
+
+The same numbers are in the product: the top-bar dataset badge opens **Loaded
+corpus** (`GET /api/v1/corpus`), which lists each dataset version with its counts,
+its retrieval time, failed and interrupted import jobs, and which versions were
+recorded per row by a source lookup rather than imported as a package. Counts are
+read from the corpus tables on the request (measured 5.8–6.5 ms on the local
+database, 1,907 bytes), so the view cannot disagree with the data it describes.
+
 ## 3. Backup
 
 Backs up everything scientific: projects, saved items, evidence, source

@@ -319,7 +319,13 @@ class TestImportCommand:
             failed = conn.execute(
                 text("SELECT status, error FROM import_jobs WHERE status = 'failed'")
             ).mappings().all()
-        assert failed and "refusing to guess" in failed[-1]["error"]
+        # No ordering assumption: this query has always been unordered, and a
+        # later test module that touches `import_jobs` reorders the heap. What
+        # matters is that the refusal was recorded with its reason at all, and
+        # that no failure is stored without one.
+        assert failed
+        assert any("refusing to guess" in row["error"] for row in failed)
+        assert all(row["error"] for row in failed)
 
     def test_a_release_that_drops_a_row_retracts_it(self, real_source_engine, tmp_path):
         """D4: a refresh is a statement about its source's current content.

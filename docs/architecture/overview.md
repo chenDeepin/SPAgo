@@ -61,6 +61,8 @@ surface need a headed browser and are not claimed.
 
 ```text
 data/fixtures (synthetic Parquet, demo-fixture-v1; SPAGO_SEED_MODE=demo)
+operator patent lists (scripts/corpus_batch.py chunks a list, extracts and
+                imports each chunk, and keeps a resumable STATE.json)
 real packages  (scripts/extract_surechembl.py → SureChEMBL bulk Parquet
                 over HTTP range reads; import_package → import_jobs)
       ↓  adapters (DuckDB read; source envelope with provenance)
@@ -71,6 +73,16 @@ real packages  (scripts/extract_surechembl.py → SureChEMBL bulk Parquet
 PostgreSQL  →  api routes (server-paged, cap 500)
 apps/web     (search → family → compounds → evidence/structure search)
 ```
+
+- What the loaded corpus covers (B-01): `services/core.py::corpus_summary`
+  counts families/documents/compounds/mentions/evidence/measurements per
+  `dataset_version` on every request (`GET /api/v1/corpus`, the top-bar badge's
+  `Loaded corpus` dialog, and `python -m spago_core.corpus_status` for the
+  terminal). No maintained counter exists on purpose: a counter is a second copy
+  of the truth that can drift, and the measured cost of the read (5.8–6.5 ms,
+  1,907 bytes on the local database) does not justify one yet. Versions that no
+  `dataset_info` row registered are still listed and labelled as not an imported
+  package; a publication absent from the corpus stays an explicit not-found.
 
 - Demo vs real deployment: `SPAGO_SEED_MODE=none` applies migrations without
   the demo fixture; real data arrives only via the explicit

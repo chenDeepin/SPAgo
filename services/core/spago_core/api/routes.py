@@ -6,6 +6,7 @@ explicit missing-source and not-found states. UI never sees adapter schemas.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlsplit
 
@@ -112,6 +113,62 @@ def datasets_info(engine=Depends(get_engine)):
         notes=info["notes"],
         ingestion_issues=services.list_ingestion_issues(engine),
         datasets=services.list_dataset_infos(engine),
+    )
+
+
+class CorpusSourceRow(BaseModel):
+    """One dataset version as it exists in the corpus tables right now."""
+
+    dataset_version: str
+    source_name: Optional[str] = None
+    synthetic: bool = False
+    registered: bool = False
+    release_label: Optional[str] = None
+    retrieved_at: Optional[str] = None
+    notes: Optional[str] = None
+    files: int = 0
+    families: int = 0
+    documents: int = 0
+    compounds: int = 0
+    mentions: int = 0
+    evidence: int = 0
+    measurements: int = 0
+    issues: int = 0
+
+
+class CorpusImports(BaseModel):
+    queued: int = 0
+    running: int = 0
+    completed: int = 0
+    failed: int = 0
+    interrupted: int = 0
+    last_finished_at: Optional[str] = None
+    last_error: Optional[dict] = None
+
+
+class CorpusResponse(BaseModel):
+    generated_at: str
+    sources: list[CorpusSourceRow]
+    totals: dict
+    imports: CorpusImports
+    notes: list[str] = []
+
+
+@router.get("/corpus", response_model=CorpusResponse)
+def corpus(engine=Depends(get_engine)):
+    """What the loaded corpus actually covers, per dataset version (B-01).
+
+    Read-only and exact: every number is a count over the corpus tables, so a
+    publication that was never imported stays an explicit not-found rather than
+    looking like "this patent has no chemistry".
+    """
+    summary = services.corpus_summary(engine)
+    return CorpusResponse(
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        sources=[CorpusSourceRow(**row) for row in summary["sources"]],
+        totals=summary["totals"],
+        imports=CorpusImports(**summary["imports"]),
+        notes=summary["notes"],
     )
 
 

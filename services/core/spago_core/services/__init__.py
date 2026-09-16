@@ -13,6 +13,7 @@ from spago_core.services.core import (  # noqa: F401
     FamilyOverview,
     NotFoundError,
     clamp_page,
+    corpus_summary,
     count_ingestion_issues,
     find_patent,
     get_compound,
