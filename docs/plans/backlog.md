@@ -731,6 +731,9 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
     the operator's disk, with the file's release, digest, rows scanned and match rule stored
     next to every row — and without a request, a rate limit or the network; a bounded scan
     is `partial` and records no digest, so a prefix can never read as the snapshot.
+11. **B-15** — *delivered 2026-09-16:* send the editor's first open as one quarter of the
+    bytes on the install a user actually has — the app compresses its own responses, so the
+    win does not depend on a proxy the supported path never included.
 
 **Why B-23 was promoted (2026-09-16), and what replaced it.** With B-06 landed, the
 *recovery* gap was closed and the remaining cost of the online path became visible rather
@@ -740,11 +743,17 @@ gap was legible from two surfaces. B-23 was therefore promoted to P1 with its op
 stated rather than lifted — the engineering could start, the gate closed the item — and it
 was accepted on the operator's real 8.98 GB release on 2026-09-16
 (`benchmarks/bindingdb-snapshot-2026-09-16.md`), with the gate still exactly where it was.
-**B-15** takes the top now: it is ungated, `S–M`, and the first Ketcher open is the one
-measured cost a beta user feels directly (20.3 MB uncompressed, and the shipped container
-does not compress). **B-30** stays `LATER` with the reasoning in its entry: absence is only
-established by a complete ask, so a refresh-retraction rule needs its own round — it is not
-an unfinished part of B-06.
+**Why B-15 was promoted, and what landed (2026-09-16).** It was ungated, `S–M`, and the
+first Ketcher open was the one measured cost a beta user feels directly: 20.3 MB
+uncompressed with no compression anywhere in the shipped container. Delivered as
+in-process gzip (level 6) plus the re-measurement
+(`benchmarks/asset-compression-2026-09-16.md`): **5,234,921 B instead of 20,269,580 B**
+on that first open, entry JS+CSS 392,253 → 112,461 B, `/healthz` unaffected during cold
+transfers. With it delivered the table has no P1 left, so **B-04** (import refresh
+completeness and interrupted-import resume) becomes the next engineering item, and
+**B-30** stays `LATER` with the reasoning in its entry: absence is only established by a
+complete ask, so a refresh-retraction rule needs its own round — it is not an unfinished
+part of B-06.
 
 ## 5. Deliberately out (do not treat as queued)
 
