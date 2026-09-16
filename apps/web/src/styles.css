@@ -451,6 +451,11 @@ button.dataset-badge:hover {
   display: flex;
   flex-direction: column;
   padding: 16px;
+  /* B-42: when the accumulated header content (target header, reference
+     strip, filters) exceeds the workspace on short viewports, the area
+     scrolls instead of letting flex shrink collapse the table panel below
+     a usable height. Inert while the content fits. */
+  overflow-y: auto;
 }
 
 .table-header {
@@ -501,7 +506,12 @@ button.dataset-badge:hover {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
+  /* B-42: `min-height: 0` let tall sibling blocks (target header, reference
+     strip, filters) collapse this panel — and the virtualized body inside it —
+     to ~32 px on short viewports while the footer still claimed loaded rows.
+     A minimum usable table height bounds the shrink; the outer .table-area
+     scroll takes the overflow. */
+  min-height: 320px;
 }
 
 .table-scroll {
