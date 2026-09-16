@@ -1307,7 +1307,7 @@ def list_candidates(
         clauses.append("c.modality = :modality")
         params["modality"] = modality
     if evidence_class:
-        clauses.append("EXISTS (SELECT 1 FROM measurements m2 WHERE m2.compound_id = c.id "
+        clauses.append("EXISTS (SELECT 1 FROM current_measurements m2 WHERE m2.compound_id = c.id "
                        "AND m2.evidence_class = :evidence_class)")
         params["evidence_class"] = evidence_class
 

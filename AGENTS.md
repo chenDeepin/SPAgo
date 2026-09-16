@@ -171,6 +171,24 @@ Every important scientific datum should carry provenance, using explicit states 
 
 Do not silently upgrade `LLM_INFERRED` to `SOURCE_FACT`. Human correction must remain distinguishable from imported source data.
 
+## Refresh retraction and current-state reads
+
+A source refresh states what its release no longer contains, and its scope is exactly
+what the release *claims*: a corpus package retracts (never deletes) a source's
+mentions, evidence and measurements for the documents the package holds, and a
+complete activity release retracts for its whole source. Absence beyond that scope — a
+document or target the operator never re-asked for — is not retraction, and a
+`failed`/partial ask establishes no absence at all. Every retracted row keeps its
+provenance, its reason and the version that dropped it; a later release that carries
+the row again clears the retraction. Compound, target and assay rows are identity, not
+mappings: they are never retracted for absence.
+
+A read that answers "what does the corpus hold *now*" goes through the current-state
+views (`current_compound_mentions`, `current_evidence_records`, `current_measurements`,
+`investigation_measurements`), never the base tables; base tables remain for
+ingestion bookkeeping and history reads. When a migration adds a column to a table
+behind a `SELECT *` view, the same migration recreates the view.
+
 ---
 
 # 11. Chemistry Must Be Deterministic

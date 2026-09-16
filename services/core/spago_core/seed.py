@@ -45,6 +45,8 @@ class SeedReport:
     #: Retracted, not deleted — counted here so the change is visible.
     retracted_mentions: int = 0
     retracted_evidence: int = 0
+    #: B-04: measurements of the activity source this release no longer contains.
+    retracted_measurements: int = 0
     issues: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     dataset_version: str = "unknown"
@@ -54,7 +56,7 @@ class SeedReport:
             f"dataset={self.dataset_version} families={self.families} documents={self.documents} "
             f"compounds={self.compounds} mentions={self.mentions} evidence={self.evidence} "
             f"measurements={self.measurements} "
-            f"retracted={self.retracted_mentions}+{self.retracted_evidence} "
+            f"retracted={self.retracted_mentions}+{self.retracted_evidence}+{self.retracted_measurements} "
             f"issues={len(self.issues)} warnings={len(self.warnings)}"
         )
 
@@ -515,6 +517,61 @@ def ingest(
                     },
                 )
                 report.measurements += 1
+
+            # --- refresh: measurements this activity release no longer contains (B-04)
+            # The bioactivity load is the whole content of its source — the fixture
+            # file *is* the source — so this rule is source-scoped, where the
+            # mention/evidence rule below is document-scoped (a package carries its
+            # source's whole coverage *for the documents it holds*). Rows still at an
+            # older dataset version were not written by this release: retracted, never
+            # deleted, with the version that dropped them recorded. Rows this release
+            # carries again are restored first — identity, not a second record — the
+            # same rule hand-added rows follow. Hand-added rows carry their own source
+            # name, so a corpus refresh never touches them.
+            measurement_retraction = bool(
+                conn.execute(
+                    text(
+                        "SELECT 1 FROM information_schema.columns "
+                        "WHERE table_name = 'measurements' "
+                        "AND column_name = 'retracted_by_dataset_version'"
+                    )
+                ).first()
+            )
+            if measurement_retraction:
+                reason = f"not in dataset_version {activity_result.envelope.dataset_version}"
+                activity = {
+                    "source": activity_result.envelope.source_name,
+                    "version": activity_result.envelope.dataset_version,
+                    "reason": reason,
+                }
+                conn.execute(
+                    text(
+                        """
+                        UPDATE measurements
+                           SET retracted_at = NULL,
+                               retracted_reason = NULL,
+                               retracted_by_dataset_version = NULL
+                         WHERE source_name = :source
+                           AND dataset_version = :version
+                           AND retracted_at IS NOT NULL
+                        """
+                    ),
+                    activity,
+                )
+                report.retracted_measurements = conn.execute(
+                    text(
+                        """
+                        UPDATE measurements
+                           SET retracted_at = now(),
+                               retracted_reason = :reason,
+                               retracted_by_dataset_version = :version
+                         WHERE source_name = :source
+                           AND dataset_version <> :version
+                           AND retracted_at IS NULL
+                        """
+                    ),
+                    activity,
+                ).rowcount
 
         documents = sorted({str(doc_id) for doc_id in doc_id_by_number.values()})
 

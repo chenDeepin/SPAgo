@@ -311,7 +311,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
             text(
                 """
                 SELECT count(DISTINCT mm.id)
-                FROM measurements mm
+                FROM current_measurements mm
                 JOIN current_compound_mentions cm ON cm.compound_id = mm.compound_id
                 JOIN patent_documents d ON d.id = cm.document_id
                 WHERE d.family_id = :fid
@@ -326,13 +326,13 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                        mm.source_name, mm.dataset_version, mm.provenance_state,
                        a.assay_key, a.assay_type, t.name AS target_name,
                        c.inchikey
-                FROM measurements mm
+                FROM current_measurements mm
                 JOIN compounds c ON c.id = mm.compound_id
                 JOIN assays a ON a.id = mm.assay_id
                 JOIN targets t ON t.id = a.target_id
                 WHERE mm.id IN (
                     SELECT DISTINCT mm2.id
-                    FROM measurements mm2
+                    FROM current_measurements mm2
                     JOIN current_compound_mentions cm ON cm.compound_id = mm2.compound_id
                     JOIN patent_documents d ON d.id = cm.document_id
                     WHERE d.family_id = :fid
@@ -380,7 +380,7 @@ def _collect_family_facts(engine: Engine, family_id: uuid.UUID) -> dict:
                        di.synthetic AS synthetic
                 FROM patent_documents d
                 LEFT JOIN current_compound_mentions cm ON cm.document_id = d.id
-                LEFT JOIN measurements mm ON mm.compound_id = cm.compound_id
+                LEFT JOIN current_measurements mm ON mm.compound_id = cm.compound_id
                 LEFT JOIN dataset_info di
                        ON di.dataset_version = d.dataset_version
                       AND di.source_name = d.source_name
@@ -514,7 +514,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
             text(
                 """
                 SELECT count(DISTINCT mm.id)
-                FROM measurements mm
+                FROM current_measurements mm
                 JOIN current_compound_mentions cm ON cm.compound_id = mm.compound_id
                 WHERE cm.document_id = :did
                 """
@@ -527,7 +527,7 @@ def _collect_document_facts(engine: Engine, document_id: uuid.UUID) -> dict:
                 SELECT mm.id, mm.standard_type, mm.relation, mm.value, mm.unit,
                        mm.source_name, mm.evidence_class, coalesce(mm.evidence_class,'unspecified') AS cls,
                        a.assay_key, a.assay_type, t.name AS target_name, c.inchikey
-                FROM measurements mm
+                FROM current_measurements mm
                 JOIN compounds c ON c.id = mm.compound_id
                 JOIN assays a ON a.id = mm.assay_id
                 JOIN targets t ON t.id = a.target_id

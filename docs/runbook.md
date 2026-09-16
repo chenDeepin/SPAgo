@@ -48,10 +48,26 @@ Practical notes:
 - Use an explicit dated release and a new, empty output directory. Extraction
   and package validation cap each table at 100,000 rows. A failed extraction
   does not publish a manifest; retry into a fresh directory.
-- Source refresh currently upserts records; it does not retract mappings that
-  disappear or become invalid. Do not treat it as a complete release replacement.
-  Interrupted imports can remain `running`; automatic cancellation/recovery is
-  not implemented. Retain packages and inspect job/error records before retrying.
+- **Refresh semantics.** A re-imported release *is* a statement about its
+  source's current content, scoped honestly: within the documents the package
+  holds, mentions and evidence of that source that the new release no longer
+  carries are **retracted** — never deleted — with the reason and the dropping
+  version stored on the row and the count reported in the import summary. The
+  same applies to measurements of the bioactivity source, release-scoped (the
+  activity file is the whole of its source). A document a release stops
+  carrying entirely is *not* retracted — absence beyond the package's own
+  documents is not claimed. Every current read goes through the
+  `current_*` views, so a retracted row stops rendering the moment it is
+  retracted, and a later release that carries the row again clears the
+  retraction (identity, not a second record).
+- **Interrupted imports and resume.** An import is one database transaction per
+  package: a killed run wrote nothing, so there is no partial corpus to repair.
+  The next run marks the dead `running` job `interrupted` (D5) and re-running
+  the same command *is* the resume — idempotent by stable ids, duplicate-free;
+  the completed job's summary names the interrupted job(s) whose package (file
+  checksums) it re-imported, so the resume is in the record. For a list of
+  families, `scripts/corpus_batch.py` resumes at chunk level from its
+  `STATE.json`. Retain packages and inspect `--status` before retrying.
 
 - `--patent` takes the SureChEMBL number format (`US-5153197-A`). All family
   documents are included automatically. Numbers not covered by the release

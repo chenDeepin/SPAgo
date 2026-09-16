@@ -104,9 +104,14 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
 
 **Not done — do not mistake implementation for acceptance.** There is no hosted
 deployment, no invited user has completed the workflow, and the live model smoke covers
-**one** provider (DeepSeek `deepseek-flash`) rather than compatibility in general. Source
-refresh does not yet retract deleted or invalid mappings, and an interrupted import job
-has no recovery protocol. The gate a deployment must pass — checklist and the
+**one** provider (DeepSeek `deepseek-flash`) rather than compatibility in general. A
+source refresh retracts — never deletes, with the dropping version recorded — the
+mentions, evidence and measurements its release no longer contains, scoped to the
+documents the package holds and to the whole activity source for bioactivity; a
+document a release stops carrying entirely is not retracted. An interrupted import is
+marked `interrupted`, and the resume is re-running the same command: idempotent, no
+duplicate rows, with the summary naming the interrupted job(s) it completed. The gate a
+deployment must pass — checklist and the
 invited-user script — is
 [`docs/online-capability.md`](docs/online-capability.md) §6; round records are
 [`docs/plans/2026-09-15-online-llm.md`](docs/plans/2026-09-15-online-llm.md) §4,

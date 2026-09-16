@@ -77,23 +77,29 @@ def import_package(engine, package_dir: Path) -> dict:
         )
         # A `running` job whose process died would otherwise read as "in progress"
         # forever (defect D5). This run declares it interrupted — the state the
-        # row is really in — and says who recovered it.
-        recovered = conn.execute(
-            text(
-                """
-                UPDATE import_jobs
-                   SET status = 'interrupted',
-                       finished_at = now(),
-                       error = 'interrupted: the process that owned this job stopped before '
-                               'finishing; recovered when import job ' || :job || ' started'
-                 WHERE status = 'running'
-                """
-            ),
-            {"job": str(job_id)},
-        ).rowcount
-    if recovered:
+        # row is really in — and says who recovered it. The ids stay with the run:
+        # a completed re-import of the same package names the interrupted job(s)
+        # whose work it carried (B-04), so the resume is in the record.
+        recovered_ids = [
+            str(row[0])
+            for row in conn.execute(
+                text(
+                    """
+                    UPDATE import_jobs
+                       SET status = 'interrupted',
+                           finished_at = now(),
+                           error = 'interrupted: the process that owned this job stopped before '
+                                   'finishing; recovered when import job ' || :job || ' started'
+                     WHERE status = 'running'
+                    RETURNING id
+                    """
+                ),
+                {"job": str(job_id)},
+            ).fetchall()
+        ]
+    if recovered_ids:
         logger.warning(
-            "%s unfinished import job(s) marked interrupted before this run", recovered
+            "%s unfinished import job(s) marked interrupted before this run", len(recovered_ids)
         )
 
     try:
@@ -136,6 +142,27 @@ def import_package(engine, package_dir: Path) -> dict:
         if result.dataset_info is not None:
             result.dataset_info.files = files
         report = ingest(engine, result)
+        # B-04: an interrupted run is resumed by this re-run — the ingest above is
+        # one transaction, so the dead run wrote nothing, and stable ids make the
+        # redo duplicate-free. Name the interrupted jobs whose package (file
+        # checksums) this run actually re-imported; a job that died before its
+        # checksums were recorded proves nothing about which package it was on and
+        # is not claimed.
+        resumed_jobs: list[str] = []
+        if recovered_ids:
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text(
+                        """
+                        SELECT id, files FROM import_jobs
+                         WHERE id = ANY(:ids) AND status = 'interrupted'
+                           AND files = CAST(:files AS jsonb)
+                        """
+                    ),
+                    {"ids": [uuid.UUID(rid) for rid in recovered_ids],
+                     "files": json.dumps(files)},
+                ).mappings().all()
+            resumed_jobs = [str(row["id"]) for row in rows]
         summary = {
             "families": report.families,
             "documents": report.documents,
@@ -149,6 +176,9 @@ def import_package(engine, package_dir: Path) -> dict:
             # Defect D4: rows of this source the release no longer contains.
             "retracted_mentions": report.retracted_mentions,
             "retracted_evidence": report.retracted_evidence,
+            # B-04: measurements the activity release no longer contains.
+            "retracted_measurements": report.retracted_measurements,
+            "resumed_jobs": resumed_jobs,
         }
         with engine.begin() as conn:
             conn.execute(
@@ -164,7 +194,7 @@ def import_package(engine, package_dir: Path) -> dict:
         return {
             "job_id": str(job_id),
             "status": "completed",
-            "recovered_jobs": recovered,
+            "recovered_jobs": len(recovered_ids),
             "summary": summary,
         }
     except Exception as exc:

@@ -7,19 +7,21 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 (B-15 delivered; no P1 remains)** — B-15 landed in the same
-session as B-23, so the table's head is **B-04** (import refresh completeness and
-interrupted-import resume, P2, ungated). B-15's measured outcome: the first open of the
-structure editor transfers 5,234,921 B instead of 20,269,580 B (3.87×) with no proxy,
-because the app now compresses its own responses — the capability's §5 bullet and the
-runbook's §H2 duty table were rewritten to match, and the benchmark is
-`benchmarks/asset-compression-2026-09-16.md`. The operator gate is unchanged and
-nothing here closes a `docs/online-capability.md` §6 checkbox. B-23 left the table as
-delivered **with its operator gate intact**: the adapter, the script and the stored
-provenance exist and were accepted on the real file, while the snapshot's terms, the
-file's location and any re-run on another release stay with the operator — the honest
-limit is in `docs/online-capability.md` §5. See the update log at the end of this file
-and §4 for the one-sentence arguments.
+Last updated: **2026-09-16 (B-04 delivered; no P1 remains)** — the table's head is
+**B-14** (CI running the existing check script, P2, `S`). B-04's outcome: a corpus
+refresh now retracts — never deletes, with the dropping version recorded — the
+mentions, evidence *and measurements* its release no longer contains, and an
+interrupted import's resume is the re-run itself, named in the completed job's summary
+(`docs/plans/2026-09-16-import-refresh-completeness.md`). The round also moved every
+current-state measurement read onto the `current_measurements` view — compound/family
+activity had still been reading the base table, so a withdrawn hand-added row rendered
+after withdrawal — and `AGENTS.md` §10 gained the rule (retraction scope = the
+release's own claim; current-state reads go through the current-state views). The
+operator gate is unchanged and nothing here closes a `docs/online-capability.md` §6
+checkbox. B-14's gate ("repo hosting decision") is materially resolved by the checkout
+itself: `origin` is GitHub, so the minimal pipeline is a GitHub Actions workflow
+running the existing script's `--no-pg` mode; see the update log. See the update log
+at the end of this file and §4 for the one-sentence arguments.
 
 ## 0. Standing constraints for everything below
 
@@ -39,8 +41,7 @@ and §4 for the one-sentence arguments.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P2 | B-04 | Import refresh completeness and interrupted-import resume | NEXT | M | — |
-| P2 | B-14 | CI running the existing check script | NEXT | S | repo hosting decision |
+| P2 | B-14 | CI running the existing check script | NEXT | S | gate materially resolved: `origin` is GitHub → Actions workflow, `--no-pg` mode |
 | P2 | B-09 | Reviewed target-scope catalog expansion | NEXT | M | scientific review |
 | P2 | B-11 | Second model-provider evaluation and refusal UX | NEXT | M | provider choice (operator) |
 | P2 | B-21 | Claim-text source decision and ingestion plan | LATER | L | source choice + ADR |
@@ -80,6 +81,7 @@ it):**
 | B-06 | 2026-09-16 | Per-source re-run: `investigate` now persists **only the sources it asked** (a source the run did not ask is reported from its stored row, or recorded `not_queried` only when it has never been asked), `DiscoveryReport.requested_sources` as the run's own scope, `RetrievalResponse.requested_in_run`, a refusal (422) for a run that names no source, the target header's per-source **Retry** control on a `failed`/`partial` chip with that source's own last-run cost, and `discoverNote` naming what the run asked and what it did not; `tests/test_b06_per_source_rerun.py` (11 cases, suite 716 → 727 collected, all passing), record `benchmarks/per-source-rerun-2026-09-16.{md,json}`. |
 | B-23 | 2026-09-16 | Local BindingDB release as a source path: `adapters/bindingdb_snapshot.py` (one streaming pass, stdlib only — required/endpoint columns, accession-first matching across every chain's UniProt column, exact `Target Name` by default, organism canonicalized/filtered with counted exclusions, one record per filled endpoint, in-pass digest) and `scripts/bindingdb_snapshot.py` (operator entry point: target from stored rows, `--dry-run`, `--max-rows`/`--max-seconds`, JSON record, exit codes 0/1/2; deliberately not reachable from the app, §21); `tests/test_b23_bindingdb_snapshot.py` (36 cases) over the synthetic fixture `data/fixtures/open_sources/bindingdb_snapshot_sample.tsv` (17 rows); acceptance on the operator's real 8.98 GB / 3,237,052-row release in `benchmarks/bindingdb-snapshot-2026-09-16.{md,json}` — 113.2 s, 153 kept records all matched by accession, digest in the same pass, a bound produces `partial` with no digest, and the stored REST set (9 compounds) reconciles as a strict subset of the file's 133. The round also fixed the retrieval upsert, which never rewrote `query`/`pages_fetched`/`source_version`/`dataset_version`/`checksum` (a snapshot run after a REST call still read `bindingdb-rest`), and surfaced the access path in the target header's source line. |
 | B-15 | 2026-09-16 | In-process response compression: `GZipMiddleware` in `spago_core/main.py` (level 6, `minimum_size` 500, thread threshold matched to `FileResponse`'s 64 KiB chunk so file chunks are compressed off the event loop), with `tests/test_served_assets.py` (8 cases: settings asserted from `create_app()` itself, gzip + `vary` for an accepting client, identity for one that does not, small bodies untouched, `application/wasm` compressed, no stale `content-length` on a streamed body, `image/png` never re-encoded). Measured on the rebuilt container in `benchmarks/asset-compression-2026-09-16.md`: the structure dialog's first open transfers **5,234,921 B instead of 20,269,580 B** (3.87×; entry JS+CSS 392,253 → 112,461), the browser's own resource timing confirms the four page-visible dialog assets at their compressed sizes, and `/healthz` stayed at 3.5–7.8 ms during three cold gzipped WASM transfers. No dependency added (§23 not triggered), no new service (§6 not engaged). The round also carried two `scripts/bindingdb_snapshot.py` fixes its tests found: the human preamble now follows `--json -` output to stderr, and the test-side database URL keeps its password. |
+| B-04 | 2026-09-16 | Import refresh completeness + interrupted-import resume: migration 0020 (`measurements.retracted_by_dataset_version`, both `m.*` views recreated), `seed.py`'s source-scoped restore-then-retract for the activity release (`SeedReport.retracted_measurements`, the summary reports the count), `import_package.py`'s `resumed_jobs` (interrupted jobs whose package checksums the re-run re-imported), the read-path move to `current_measurements` (`bioactivity.py` compound/family activity — a withdrawn hand-added row had still rendered; `ai.py`'s five family/document measurement reads; `discovery.py`'s evidence-class filter), and the stated resume policy (runbook §2, README); `tests/test_b04_import_refresh.py` (6 cases, suite 773 → 779, all passing), plan `docs/plans/2026-09-16-import-refresh-completeness.md`, `AGENTS.md` §10 gained the retraction-scope and current-state-read rule. Compounds are identity, not mappings — a release that drops a compound retracts its occurrences (the family page follows) and keeps the identity row; a document a release stops carrying entirely is *not* retracted (absence beyond the package's own documents is B-30-class and stays unclaimed). No new dependency, no new service; EXPLAIN on the changed reads confirms the existing partial index still serves them. |
 
 ## 2. Items
 
@@ -158,6 +160,19 @@ its string comparison silently discarded a successful lookup for a slash form
 
 ### B-04 — Import refresh completeness and interrupted-import resume
 
+**Delivered 2026-09-16** (`docs/plans/2026-09-16-import-refresh-completeness.md`; see
+the delivered table in §1). The scope and the two deliberate limits below are kept as
+the record. What building it added to the item statement: the *reads* were the bigger
+gap — `bioactivity.py`'s compound/family activity views, `ai.py`'s family/document
+measurement totals and `discovery.py`'s evidence-class filter all read the
+`measurements` base table, so even the withdraw retraction that already existed kept
+rendering; those now go through `current_measurements`, and `AGENTS.md` §10 states the
+rule so the next read cannot regress. Compounds turned out to need a *negative*
+decision rather than code: a compound row is identity (InChIKey-keyed, shared across
+sources, referenced by project snapshots), so a release that drops a compound retracts
+its occurrences and the family page follows — the identity row stays, and that is
+tested as such.
+
 - **Problem.** README still states: source refresh does not yet retract deleted or
   invalid *mappings*, and an interrupted import job has no recovery protocol. D4
   retracts `compound_mentions` + `evidence_records` only (`seed.py`); compounds and
@@ -166,10 +181,17 @@ its string comparison silently discarded a successful lookup for a slash form
 - **Scope if built.** Extend retraction to the remaining mapping kinds with the same
   never-delete semantics and a recorded reason; define a resume/retry policy for large
   packages (bounded, idempotent, no duplicate records) and state it in the runbook.
-- **Acceptance sketch.** A release that drops a measurement/compound retracts it and
-  reports the count; an interrupted large import resumes or fails cleanly without
-  duplicating rows.
-- **Class NEXT · P2 · M.**
+- **Acceptance sketch, met.** A release that drops a measurement retracts it and
+  reports the count (`tests/test_b04_import_refresh.py`); a release that drops a
+  compound's last occurrence empties it from the family page while identity persists;
+  an interrupted import's re-run completes without duplicating rows and names the
+  interrupted job(s) it carried (`resumed_jobs`, checksum-matched).
+- **Deliberate limits.** Document-level retraction (a release that stops carrying a
+  document entirely) is B-30-class absence and stays unclaimed; resume is a recorded
+  re-run, not incremental checkpointing — the ingest is one transaction, so there is
+  no partial state to resume from, and package bounds (100 000 rows/table) keep the
+  redo cheap.
+- **Class NEXT · delivered 2026-09-16 · M.**
 
 ### B-05 — Bulk analytical filtering surface (DuckDB/Parquet)
 
@@ -753,3 +775,4 @@ an unfinished part of B-06.
 | 2026-09-16 | **B-26 delivered** (the coverage service + `patent-coverage-v1`, `POST /api/v1/patents/coverage` and its three exports, `PublicationCoverage.tsx` — the collapsed *Coverage* strip in the patent view and on the 404 path — and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py`, suite 677 → 741; live record `benchmarks/patent-coverage-2026-09-16.{md,json}`). Re-sorted, with the moves stated: the P1 group is empty, so **B-06 is promoted to P1** — the audit gave every source outcome a surface, including `failed`, and what the beta workflow can still hit live is the recovery from a failed source, which today means re-running the whole investigation and re-spending the other sources' rate limits. It is ungated and S–M. **B-23 stays the first P2** with its gates unchanged, and B-15 moves down with them. Three notes recorded from the round: (1) `holds_records` was added to the report's `totals` so the strip reads the service's own headline count instead of re-deriving it (`AGENTS.md` §11); (2) the strip filters its publication list with the mirrored client shape rule before asking, because the synthetic fixture's ids are deliberately not publication numbers and a request carrying none of them is refused 422 — a refusal banner where a coverage line belongs would be worse than no strip; (3) the notes/export `<details>` is controlled state after the browser check found it snapping shut between opening it and clicking export (a DOM-owned marker reset by an unrelated re-render). |
 | 2026-09-16 | **B-06 delivered** (asked-only persistence in `TargetDiscoveryService.investigate` + `DiscoveryReport.requested_sources`, `RetrievalResponse.requested_in_run`, the 422 refusal for a run that names no source, the target header's per-source **Retry** control on `failed`/`partial` chips with that source's own last-run cost and a run note naming the asked set, `tests/test_b06_per_source_rerun.py` 11 cases, record `benchmarks/per-source-rerun-2026-09-16.{md,json}`). The round found the defect sharper than the register had it: `investigate` wrote a `not_queried` row for every source it did **not** ask, and the retrieval id is one row per (target, source) — so a subset run **overwrote** the other sources' stored outcome while their candidate rows stayed in the database. A subset run now writes only what it produced, reports the rest from its stored row, and records `not_queried` only for a source that has never been asked. Measured: one retry = 1 upstream request for that source and **0** for the other two; only that source's retrieval row changes; its own candidate rows re-date (2 when it answers, 0 when it fails); measurements and verdict unchanged. Live browser check on two surfaces (IL6R's `bindingdb failed`, IL6's `pubchem partial`) — the other chips' stored outcomes, including `retrieved_at`, were identical afterwards; healthy chips offered no retry control. Re-sorted, with the moves stated: the P1 group is empty again, so **B-23 (local BindingDB snapshot search) takes the top** with its operator/file gate explicitly intact — its engineering is what is unblocked, and a retry without the network is what the beta's own cohort needs. **B-15 moves to the first P2**, and **B-30** joins the register as `LATER · M`: a *complete* refresh retracting rows its release no longer returns is an absence rule of its own (a `failed`/`partial` ask establishes none), so it was not folded into this round. |
 | 2026-09-16 | **B-23 delivered** (`adapters/bindingdb_snapshot.py` — one streaming pass, stdlib only, with the file digest computed in the same read; `scripts/bindingdb_snapshot.py` as the operator entry point; `tests/test_b23_bindingdb_snapshot.py` 36 cases over a new synthetic fixture; acceptance on the operator's real 8.98 GB / 3,237,052-row release in `benchmarks/bindingdb-snapshot-2026-09-16.{md,json}`: 113.2 s, 153 kept records all matched by accession, 133 compounds, a `--max-rows` dry-run showing `partial` with no digest, and the stored REST set reconciling as a strict subset; `docs/runbook.md` §2.8, `docs/online-capability.md` §5, `README.md`, fixtures README, `THIRD_PARTY_NOTICES.md`). Two things the round found rather than planned: (1) the **retrieval upsert never rewrote `query`, `pages_fetched`, `source_version`, `dataset_version` or `checksum`**, so a source re-asked through another access path kept the first run's identity — the snapshot run left the row reading `bindingdb-rest` with a REST-only query while its own measurements said `bindingdb-snapshot-tsv`; fixed in `discovery._persist_retrieval`, pinned by a regression test, and corrected in B-06's record; (2) the access path was not visible in the target view at all, so the header's source line and chip tooltip now state it (`via bindingdb-snapshot-tsv (bindingdb-snapshot:2609)`), browser-verified on the rebuilt image. Re-sorted, with the moves stated: the P1 group is empty again, so **B-15 (compress served assets) takes the top** — it is ungated, `S–M`, and the first Ketcher open is the one measured cost a beta user feels directly, with the shipped container still serving assets uncompressed. **B-04 follows**, and **B-23 leaves the table as delivered with its operator gate explicitly intact**: the file's terms, its location and any run on another release remain the operator's, and nothing in this round closes a `docs/online-capability.md` §6 checkbox. |
+| 2026-09-16 | **B-04 delivered** (migration 0020 `measurements.retracted_by_dataset_version` + both `m.*` views recreated, `seed.py`'s source-scoped restore-then-retract for the activity release with `SeedReport.retracted_measurements` reported in the import summary, `import_package.py`'s `resumed_jobs` naming the interrupted jobs whose package checksums the re-run re-imported, the read-path move to `current_measurements` in `bioactivity.py` / `ai.py` / `discovery.py`, the resume policy stated in `docs/runbook.md` §2 and README; `tests/test_b04_import_refresh.py` 6 cases, suite 773 → 779 all passing; plan `docs/plans/2026-09-16-import-refresh-completeness.md`). The round's findings beyond the item statement: (1) the reads were the bigger half — compound/family activity still read the `measurements` base table, so even the already-shipped hand-added withdraw kept rendering there; fixed and made a rule in `AGENTS.md` §10 (current-state reads go through the current-state views; a migration adding a column behind a `SELECT *` view recreates the view in the same change); (2) compounds need a *negative* decision, not code — identity rows are never retracted; the occurrences carry the absence, and the test pins that shape; (3) document-level absence stays unclaimed (B-30-class), stated in the runbook. No new dependency, no new service; EXPLAIN confirms the changed reads still use the existing partial index. Re-sorted, with the moves stated: **B-04 leaves the table**, and **B-14 takes the head** — its "repo hosting decision" gate is materially resolved by the checkout itself (`origin` is GitHub), so the minimal pipeline is a GitHub Actions workflow running the existing `scripts/run_checks.sh` in its `--no-pg` mode, with full database coverage staying where it is today (a machine with PostgreSQL + the RDKit cartridge) until someone provides a cartridge-bearing CI image. B-09 (scientific review), B-11 (provider choice), B-21/B-22 (source decisions + credentials + ADR) keep their operator gates and stay behind it; **B-17** is the next ungated engineering item after B-14. |

@@ -34,7 +34,7 @@ def compound_activity(engine: Engine, compound_id: uuid.UUID) -> list[ActivityVi
                        m.standard_type, m.value, m.unit, m.relation,
                        m.source_name, m.extraction_method, m.provenance_state,
                        m.dataset_version, m.retrieved_at
-                FROM measurements m
+                FROM current_measurements m
                 JOIN assays a ON a.id = m.assay_id
                 JOIN targets t ON t.id = a.target_id
                 WHERE m.compound_id = :cid
@@ -64,7 +64,7 @@ def family_activity(
                        m.standard_type, m.value, m.unit, m.relation,
                        m.source_name, m.extraction_method, m.provenance_state,
                        m.dataset_version, m.retrieved_at
-                FROM measurements m
+                FROM current_measurements m
                 JOIN assays a ON a.id = m.assay_id
                 JOIN targets t ON t.id = a.target_id
                 WHERE m.compound_id IN (
