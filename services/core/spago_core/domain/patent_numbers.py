@@ -1,14 +1,19 @@
-"""Publication-number normalization for identifiers coming from *sources*.
+"""Publication-number normalization for identifiers discovered in text.
 
-Two different jobs must stay apart:
+Three different jobs must stay apart:
 
-- **Validating user input** is strict: :data:`spago_core.services.planner._PUBNUM_RE`
-  accepts a publication-number shape and refuses everything else, so free text is
-  never turned into an identifier (AGENTS.md §12).
+- **Classifying a query** is tolerant but shape-only:
+  :func:`looks_like_publication_number` accepts one whole identifier in the forms
+  people write (``WO2020123456A1``, ``wo 2020/123456``, ``US-5153197-A``), so the
+  number a scientist copies from a slide or a paper reaches the patent endpoint
+  instead of being sent to a language model. It is a deterministic shape, not an
+  interpretation (AGENTS.md §12).
 - **Extracting an identifier from source data** is lenient: a database field such
   as ChEMBL's ``patent_id`` may be ``WO2019047734A1``, ``WO 2019/047734``,
   ``US-5153197-A`` or a string with several numbers in it, and dropping those
   facts would lose the patent link that makes this product patent-native.
+- **Read-only coverage reporting** (:func:`spago_core.services.core.publications_in_corpus`)
+  stays exact: "was *this* number imported?" must not be softened by normalization.
 
 Normalization is deliberately lossy in exactly one way: the kind code
 (``A1``/``B2``) and separators are dropped, so ``WO2019047734A1`` and
@@ -39,6 +44,37 @@ _GROUPING_RE = re.compile(r"(?<=\d)[,\s](?=\d)")
 
 #: Separators that remain inside a captured split body ("2019/047734").
 _BODY_SEPARATORS_RE = re.compile(r"[\s\-/]")
+
+#: Version of the tolerant *lookup* rule. It travels with every answer that used
+#: it, so a changed rule is visible in the artifact rather than hidden in a session.
+MATCH_RULE = "publication-number-tolerant-v1"
+
+#: Punctuation a person types between the parts of one number. Removing it is what
+#: lets a single shape rule cover "WO-2020-123456-A", "wo 2020/123456" and
+#: "US 10,123,456 B2" alike.
+_QUERY_SEPARATORS_RE = re.compile(r"[\s\-/.,]+")
+
+#: The shape of a whole *query*: country code, a body of six to thirteen digits, an
+#: optional kind code. The floor is the same six digits as :data:`_PATENT_RE` above
+#: (a shorter body is not an identifier); the ceiling only rejects digit soup. The
+#: body may be one run or the split year+serial form, and the kind code may be absent
+#: ("EP1234567"), because the separators are removed first. The mirrored TypeScript
+#: literal lives in ``apps/web/src/state/url.ts`` and a parity test keeps the two
+#: identical.
+_QUERY_RE = re.compile(r"^[A-Z]{2}\d{6,13}(?:[A-Z]\d?)?$")
+
+
+def looks_like_publication_number(value: object) -> bool:
+    """True when the whole string is one publication number, in any common form.
+
+    Case, separators and the presence of a kind code do not matter. What does
+    matter is that the *whole* string is the number: a sentence, a two-number
+    comparison or free text is refused here and keeps going to the reviewed plan
+    path, so language never becomes an identifier (AGENTS.md §12).
+    """
+    text = _QUERY_SEPARATORS_RE.sub("", str(value or "")).upper()
+    return bool(_QUERY_RE.match(text))
+
 
 
 def patent_tokens(value: object) -> list[str]:

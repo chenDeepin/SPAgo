@@ -34,6 +34,15 @@ counts and outcomes are stored in `source_retrievals` and exportable via
 ## 2. Supported: search and inspection
 
 - Patent lookup by publication number, with family, document and compound views.
+- **Tolerant patent entry**: the number is accepted in the forms people actually write
+  it (`WO2020123456A1`, `wo 2020/123456`, `US-5153197-A`, `US 10,123,456 B2`) — case,
+  separators and the kind code do not matter — and the answer always names the stored
+  identifier it matched, which is never rewritten to look like the request. A number the
+  corpus does not hold stays a 404, free text is still routed to the ask box rather than
+  turned into an identifier, and a form that names more than one stored document is
+  refused with the candidates listed (409) instead of being silently resolved to one.
+  This is the interactive lookup only: the loaded-corpus coverage report below stays an
+  exact comparison, because "was *this* number imported?" must not be softened.
 - Compound tables with server-side paging (default 100, cap 500 rows per response).
 - Exact, substructure and similarity structure search over the loaded corpus,
   executed server-side by RDKit; explicit similarity thresholds.
@@ -402,3 +411,11 @@ The deployment is one app image plus one database. To roll back:
   coverage limitation rather than something the reader should read as an empty
   column. ChEMBL's variant accession and mutation *are* mapped and shown when the
   source supplies them.
+- **A number that names more than one stored document cannot be opened by that form.**
+  When the corpus holds, say, both `US-8618102-B1` and `US8618102B2`, the tolerant
+  lookup answers 409 and lists both instead of choosing; the reader opens one by its
+  stored number. A candidate picker is a backlog item (`LATER`), not a shipped
+  control, because nothing reviewed asks for it yet. The same tolerant path costs a
+  full metadata scan when the indexed lookup misses — measured at 155 ms on a
+  50 000-document corpus (`benchmarks/tolerant-lookup-2026-09-16.md`) — which is why
+  it runs only after the exact miss and is unmeasured above that corpus size.

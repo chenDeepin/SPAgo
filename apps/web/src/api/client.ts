@@ -1,5 +1,7 @@
 /** Typed, abortable fetch client for the SPAgo core API. */
 
+import { canonicalPublicationNumber, publicationPath } from "../state/url";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -166,7 +168,7 @@ export const api = {  // --- ONLINE-03: hosted access ---
   },
   patent: (publicationNumber: string, signal?: AbortSignal) =>
     getJson<import("./types").PatentResponse>(
-      `/api/v1/patents/${encodeURIComponent(publicationNumber)}`,
+      `/api/v1/patents/${encodeURIComponent(publicationPath(publicationNumber))}`,
       signal,
     ),
   // --- B-24: what a source declares for a publication ---
@@ -180,7 +182,7 @@ export const api = {  // --- ONLINE-03: hosted access ---
     if (params.limit) query.set("limit", String(params.limit));
     const suffix = query.toString();
     return getJson<import("./types").PatentSourceResponse>(
-      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/source-compounds${
+      `/api/v1/patents/${encodeURIComponent(publicationPath(publicationNumber))}/source-compounds${
         suffix ? `?${suffix}` : ""
       }`,
       signal,
@@ -188,7 +190,7 @@ export const api = {  // --- ONLINE-03: hosted access ---
   },
   lookupPatentSourceCompounds: (publicationNumber: string, signal?: AbortSignal) =>
     postJson<import("./types").PatentSourceResponse>(
-      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/source-compounds`,
+      `/api/v1/patents/${encodeURIComponent(publicationPath(publicationNumber))}/source-compounds`,
       {},
       signal,
     ),
@@ -196,9 +198,11 @@ export const api = {  // --- ONLINE-03: hosted access ---
     publicationNumber: string,
     format: "csv" | "sdf",
   ) => {
+    // A path separator in a download name is a path, not a filename.
+    const safeName = canonicalPublicationNumber(publicationNumber).replace(/[^A-Za-z0-9._-]+/g, "-");
     await downloadGet(
-      `/api/v1/patents/${encodeURIComponent(publicationNumber)}/source-compounds/export?format=${format}`,
-      `spago-${publicationNumber}-source-declared.${format}`,
+      `/api/v1/patents/${encodeURIComponent(publicationPath(publicationNumber))}/source-compounds/export?format=${format}`,
+      `spago-${safeName}-source-declared.${format}`,
     );
   },
   family: (familyId: string, signal?: AbortSignal) =>

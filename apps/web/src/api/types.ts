@@ -68,11 +68,21 @@ export interface CompoundPage {
   items: CompoundRow[];
 }
 
+/** B-03: how the requested number reached the stored row. `matched` is the corpus
+ * value verbatim — never rewritten to look like what was typed. */
+export interface PatentMatch {
+  requested: string;
+  matched: string;
+  exact: boolean;
+  rule: string;
+}
+
 export interface PatentResponse {
   document: PatentDocument;
   family: PatentFamily;
   documents: PatentDocument[];
   mention_counts: Record<string, number>;
+  match: PatentMatch;
 }
 
 export interface FamilyResponse {
@@ -664,7 +674,7 @@ export interface SearchPlanResponse {
 
 export interface PlanStepResult {
   op: string;
-  status: "ok" | "not_found" | "invalid" | "failed";
+  status: "ok" | "not_found" | "ambiguous" | "invalid" | "failed";
   detail: string;
   data: Record<string, unknown>;
 }

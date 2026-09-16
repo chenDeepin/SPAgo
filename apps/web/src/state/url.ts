@@ -18,14 +18,37 @@ export interface UrlState {
   t: string | null; // resolved target id (target investigation)
 }
 
-/** Deterministic publication-number shape (the same rule the offline planner
- * uses). Used only to choose which server lookup to call: the server remains
- * authoritative about what exists, and a target query is never guessed from
- * free text. */
-const PUBLICATION_NUMBER = /^[A-Z]{2}\d{5,12}[A-Z]\d?$/;
+/** Deterministic publication-number shape, mirrored from
+ * `spago_core/domain/patent_numbers.py::looks_like_publication_number` (a parity
+ * test keeps the two identical; keep them in step by changing both).
+ *
+ * Separators are removed first, so one rule covers "WO-2020-123456-A" and
+ * "wo 2020/123456" alike, and the presence of a kind code does not matter. The
+ * whole string must be the number: prose is never turned into an identifier, and
+ * the server stays authoritative about what exists. */
+const PUBLICATION_NUMBER = /^[A-Z]{2}\d{6,13}(?:[A-Z]\d?)?$/;
+const PUBLICATION_SEPARATORS = /[\s\-/.,]+/g;
+
+/** The number without separators, uppercased. */
+export function canonicalPublicationNumber(value: string): string {
+  return value.replace(PUBLICATION_SEPARATORS, "").toUpperCase();
+}
 
 export function looksLikePublicationNumber(value: string): boolean {
-  return PUBLICATION_NUMBER.test(value.trim().toUpperCase());
+  return PUBLICATION_NUMBER.test(canonicalPublicationNumber(value));
+}
+
+/** The form of the number that travels in a request path.
+ *
+ * A "/" cannot be a path segment: `GET /patents/wo%202020%2F123456` is decoded
+ * before routing, so the server sees two segments and answers a bare 404 that says
+ * nothing about the patent (observed on the local stack, 2026-09-16). Only that
+ * case is canonicalized; everything else travels exactly as typed, so a number
+ * spelled the way the corpus stores it still takes the exact, indexed lookup
+ * instead of being "helpfully" rewritten. The typed query stays in the URL and on
+ * screen, and the answer names the identifier the corpus actually stores. */
+export function publicationPath(value: string): string {
+  return value.includes("/") ? canonicalPublicationNumber(value) : value.trim();
 }
 
 export function readUrlState(): UrlState {

@@ -27,13 +27,10 @@ from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
+from spago_core.domain.patent_numbers import looks_like_publication_number
 from spago_core.services.target_scope import try_load_catalog
 
 PLAN_VERSION = "search-plan-v1"
-
-#: Deterministic publication-number shape (the same rule as the client and the
-#: offline identifier parser).
-_PUBNUM_RE = re.compile(r"^[A-Z]{2}\d{5,12}[A-Z]\d?$")
 
 #: Hard bounds. A plan request is bounded before execution, so no step can turn
 #: into an unbounded crawl (AGENTS.md §16/§21).
@@ -126,12 +123,12 @@ class OpenPatentStep(_Step):
     @field_validator("publication_number")
     @classmethod
     def _shape(cls, value: str) -> str:
-        cleaned = value.strip().upper()
-        if not _PUBNUM_RE.match(cleaned):
+        cleaned = value.strip()
+        if not looks_like_publication_number(cleaned):
             raise ValueError(
                 f"{value!r} is not a publication-number identifier; use manual search for free text."
             )
-        return cleaned
+        return cleaned.upper()
 
 
 class StructureSearchStep(_Step):
@@ -307,12 +304,20 @@ def offline_plan(query: str, context: Optional[dict] = None) -> SearchPlan:
     steps: list[dict] = []
     unresolved: list[str] = []
 
-    tokens = [token.strip(",.;:()") for token in re.split(r"\s+", text) if token.strip()]
+    # A bare identifier is the *whole* query, separators included: "wo 2020/123456"
+    # is one number, not two words, and the person who typed it into the ask box
+    # means the same thing as the person who typed it into the search box. Prose is
+    # still classified token by token, so no identifier is carved out of a sentence
+    # (AGENTS.md §12).
+    if looks_like_publication_number(text):
+        tokens: list[str] = [text]
+    else:
+        tokens = [token.strip(",.;:()") for token in re.split(r"\s+", text) if token.strip()]
     entities = _catalog_entities()
 
     for token in tokens:
         upper = token.upper()
-        if _PUBNUM_RE.match(upper):
+        if looks_like_publication_number(upper):
             steps.append(
                 {"op": Operation.OPEN_PATENT.value, "publication_number": upper, "limit": DEFAULT_LIMIT}
             )

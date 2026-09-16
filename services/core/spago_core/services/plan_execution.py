@@ -44,7 +44,7 @@ from spago_core.services.planner import (
 @dataclass
 class StepResult:
     op: str
-    status: str  # ok | not_found | invalid | failed
+    status: str  # ok | not_found | ambiguous | invalid | failed
     detail: str = ""
     data: dict = field(default_factory=dict)
 
@@ -111,10 +111,22 @@ def _execute_step(engine: Engine, step: PlanStep) -> StepResult:
 
 
 def _open_patent(engine: Engine, step: OpenPatentStep) -> StepResult:
-    from spago_core.services import find_patent
+    from spago_core.services import AmbiguousError, find_patent
 
     try:
-        document, overview = find_patent(engine, step.publication_number)
+        lookup = find_patent(engine, step.publication_number)
+    except AmbiguousError as exc:
+        # One identifier, several stored documents: reported with the candidates,
+        # never resolved by picking the first (B-03).
+        return StepResult(
+            op=step.op.value,
+            status="ambiguous",
+            detail=str(exc),
+            data={
+                "publication_number": step.publication_number,
+                "candidates": exc.candidates,
+            },
+        )
     except NotFoundError as exc:
         return StepResult(
             op=step.op.value,
@@ -122,12 +134,24 @@ def _open_patent(engine: Engine, step: OpenPatentStep) -> StepResult:
             detail=str(exc),
             data={"publication_number": step.publication_number},
         )
+    document, overview = lookup.document, lookup.overview
+    # A normalized match is stated in the transcript, so the step cannot silently
+    # disagree with the identifier the corpus actually stores (B-03).
+    matched_note = (
+        "" if lookup.exact else f" (matched the stored identifier {lookup.matched})"
+    )
     return StepResult(
         op=step.op.value,
         status="ok",
-        detail=f"Opened {document.publication_number} in family {overview.family.family_key}.",
+        detail=(
+            f"Opened {document.publication_number} in family "
+            f"{overview.family.family_key}{matched_note}."
+        ),
         data={
             "publication_number": document.publication_number,
+            "requested_number": lookup.requested,
+            "match_exact": lookup.exact,
+            "match_rule": lookup.rule,
             "family_id": str(overview.family.id),
             "family_key": overview.family.family_key,
             "documents": len(overview.documents),

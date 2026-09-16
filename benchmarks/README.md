@@ -89,6 +89,15 @@ measurable — they are **not** capacity claims for bulk datasets.
   rule** in 5.9 s. The exports are checked in the same run (CSV 135 lines, SDF 134
   records, all parsed back). Row payloads are deliberately not committed; the counts,
   the CSV header and the export checks are.
+- `tolerant-lookup-2026-09-16.md` (raw: `...json`) — B-03: the cost of answering a
+  typed publication number by normalizing it and scanning the metadata table, on a
+  synthetic 50 000-document corpus (12 500 families of four) added to the rehearsal
+  database and removed again. Exact path 1.35 ms (unchanged), tolerant hit and miss
+  both ≈ 155 ms, split as 84 ms read + 63 ms `patent_tokens` comparison. Produced by
+  `scripts/tolerant_lookup_benchmark.py`. An earlier attempt that put all 50 000
+  documents in one family measured the family overview instead of the lookup (294 ms
+  for an indexed hit) and is recorded in the file as the reason the family size is
+  stated.
 
 ## Reproduce
 

@@ -8,10 +8,12 @@
 - ``target_scope``— curated ligand/receptor/pathway catalog (data, not code)
 """
 from spago_core.services.core import (  # noqa: F401
+    AmbiguousError,
     CompoundPage,
     CompoundRow,
     FamilyOverview,
     NotFoundError,
+    PatentLookup,
     clamp_page,
     corpus_summary,
     count_ingestion_issues,

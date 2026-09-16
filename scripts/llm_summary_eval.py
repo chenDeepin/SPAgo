@@ -89,11 +89,12 @@ def _resolve_scope_ids(
     if "target" in scopes:
         resolved["target"] = (targets_svc.target_id_for_key(target_key), target_key)
     if "family" in scopes or "document" in scopes:
-        document, overview = core_svc.find_patent(engine, publication_number)
+        lookup = core_svc.find_patent(engine, publication_number)
+        overview = lookup.overview
         if "family" in scopes:
             resolved["family"] = (overview.family.id, overview.family.family_key)
         if "document" in scopes:
-            resolved["document"] = (document.id, document.publication_number)
+            resolved["document"] = (lookup.document.id, lookup.document.publication_number)
     return resolved
 
 

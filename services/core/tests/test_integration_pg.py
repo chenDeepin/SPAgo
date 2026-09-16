@@ -96,10 +96,11 @@ class TestSeed:
 class TestServices:
     def test_find_patent_and_family(self, seeded_engine):
         engine, _ = seeded_engine
-        document, overview = services.find_patent(engine, "DEMO-PATENT-A")
-        assert document.publication_number == "DEMO-PATENT-A"
-        assert overview.family.family_key == "DEMO-FAMILY-1"
-        assert len(overview.documents) == 3
+        lookup = services.find_patent(engine, "DEMO-PATENT-A")
+        assert lookup.document.publication_number == "DEMO-PATENT-A"
+        assert lookup.overview.family.family_key == "DEMO-FAMILY-1"
+        assert len(lookup.overview.documents) == 3
+        assert lookup.exact is True and lookup.matched == "DEMO-PATENT-A"
 
     def test_find_unknown_patent(self, seeded_engine):
         engine, _ = seeded_engine

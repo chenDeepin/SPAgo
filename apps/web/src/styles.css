@@ -475,6 +475,21 @@ button.dataset-badge:hover {
   font-size: 13px;
 }
 
+/* B-03: which stored identifier answered a normalized query. Informational, one
+   line, next to the heading — not a panel and not a second control. */
+.match-note {
+  color: var(--text-2);
+  font-size: 13px;
+  border: var(--border-w) solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.match-note .fineprint {
+  opacity: 0.8;
+}
+
 .table-header .spacer {
   flex: 1;
 }

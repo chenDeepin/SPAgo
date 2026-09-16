@@ -7,9 +7,10 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 (B-24 delivered; B-03 promoted to P1)** — the priority table was
-re-sorted when B-24 landed: B-03 is the new P1, B-26 moved ahead of B-23, and nothing else
-changed. See the update log at the end of this file and §4 for the one-sentence arguments.
+Last updated: **2026-09-16 (B-03 delivered; B-25 promoted to P1)** — the priority table was
+re-sorted when B-03 landed: the P1 group is empty, so B-25 (the supplement bundle, the
+one loop step that is still manual data entry) takes the top, and B-26 stays next. See the
+update log at the end of this file and §4 for the one-sentence arguments.
 
 ## 0. Standing constraints for everything below
 
@@ -29,8 +30,7 @@ changed. See the update log at the end of this file and §4 for the one-sentence
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-03 | Tolerant publication-number lookup | NEXT | S | — |
-| P2 | B-25 | Literature supplement bundle import (agent-produced rows) | NEXT | M | — |
+| P1 | B-25 | Literature supplement bundle import (agent-produced rows) | NEXT | M | — |
 | P2 | B-26 | Patent coverage audit (corpus / snapshot / ChEMBL / supplement / absent) | NEXT | M | — |
 | P2 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning |
 | P2 | B-06 | Per-source re-run for target investigations *(owner request group)* | NEXT | S–M | — |
@@ -69,6 +69,7 @@ it):**
 | B-02 | 2026-09-16 | A disjoint per-retrieval tally of how each kept record's document reference resolved (`source_retrievals.reference_counts`, migration 0016; vocabulary in `spago_core/domain/document_refs.py`), served by `GET /targets/{id}/coverage` and rendered in the target header's **Source notes and reference coverage** disclosure together with the source notes that were previously stored and never shown; `scripts/cohort_coverage.py --declarations` measures it live and read-only, recorded in `benchmarks/reference-declarations-2026-09-16.{md,json}` (135 of IL6's 166 kept records carry a source-declared patent — the live linkage the handoff could not previously point at). |
 | B-13 | 2026-09-16 | `scripts/restore_check.sh` (dumps, restores, compares the §H7 counts, fails non-zero on mismatch, verified against the rehearsal stack and against a deliberate mismatch) and the §H2 ingress-duty table (compression, TLS, throttling, logs, backup schedule) in `docs/runbook.md`. |
 | B-24 | 2026-09-16 | The patent-led read path: `ChEMBLDiscoveryAdapter.declared_compounds` (body-search rule `chembl-document-patent-body-v1`, exact-normalization verification, near matches listed and excluded), `services/patent_sources.py` + migration 0017 (`patent_source_lookups` / `patent_source_compounds`, no `compound_mentions` row ever written), `POST`/`GET /api/v1/patents/{number}/source-compounds` and `/export?format=csv|sdf`, `SourceDeclaredCompounds.tsx` (under the patent view and on a publication the corpus does not hold, where the 404 used to be a dead end), and `scripts/patent_source_lookup.py`; live record `benchmarks/patent-source-declarations-2026-09-16.{md,json}` (US10508115 → 134 declared records for 73 compounds out of 402 seen, 5 states kept apart). |
+| B-03 | 2026-09-16 | Tolerant publication entry: `domain/patent_numbers.py` `looks_like_publication_number` + `MATCH_RULE` (`publication-number-tolerant-v1`, one pattern mirrored in `apps/web/src/state/url.ts` and kept in step by a parity test), `services.find_patent` exact-first then one normalized comparison, `PatentLookup` + `AmbiguousError` (409 with the candidates named), `PatentMatch` in the response, the `match-note` in the table heading, and the same rule in `planner.py` / `plan_execution.py`; `services/core/tests/test_b03_tolerant_lookup.py` (48 cases, suite 595 → 643) and `benchmarks/tolerant-lookup-2026-09-16.{md,json}` (exact 1.35 ms unchanged; a tolerant hit or miss costs one metadata scan, 155 ms at 50 000 documents). |
 
 ## 2. Items
 
@@ -122,6 +123,16 @@ are now verified on live data rather than assumed.
 
 ### B-03 — Tolerant publication-number lookup
 
+**Delivered 2026-09-16** (`docs/plans/2026-09-16-tolerant-publication-lookup.md`). The
+shipped rule is one deterministic *shape* (`^[A-Z]{2}\d{6,13}(?:[A-Z]\d?)?$` after
+separators are removed and the string is uppercased), mirrored in the client and kept in
+step by a parity test, so the search box and the server agree on what is a number and
+what is prose. Two things the item statement did not anticipate: the plan path had to
+learn the same rule (a number typed into the ask box reached the language model instead of
+the patent endpoint), and the declared-compound panel had to compare *canonical* forms —
+its string comparison silently discarded a successful lookup for a slash form
+(`SourceDeclaredCompounds.tsx`), which only the browser check could see.
+
 - **Problem.** Lookup is exact string equality: `services/core.py::find_patent` matches
   `publication_number = :pn`, and `GET /patents/{publication_number}` passes the raw
   path segment. `domain/patent_numbers.py` has normalization (`normalize_patent_number`,
@@ -133,7 +144,7 @@ are now verified on live data rather than assumed.
   reported, not guessed.
 - **Acceptance sketch.** Unit cases for separator/case/kind-code variants; a
   not-found stays not-found for a genuine miss.
-- **Class NEXT · P2 · S.**
+- **Class NEXT · P1 (delivered 2026-09-16) · S.**
 
 ### B-04 — Import refresh completeness and interrupted-import resume
 
@@ -586,7 +597,20 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
    exactly how far it reaches.
 5. **B-24** — *delivered 2026-09-16:* make "enter a patent, see its compounds" survive a
    corpus that does not hold that patent.
-6. **B-03** — *open:* let the number a scientist actually types open the family it names.
+6. **B-03** — *delivered 2026-09-16:* let the number a scientist actually types open the
+   family it names.
+
+**Why the P1 group is now empty, and why B-25 is at the top.** Every item that was argued
+to strengthen the workflow the §6 gate tests has shipped. The next one is B-25, and it is
+promoted for a concrete reason rather than because the table looked empty: the gate's
+success criteria include finishing a target investigation, and the honest end of a thin
+target today is *manual data entry* — the ONLINE-07 path accepts one row per POST, so a
+scientist who finds eight rows in the literature posts eight times. The invited user will
+hit the thin case (TSLP is the live example: 110 of 111 qualifying ChEMBL activities are
+peptides) and there is no control that offers the supplement at that moment. B-25 is that
+control, in the shape the rows are actually produced in. B-26 stays second: it reports on
+sources that now exist (corpus, B-24's declared sets, supplements), and a report is only
+worth building once the thing it reports on is populated.
 
 ## 5. Deliberately out (do not treat as queued)
 
@@ -612,3 +636,4 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 | 2026-09-16 | **B-02 delivered** (`source_retrievals.reference_counts` + migration 0016, `spago_core/domain/document_refs.py`, the `--declarations` live measurement, and the target header's *Source notes and reference coverage* disclosure). Re-sorted: **B-24 is now the top P1 item**; B-02 leaves the table. The delivery answered the item's blocker with a live number instead of an assumption — 135 of IL6's 166 kept records carry a source-declared patent number, and EGFR's are 1,187 DOI-only plus 1,210 whose cited document the source does not return — and it surfaced a defect it did not set out to find: every retrieval's `warnings` (including "the lookup bound was reached") was persisted, served and rendered nowhere in the UI. Three scope notes: the tally is computed by the service over the records it kept, not by each adapter, so it means one thing for every source; a record already excluded for a missing structure or value is counted in `rejection_counts`, never in this tally; and no new dependency was added. |
 | 2026-09-16 | **B-10 delivered** (`services/analyses.py`, `GET /api/v1/analyses`, `/analyses/{id}`, `/analyses/{id}/export`, `AnalysesDialog.tsx`). Re-sorted: **B-02 is now the top P1 item**; B-10 leaves the table. One new backlog item recorded from building it — **B-29** (attach a stored analysis to a project, and cite it from the project view), `LATER · M`: the capability statement already promises that saved work reopens, and an analysis is now an artifact a project can point at, but no reviewed workflow asks for it yet. |
 | 2026-09-16 | **B-24 delivered** (`ChEMBLDiscoveryAdapter.declared_compounds`, `services/patent_sources.py`, migration 0017, the `source-compounds` read/lookup/export routes, `SourceDeclaredCompounds.tsx`, `scripts/patent_source_lookup.py`; live record in `benchmarks/patent-source-declarations-2026-09-16.md`). Re-sorted, with the moves stated: **B-03 is promoted to P1** — with the corpus no longer the only answer, the remaining primary-loop failure is the *entry*: `find_patent` matches the stored string exactly, and the search box classifies by a kind-code-shaped regex, so `wo 2020/123456` for a stored `WO-2020-123456-A` opens nothing. It is a day of work, ungated, and it feeds the same normalizer the patent-led path already uses. **B-26 moves ahead of B-23**: B-24 landed, so the audit's ChEMBL leg is content that exists today, while B-23 stays operator- and file-gated and is explicitly a workstation gain rather than a beta capability. B-24 leaves the table, and B-25 heads the P2 order unchanged. |
+| 2026-09-16 | **B-03 delivered** (`looks_like_publication_number` + `MATCH_RULE`, exact-first `find_patent` with the one normalized comparison, `PatentLookup`/`AmbiguousError`/`PatentMatch`, the `match-note`, the mirrored client rule and the same rule in the plan path; `services/core/tests/test_b03_tolerant_lookup.py`, suite 595 → 643; `benchmarks/tolerant-lookup-2026-09-16.md`: exact 1.35 ms unchanged, tolerant 155 ms at 50 000 documents). Re-sorted, with the reason stated: the P1 group is empty, so **B-25 is promoted to P1** — the thin-target moment the §6 gate exercises ends in one-row-per-POST manual entry today, and B-25 is the control that offers the supplement in the shape the rows are produced in (§4 argues it). B-26 stays second and B-23 stays third with its operator/file gate unchanged. Two scope notes: the tolerant comparison runs **only** after the indexed miss (so the common case pays nothing) and it is a metadata scan, not a maintained normalized column — a second writer of the rule that can go stale silently was the alternative, and 155 ms at 50 000 documents did not buy it. The delivery also fixed a defect the browser found in B-24's panel (a string comparison of the requested number discarded a successful lookup for slash forms). |

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { PatentSourceResponse, PatentSourceRow } from "../api/types";
+import { canonicalPublicationNumber } from "../state/url";
 import { MoleculeImage } from "./MoleculeImage";
 import { activityClassLabel } from "./ReferenceStrip";
 
@@ -40,7 +41,15 @@ export function SourceDeclaredCompounds({
   corpusCompoundCount = null,
 }: SourceDeclaredCompoundsProps) {
   const queryClient = useQueryClient();
-  const key = ["patent-source-compounds", publicationNumber] as const;
+  // This panel's identity is the *publication*, not the way it is spelled on the way
+  // in. A "/" cannot be a path segment, so the request carries the canonical form and
+  // `requested_number` comes back canonical for exactly those inputs (state/url.ts);
+  // comparing raw strings would then throw away a successful lookup (observed on the
+  // local stack, 2026-09-16 — the same defect class the B-24 browser check found in the
+  // other direction). `canonicalPublicationNumber` is the mirrored deterministic rule
+  // and only drops separators and case, so two different publications never share it.
+  const identity = publicationNumber ? canonicalPublicationNumber(publicationNumber) : null;
+  const key = ["patent-source-compounds", identity] as const;
   const [open, setOpen] = useState(false);
   const [extraRows, setExtraRows] = useState<PatentSourceRow[]>([]);
   const [paging, setPaging] = useState(false);
@@ -59,10 +68,10 @@ export function SourceDeclaredCompounds({
     mutationFn: () => api.lookupPatentSourceCompounds(publicationNumber as string),
     onSuccess: (data) => {
       // A response that lands after the reader moved to another publication must
-      // not be shown or cached under this panel: `requested_number` is what was
-      // asked as typed, which is the identity that survives normalization
-      // (the answer's `publication_number` is the canonical token instead).
-      if (data.requested_number !== publicationNumber) return;
+      // not be shown or cached under this panel. The comparison is canonical on
+      // both sides, so a number written differently still lands here while a
+      // different publication does not.
+      if (canonicalPublicationNumber(data.requested_number ?? "") !== identity) return;
       setExtraRows([]);
       setPagingError(null);
       queryClient.setQueryData(key, data);
@@ -73,7 +82,7 @@ export function SourceDeclaredCompounds({
   });
 
   const answerBelongsToThisPanel = Boolean(
-    lookup.data && lookup.data.requested_number === publicationNumber,
+    lookup.data && canonicalPublicationNumber(lookup.data.requested_number ?? "") === identity,
   );
   const view: PatentSourceResponse | undefined = answerBelongsToThisPanel
     ? lookup.data

@@ -182,6 +182,18 @@ DOIs, and 1,210 of EGFR's 2,397 cite a document ChEMBL does not return. A bound 
 failed lookup is reported as a fact about that retrieval — never as "no patent", and
 never as an occurrence in SPAgo's corpus, which stays a separate labelled fact.
 
+**The number you typed is the number that opens.** Patent lookup accepts an identifier in
+the forms it is actually written in — `WO2020123456A1`, `wo 2020/123456`, `US-5153197-A`,
+`US 10,123,456 B2` — because one rule decides what a publication number is, and the server
+compares the same normalization against the corpus (case, separators and the kind code do
+not matter). The stored identifier is never rewritten: when a match was normalized the
+table heading says so (`matched WO-2020-123456-A for “wo 2020/123456”`). A number the
+corpus does not hold is still a not-found, free text still reaches the ask box instead of
+being read as an identifier, and a form naming two stored documents is refused with both
+listed rather than resolved to one. The comparison runs only after the indexed lookup
+misses; what it costs is measured in
+[`benchmarks/tolerant-lookup-2026-09-16.md`](benchmarks/tolerant-lookup-2026-09-16.md).
+
 **A patent number alone can now reach compounds.** The corpus used to be the only answer
 to "what does this patent contain": a publication that was never imported (or imported
 thinly) showed an empty table, and the search box reported it as not covered. The patent

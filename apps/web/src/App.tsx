@@ -1179,6 +1179,27 @@ export function App() {
           <main className="table-area" aria-busy={patentQuery.isFetching}>
             <div className="table-header">
               <h1>{patentQuery.data ? patentQuery.data.family.title : "Compounds"}</h1>
+              {/* B-03: when the number that was typed is not spelled the way the
+                  corpus stores it, the answer says which stored identifier it
+                  answered — the stored value is never rewritten to match the
+                  request, and the request is never rewritten to match the store. */}
+              {patentQuery.data && !patentQuery.data.match.exact && (
+                <span
+                  className="match-note"
+                  title={
+                    `Publication numbers are compared with separators, case and kind codes ` +
+                    `removed (${patentQuery.data.match.rule}); the stored identifier is never ` +
+                    `rewritten.`
+                  }
+                >
+                  matched <span className="mono">{patentQuery.data.match.matched}</span>
+                  {/* What the reader typed, not the canonical form the request path
+                      carries: a "/" cannot travel as a path segment (state/url.ts). */}
+                  {submittedQuery && (
+                    <span className="fineprint"> for “{submittedQuery}”</span>
+                  )}
+                </span>
+              )}
               <span className="scope-note">
                 {compoundsQuery.data ? `${scopeLabel} · ${plainTotal} compounds` : null}
               </span>

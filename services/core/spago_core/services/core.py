@@ -23,10 +23,20 @@ from spago_core.domain import (
     PatentFamily,
     ProvenanceState,
 )
+from spago_core.domain.patent_numbers import MATCH_RULE, patent_tokens
 
 
 class NotFoundError(LookupError):
     pass
+
+
+class AmbiguousError(LookupError):
+    """One query, several stored identifiers. The candidates travel with the error
+    so the answer names them instead of picking one (AGENTS.md §10/§11)."""
+
+    def __init__(self, message: str, candidates: Sequence[str]):
+        super().__init__(message)
+        self.candidates = list(candidates)
 
 
 @dataclass(frozen=True)
@@ -126,17 +136,97 @@ def get_family_overview(engine: Engine, family_id: uuid.UUID) -> FamilyOverview:
     )
 
 
-def find_patent(engine: Engine, publication_number: str) -> tuple[PatentDocument, FamilyOverview]:
+@dataclass(frozen=True)
+class PatentLookup:
+    """A publication asked for, and the corpus row that answered it.
+
+    ``requested`` is what the caller wrote; ``matched`` is the stored
+    ``publication_number`` (never rewritten). ``exact=False`` means the two differ
+    only by separators, case or kind code — the answer carries both so a reader can
+    see why the family on screen is not spelled the way they typed it (AGENTS.md §10).
+    """
+
+    document: PatentDocument
+    overview: FamilyOverview
+    requested: str
+    matched: str
+    exact: bool
+    rule: str
+
+
+def _tolerant_matches(conn, tokens: set[str]) -> list[tuple[uuid.UUID, str]]:
+    """Stored documents whose identifier names the same publication as ``tokens``.
+
+    One read of a small, metadata-only table: the identifier, its family and the id.
+    The comparison itself uses :func:`patent_tokens`, the same normalizer the source
+    paths use, so there is exactly one definition of "the same publication" in the
+    codebase. This runs **only** after the indexed exact lookup missed, which is why
+    a full scan is the right cost here (measured: `benchmarks/tolerant-lookup-2026-09-16.md`).
+    A maintained normalized column would be faster and would put a second, silent
+    writer of the rule into every import path; the scan cannot go stale.
+    """
+    rows = conn.execute(
+        text("SELECT id, family_id, publication_number FROM patent_documents")
+    ).all()
+    return [
+        (r[1], r[2])
+        for r in rows
+        if tokens & set(patent_tokens(r[2]))
+    ]
+
+
+def find_patent(engine: Engine, publication_number: str) -> PatentLookup:
+    """Open the family that a publication number names, tolerantly.
+
+    Exact first (an indexed, unique comparison — the common case, unchanged cost),
+    then one normalized comparison against the corpus so the number as it is written
+    where the reader found it still opens what is loaded. A miss stays a miss, and
+    an input that names more than one stored document is reported rather than
+    guessed (AGENTS.md §10; B-03).
+    """
     with engine.connect() as conn:
         row = conn.execute(
             text("SELECT family_id FROM patent_documents WHERE publication_number = :pn"),
             {"pn": publication_number},
         ).first()
-    if row is None:
-        raise NotFoundError(f"Patent {publication_number!r} not found in current dataset")
-    overview = get_family_overview(engine, row[0])
-    document = next(d for d in overview.documents if d.publication_number == publication_number)
-    return document, overview
+        if row is not None:
+            requested = matched = publication_number
+            exact = True
+            family_id = row[0]
+        else:
+            tokens = set(patent_tokens(publication_number))
+            if not tokens:
+                raise NotFoundError(
+                    f"{publication_number!r} carries no publication number, and no document in "
+                    "the current dataset is stored under it"
+                )
+            candidates = _tolerant_matches(conn, tokens)
+            stored = sorted({number for _family, number in candidates})
+            if not stored:
+                raise NotFoundError(
+                    f"Patent {publication_number!r} not found in current dataset"
+                )
+            if len(stored) > 1:
+                raise AmbiguousError(
+                    f"{publication_number!r} matches {len(stored)} stored identifiers in this "
+                    "dataset: " + ", ".join(stored) + ". Open one of them by its stored number; "
+                    "this lookup will not choose between them.",
+                    stored,
+                )
+            matched = stored[0]
+            exact = matched == publication_number
+            requested = publication_number
+            family_id = candidates[0][0]
+    overview = get_family_overview(engine, family_id)
+    document = next(d for d in overview.documents if d.publication_number == matched)
+    return PatentLookup(
+        document=document,
+        overview=overview,
+        requested=requested,
+        matched=matched,
+        exact=exact,
+        rule=MATCH_RULE,
+    )
 
 
 def list_family_compounds(

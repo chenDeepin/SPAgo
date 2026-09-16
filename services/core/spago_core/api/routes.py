@@ -23,7 +23,7 @@ from spago_core.chemistry import StructureParseError, depict_svg
 from spago_core.config import Settings, get_settings
 from spago_core.domain import MAX_SUPPLEMENT_ROWS, PatentDocument, PatentFamily
 from spago_core.queries import compound_counts_by_document
-from spago_core.services import NotFoundError
+from spago_core.services import AmbiguousError, NotFoundError
 
 router = APIRouter(prefix="/api/v1")
 
@@ -181,24 +181,47 @@ class FamilyOverviewResponse(BaseModel):
     mention_counts: dict[str, int]
 
 
+class PatentMatch(BaseModel):
+    """How the requested number reached the stored row (B-03).
+
+    ``matched`` is the stored ``publication_number`` verbatim — the corpus value is
+    never rewritten to look like the request, or the other way round.
+    """
+
+    requested: str
+    matched: str
+    exact: bool
+    rule: str
+
+
 class PatentResponse(BaseModel):
     document: PatentDocument
     family: PatentFamily
     documents: list[PatentDocument]
     mention_counts: dict[str, int]
+    match: PatentMatch
 
 
 @router.get("/patents/{publication_number}", response_model=PatentResponse)
 def get_patent(publication_number: str, engine=Depends(get_engine)):
     try:
-        document, overview = services.find_patent(engine, publication_number)
+        lookup = services.find_patent(engine, publication_number)
+    except AmbiguousError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    document, overview = lookup.document, lookup.overview
     return PatentResponse(
         document=document,
         family=overview.family,
         documents=overview.documents,
         mention_counts=overview.mention_counts,
+        match=PatentMatch(
+            requested=lookup.requested,
+            matched=lookup.matched,
+            exact=lookup.exact,
+            rule=lookup.rule,
+        ),
     )
 
 

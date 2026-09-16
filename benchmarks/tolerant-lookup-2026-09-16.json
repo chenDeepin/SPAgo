@@ -1,0 +1,45 @@
+{
+  "rule": "publication-number-tolerant-v1",
+  "documents_seeded": 50000,
+  "families_seeded": 12500,
+  "documents_in_corpus_with_seed": 50004,
+  "documents_in_corpus_before": 4,
+  "stored_target": "US-2012-100137-A1",
+  "tolerant_query": "us 2012/100137",
+  "miss_query": "WO-2099-999999-A1",
+  "tolerant_matched": "US-2012-100137-A1",
+  "tolerant_exact": false,
+  "timings": {
+    "exact": {
+      "runs": 9,
+      "median_ms": 1.35,
+      "min_ms": 1.05,
+      "max_ms": 2.15
+    },
+    "tolerant": {
+      "runs": 9,
+      "median_ms": 154.83,
+      "min_ms": 147.79,
+      "max_ms": 173.1
+    },
+    "miss": {
+      "runs": 9,
+      "median_ms": 154.95,
+      "min_ms": 146.3,
+      "max_ms": 176.32
+    },
+    "scan_fetch": {
+      "runs": 9,
+      "median_ms": 84.11,
+      "min_ms": 80.17,
+      "max_ms": 109.72
+    },
+    "scan_match": {
+      "runs": 9,
+      "median_ms": 62.88,
+      "min_ms": 62.0,
+      "max_ms": 66.71
+    }
+  },
+  "database_url": "postgresql+psycopg://spago:***@127.0.0.1:5432/spago"
+}
