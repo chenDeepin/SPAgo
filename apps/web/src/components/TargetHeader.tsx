@@ -85,6 +85,13 @@ const MODALITY_LABEL: Record<string, string> = {
 interface TargetHeaderProps {
   target: ResolvedTarget | null;
   coverage: SourceRetrieval[];
+  /** B-38's finding: a failed coverage fetch used to render as the
+   * never-run text — an authoritative-sounding false statement. When set, the
+   * strip states the failure and offers a retry instead (AGENTS §22: a source
+   * failure is never an empty success). */
+  coverageError?: string | null;
+  coverageLoading?: boolean;
+  onRetryCoverage?: () => void;
   discovery: DiscoverResponse | null;
   discovering: boolean;
   discoverError: string | null;
@@ -126,6 +133,9 @@ function lastRunCost(entry: SourceRetrieval): string {
 export function TargetHeader({
   target,
   coverage,
+  coverageError = null,
+  coverageLoading = false,
+  onRetryCoverage,
   discovery,
   discovering,
   discoverError,
@@ -226,7 +236,20 @@ export function TargetHeader({
       )}
 
       <div className="coverage-strip" role="list" aria-label="Source coverage">
-        {coverage.length === 0 && (
+        {coverageError && (
+          <span className="paging-error" role="alert" data-testid="coverage-error">
+            The stored coverage could not be read: {coverageError}
+            {onRetryCoverage && (
+              <>
+                {" "}
+                <button className="btn btn-quiet" onClick={onRetryCoverage}>
+                  Retry coverage
+                </button>
+              </>
+            )}
+          </span>
+        )}
+        {!coverageError && coverage.length === 0 && !coverageLoading && (
           <span className="not-provided">No retrieval has been run for this target yet.</span>
         )}
         {coverage.map((entry) => (

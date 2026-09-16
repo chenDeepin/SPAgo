@@ -1275,6 +1275,11 @@ export function App() {
                 <TargetHeader
                   target={targetDetailQuery.data}
                   coverage={coverageQuery.data ?? []}
+                  coverageError={
+                    coverageQuery.error ? (coverageQuery.error as Error).message : null
+                  }
+                  coverageLoading={coverageQuery.isLoading || coverageQuery.isFetching}
+                  onRetryCoverage={() => coverageQuery.refetch()}
                   discovery={discoverMutation.data ?? null}
                   discovering={discoverMutation.isPending}
                   discoverError={

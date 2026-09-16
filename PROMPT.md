@@ -1,10 +1,10 @@
 # SPAgo — Product Contract and Current Handoff
 
-> **Current handoff — 2026-09-16, implementation round 1 (owner-authorized queue,
-> through `1fda7f7`).** The product-review round's P1 engineering group and the P2
-> group's ungated items are delivered; the exact records with their evidence are in
-> [backlog §1](docs/plans/backlog.md#1-priority-order). **B-38 (browser regression
-> specs) was in flight at handoff; verify its record before building on it.**
+> **Current handoff — 2026-09-16, implementation round 1 (owner-authorized queue).
+> ** The product-review round's P1 engineering group and the P2 group's ungated
+> items — including B-38's browser regression specs, whose round found and fixed a
+> false-empty coverage state — are delivered; the exact records with their evidence
+> are in [backlog §1](docs/plans/backlog.md#1-priority-order).
 >
 > **Actual stage.** A locally implemented product with browser-verified workflow
 > correctness, a full CI gate (every push runs the whole backend suite against the
@@ -48,9 +48,9 @@
 > `docs/online-capability.md` §6 — host/TLS, readiness, owner isolation, restore,
 > provider smoke, source coverage, latency/cost, invited scientist and independent
 > reader, now with the build-identity recorder and the cohort pack as its tooling.
-> Operator-only decisions stay explicit. 2. Land and verify B-38. 3. The remaining
-> register items are gated (B-21 decision, B-09 scientific review, B-11 provider) or
-> P3 as ranked; the register records why.
+> Operator-only decisions stay explicit. 2. The remaining register items are gated
+> (B-21 decision, B-09 scientific review, B-11 provider) or P3 as ranked; the
+> register records why.
 >
 > **Evidence map:** scope and hosted gate `docs/online-capability.md`; operations
 > `docs/runbook.md` §H1–H10; per-item delivery records in `docs/plans/backlog.md`
