@@ -7,7 +7,8 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 — planning-only product review at `efb1357`.**
+Last updated: **2026-09-16 — implementation round 1 after the product review:
+B-33 and B-34 delivered; B-42 added.**
 Current stage: a locally implemented and previously exercised product, with selected
 live-source measurements and a local hosted-shape rehearsal; **hosted acceptance and
 independent scientific validation remain open**. Review findings, evidence limits and
@@ -16,10 +17,13 @@ open questions: [product review Q&A](2026-09-16-product-review-qa.md).
 The earlier conclusion that only operator-gated work remains is superseded: static
 inspection found export-policy, saved-project navigation and citation-navigation gaps,
 and the existing CI does not run the database suite or browser smoke. **B-31** makes
-the existing hosted gate visible in the table; **B-33** is the first engineering
-candidate. B-31…B-41 are new proposals, B-28 is promoted from a discussion note into a
-ranked LATER item, and B-19/B-21/B-29/B-30 are reclassified with reasons below.
-Nothing in this round runs the queue, changes application code, or closes a §6 box.
+the existing hosted gate visible in the table. The implementation round of 2026-09-16
+delivered **B-33** (export/screen policy parity, browser-reproduced then fixed) and
+**B-34** (distinguishable build identity, verified on the served stack), and recorded
+**B-42** — the short-viewport table collapse found during B-33's browser verification —
+as the new head of the P1 group: it is small, reproduced, and hides the primary
+workflow's main object. B-32's gate line drops its B-34 dependency (delivered); the
+independent-reviewer gate stands.
 
 ## 0. Standing constraints for everything below
 
@@ -47,9 +51,8 @@ authorized. This planning-only round authorizes none of those actions.
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
 | P0 | B-31 | Real hosted pilot acceptance | CORE | M + operator time | real host/TLS, provider/budget, invited scientist; B-32 evidence |
-| P1 | B-33 | Target screen/export filter and potency-policy parity | CORE | S–M | static finding; browser reproduction first |
-| P1 | B-34 | Distinguishable build identity in verification artifacts | CORE | S | build-time identity contract; no provider gate |
-| P1 | B-32 | Scientific cross-read and reproducible coverage cohorts | CORE | M + reviewer time | B-34 for new run identity; independent reviewer for acceptance |
+| P1 | B-42 | Candidate table collapses on short viewports (layout, not data) | CORE | S | browser-reproduced 2026-09-16; found during B-33 verification |
+| P1 | B-32 | Scientific cross-read and reproducible coverage cohorts | CORE | M + reviewer time | B-34 delivered; independent reviewer for acceptance |
 | P1 | B-35 | Full PostgreSQL/RDKit suite and existing browser smoke in CI | CORE | M | runner Docker/build feasibility; reuse shipped stack |
 | P1 | B-36 | Reopen every saved target/family scope in a mixed project | CORE | M | static finding; browser reproduction first |
 | P1 | B-37 | Summary citation → exact supporting record | CORE | M | typed citation/snapshot navigation contract |
@@ -111,6 +114,8 @@ it):**
 | B-18 | 2026-09-16 | The companion's browser check now verifies the panel-behavior flag the toolbar click relies on: `chrome.sidePanel.getPanelBehavior()` is read back from the running worker and must return `openPanelOnActionClick: true` — a failed `setPanelBehavior` was previously a silent `console.error`, and the click would have done nothing. Run recorded on this machine against the unbranded Playwright Chromium build (`~/.cache/ms-playwright/chromium-1217`), which resolves the item's gate here: load, worker, detection, handoff, panel render and behavior flag all verified. The **physical toolbar click and the side-panel surface chrome stay uncovered**, with the reason stated in the script itself: synthesizing a browser-toolbar user gesture needs OS-level input injection (no Xvfb/xdotool on this workstation) or a keyboard-shortcut command added to the manifest for the test's sake — a product change this round did not make. PROMPT.md M4 and the handoff block, README and the architecture overview were updated to the same wording. |
 | B-14 | 2026-09-16 | CI runs the existing check script: `.github/workflows/checks.yml` calls `scripts/run_checks.sh --no-pg` (the developer entry point itself — no duplicated check logic) on every push and pull request, with the shipped container's versions (python 3.12, node 22) and pip/npm caching. **Executed and green on the real host**: run 35102219606, `checks` job success in 1m07s on ubuntu-latest. The stated limit, in the workflow and README alike: the database-dependent majority of the suite keeps its scratch-database behaviour — CI does not run the full suite until someone provides a cartridge-bearing image; a runner Node-24 deprecation annotation on the actions is cosmetic. |
 | B-17 | 2026-09-16 | One runner, one smoke of the MVP loop: `@playwright/test` (dev dep, Apache-2.0; §23 decision + alternatives recorded in `THIRD_PARTY_NOTICES.md` §2 in the same change), `apps/web/playwright.config.ts` (baseURL `SPAGO_BASE_URL`, default `http://127.0.0.1:8000`), `apps/web/e2e/smoke.spec.ts` (search `DEMO-PATENT-A` → family table → row opens the **evidence inspector** → `Structure ▾` aspirin substructure → table restates `(structure search)` ≥ 1 row → `Export ▾` yields a `spago-export.csv` download), `npm run test:e2e`, artifacts git-ignored. Passed in 1.6 s against the rebuilt stack — which also applied migration 0020 to the stack database; `npm run build` unchanged. The first run corrected the spec's own assumption: a row click opens the evidence inspector, not a structure drawer — the smoke follows the real UI, no app code changed. Limits stated in the plan (`docs/plans/2026-09-16-e2e-smoke.md`): the smoke is not wired into CI (CI has no seeded stack), and it does not duplicate the Python suite's API coverage. |
+| B-33 | 2026-09-16 | Target screen/export parity: `ExportRequest.evidence_class` (validated five-class vocabulary, 422 on a family scope that sends it) + the same `current_measurements` existence clause the screen uses in `collect_candidate_export_rows` (results scope only — a selection names its own rows), the frontend passing the live `referenceThresholdNanomolar` / `evidenceClassFilter` through `ExportMenu` and `api.exportFile`, and a truthful export hint. Browser-reproduced first on the stored IL6 investigation (menu claimed 141, file had 157 rows, every `reference_threshold_nM` read 10000 against a 1 nM override) and browser-verified after (141 = 141, threshold 1 nM; selection 1 row, threshold 1 nM); `tests/test_b33_export_parity.py` (8 cases, per-class export == screen set) + 104-test regression green. Plan: `docs/plans/2026-09-16-export-policy-parity.md`. Found and recorded en route: **B-42**. |
+| B-34 | 2026-09-16 | Distinguishable build identity: `SPAGO_BUILD_ID` env injected at packaging (`docker/app/Dockerfile` build arg baked into the image, compose `${SPAGO_BUILD_ID:-unknown}`, `scripts/build_app.sh` computing `git describe --always --dirty`), `/healthz` carries `build_id` + `build_source` with explicit `unknown` (never guessed from `api_version`), and `scripts/build_identity.py --expected <id> [--require]` compares expected vs served and fails on mismatch/unknown. Verified end-to-end on the rebuilt stack: `/healthz` served `12aa498-dirty`, recorder exit 0. The round's own review found the build script exporting an empty variable (never the computed id) — fixed and caught by exactly the served-artifact check the item exists for; the lesson is in the plan. `tests/test_b34_build_identity.py` (6 cases). Plan: `docs/plans/2026-09-16-build-identity.md`. |
 
 ## 2. Items
 
@@ -951,6 +956,31 @@ exactly the honesty rule the last three rounds were about.
   explanation. Zero/one/many and outdated candidates remain explicit.
 - **Class LATER · P3 · S.** Lower than export/save/evidence defects with no workaround.
 
+### B-42 — Candidate table collapses on short viewports
+
+- **Evidence (browser-reproduced 2026-09-16, found during B-33's verification).**
+  In the target view, `.table-panel` sits in the `workspace → table-area` flex
+  column below TargetHeader, ReferenceStrip and the candidate filters. When that
+  accumulated content exceeds the workspace height, flex shrink collapses
+  `.table-panel` to ~32 px and `.table-scroll` to 0 — the virtual candidate table
+  renders **zero rows** while its footer still reads "1–100 of 141" and the export
+  menu still exports the full scope. Measured on the running stack at 1280×720
+  (`table-scroll` clientHeight 0, 0 virtual rows); at 1600×1000 the same view
+  lays out normally. The data is present; the layout hides it, and the counts
+  around it make the empty area look like a loaded table.
+- **User gain / scope.** The candidate table remains usable at common laptop
+  viewports (`PROMPT.md` §1 loop; AGENTS §14's "structures are expensive UI
+  objects" does not license a zero-height table). Likely a small layout fix —
+  a minimum usable height for the table panel and a scroll strategy for the
+  header content above it — not a redesign of the reviewed layout.
+- **Acceptance sketch.** At a 1280×720 viewport the stored IL6 investigation
+  renders candidate rows, selection checkboxes and the evidence inspector
+  opening from a row; at 1600×1000 nothing regresses; the fix evidence records
+  both viewports. The family view's table must not regress either.
+- **Class CORE · P1 · S.** Ranked ahead of B-32/B-35 in the P1 group because it
+  is small, browser-reproduced, and it silently hides the primary workflow's
+  main object on screens a beta scientist plausibly uses.
+
 ## 3. Historical review — what the `BindingDB_IO` implementation changed (2026-09-16)
 
 The comparison below describes the checkout **before** B-23…B-26 were delivered.
@@ -1086,3 +1116,4 @@ the present proposal order; a previous “no remaining work” statement is not 
 | 2026-09-16 | **B-14 delivered** (`.github/workflows/checks.yml`: push/PR pipeline calling `scripts/run_checks.sh --no-pg` — the developer entry point itself — with the shipped container's python 3.12 / node 22 and pip/npm caching; README's Development checks section updated). Verified by execution, not by reading: hosted run **35102219606 completed green in 1m07s** on ubuntu-latest. The gate question was argued in the register first: `origin` is GitHub, so GitHub Actions *is* the hosting decision, and a workflow file moving to another host later is a file move. Coverage limit stated in the workflow itself: the database-dependent majority of the suite keeps its scratch-database behaviour — CI does not run the full suite until someone provides a PostgreSQL+RDKit-cartridge CI image; the actions' Node-24 deprecation annotation is cosmetic. **B-14 leaves the table**, and the head moves to **B-09** (gated on scientific review) with **B-17 the first engineering-startable item**. An external register commit (`3f24d9b`, Cursor co-authored) landed mid-round adding B-15's two remaining record lines; its "B-04 becomes the next engineering item" statement predates B-04's delivery and is superseded by this log, not reverted. |
 | 2026-09-16 | **B-17 delivered** (`@playwright/test` dev dependency with the §23 record and rejected alternatives in `THIRD_PARTY_NOTICES.md` §2 in the same change; `apps/web/playwright.config.ts`; `apps/web/e2e/smoke.spec.ts` covering search → family → compound inspection → structure filter → CSV export; `npm run test:e2e`; `test-results/` and `playwright-report/` git-ignored; README's Development checks updated). Verified by execution: the smoke passes in 1.6 s against the rebuilt compose stack (healthz ok, demo-fixture-v1) — a rebuild that also applied migration 0020 to the stack database — and `npm run build` still passes. Two scope notes from the run: (1) the spec's first draft assumed a row click opens a structure drawer; the real affordance is the evidence inspector, and the smoke follows the real UI — no application code changed; (2) the smoke is deliberately **not** wired into CI, because CI has no seeded stack; connecting them is its own later step. **B-17 leaves the table.** Final order after this round: the table's head is **B-09** (gated on scientific review); **B-11, B-21, B-22 keep operator gates** (provider choice; source decisions + credentials + ADRs); everything remaining is `LATER`-class with its gate named. No further engineering-startable item remains in the P2 group — the next move is the operator's (§6 hosted acceptance), or an ungated item must be added to the register first. |
 | 2026-09-16 | **Planning-only product review at `efb1357`** ([Q&A](2026-09-16-product-review-qa.md)). Added B-31…B-41: hosted acceptance, scientific cohort/cross-read, target export parity, build identity, full CI, mixed-project navigation, precise citation navigation, browser failure regression, reproducible target state, bounded SAR comparison and ambiguity selection. B-33 is the first engineering candidate; B-31 remains the operator gate. Promoted B-30 to P1/CORE, B-19/B-29 to P2/NEXT; narrowed B-21 to a P2/NEXT source decision and deferred B-22 to P3; B-09 follows validation of the present cohort; split B-11's ungated explanation from gated provider evaluation; ranked B-28 as P3. Reasons and dependencies are in §1. Corrected stale handoff/capability/architecture claims; preserved historical artifacts and completed-item records. Static source inspection and document consistency only: no application changes, tests, builds, browser/source calls, acceptance execution, commit or push. |
+| 2026-09-16 | **Implementation round 1 (owner-authorized queue).** Evidence refreshed first: full backend suite **779 passed**, frontend build, e2e smoke 1/1 — then **B-33 delivered** (browser reproduction on the stored IL6 investigation: menu claimed 141 / file 157 rows / threshold 10000 vs a 1 nM override; fix: `evidence_class` in the export contract + the screen's existence clause in `collect_candidate_export_rows`, threshold and filter passed from `App.tsx` through `ExportMenu`; 8 new tests, 104-test regression green; after-fix browser check 141 = 141 and `reference_threshold_nM` 1 for both scopes) and **B-34 delivered** (subagent implementation + coordinator review; the review caught the build script exporting an empty variable — fixed and proven by the served `/healthz` reading `12aa498-dirty` with the recorder exit 0). **B-42 added** (P1 head): short viewports collapse the candidate table to zero rendered rows while the footer claims 1–100 of 141 — measured, not guessed. Re-sorted with the moves stated: B-42 takes the P1 head (small, reproduced, hides the primary workflow's main object); B-33/B-34 leave the table; B-32's B-34 gate dependency resolves. AGENTS.md §11 gained the export-parity sentence (screen filters define the "current results" scope). |
