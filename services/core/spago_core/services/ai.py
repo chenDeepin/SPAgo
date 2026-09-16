@@ -1794,7 +1794,11 @@ def _attach_observed_usage(exc: AIError, usages: list[dict | None], *, attempts:
     `_combine_usage` returns None unless each attempt's usage is known: a
     partial sum would understate a real invoice, and the usage row keeps its
     reservation in that case (usage.py documents why the reservation stands).
+    The attempt count is attached unconditionally: B-11 surfaces the retry
+    budget in the refusal detail, and that statement must not depend on
+    whether usage was observed.
     """
+    exc.attempts = attempts
     observed = _combine_usage(usages, attempts=attempts)
     if observed is not None:
         exc.usage = observed

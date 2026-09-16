@@ -1040,7 +1040,29 @@ def _run_summary(
     except ai_svc.SnapshotBudgetError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except ai_svc.LLMUpstreamError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        # B-11: the reader sees the refusal class and the retry budget, not a
+        # bare 502. A content rejection exhausted the one re-sample and a new
+        # request is a new billed call; a transport failure returned nothing,
+        # so nothing was billed. No retry happens automatically in either case.
+        detail = str(exc)
+        attempts = getattr(exc, "attempts", None)
+        if isinstance(exc, ai_svc.LLMTransportError):
+            detail = (
+                f"{detail} The endpoint was never reached, so nothing was returned or "
+                "billed for this attempt. A new request will be a new billed call; no "
+                "automatic retry happens."
+            )
+        elif isinstance(exc, ai_svc.LLMOutputRejectedError):
+            budget = (
+                f" Both attempts were rejected (the retry budget for one request is "
+                "used). A new request will be a new billed call; no automatic retry "
+                "happens."
+                if attempts and attempts > 1
+                else " The response was billed but rejected; the retry budget for this "
+                "request is used and a new request will be a new billed call."
+            )
+            detail = f"{detail}.{budget}" if not detail.endswith(".") else f"{detail}{budget}"
+        raise HTTPException(status_code=exc.status_code, detail=detail) from exc
 
     result["mode"] = mode
     result["scope"] = response_scope_label
