@@ -1,0 +1,976 @@
+# SPAgo screen-reader announcement pass (B-44)
+# date: 2026-09-16T18:42:44.303Z
+# base: http://127.0.0.1:8000   scenario: all
+# reader: Orca 42.0 (exit 0) via speech-dispatcher, on DISPLAY=:1 (window activation re-asserted each step)
+# speech server: speech-dispatcher 0.11.1 (exit 0)
+# browser: Google Chrome (channel=chrome) with --force-renderer-accessibility
+# healthz: {"build_id":"0d1d983-dirty","dataset_version":"demo-fixture-v1"}
+
+# Orca started (pid 1543150), debug file /tmp/spago-at-pass-1789584164303.log
+
+# window activation: no window matching 'SPAgo' (exit 1)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x6600004 (exit 2)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: open DEMO-PATENT-A
+focus: {"focus":"document body"}
+announced:
+  [02:42:51.989170] DEMO-PATENT-A — SPAgo page tab.
+  [02:42:52.053930] Family DEMO-FAMILY-1 loaded
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: the table is announced when focus enters it
+focus: {"focus":"button","name":"Projects","row":null,"cell":null}
+announced: (nothing)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #1
+focus: {"focus":"button","name":"Analyses","row":null,"cell":null}
+announced:
+  [02:42:54.219074] Projects push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #2
+focus: {"focus":"button","name":"Demo dataset · demo-fixture-v1","row":null,"cell":null}
+announced:
+  [02:42:55.355140] Analyses push button.
+  [02:42:56.488508] Demo dataset · demo-fixture-v1 push button.
+  [02:42:56.489046] This deployment serves the synthetic demo fixture dataset. Identifiers and structures are illustrative, not scientific data. Click for the loaded corpus inventory.
+  [02:42:56.489486] opens dialog
+  [02:42:56.490621] Focus mode
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #3
+focus: {"focus":"input","name":"Patent publication number or target","row":null,"cell":null}
+announced:
+  [02:42:57.690272] leaving banner.
+  [02:42:57.691034] search Patent or target search
+  [02:42:57.691549] Patent publication number or target entry Patent number (WO2018000001A1) or target (TSLP, Q969D9)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #4
+focus: {"focus":"button","name":"Search","row":null,"cell":null}
+announced:
+  [02:42:58.800896] Search push button.
+  [02:42:58.809263] Browse mode
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #5
+focus: {"focus":"button","name":"All documentsdeduped","row":null,"cell":null}
+announced: (nothing)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #6
+focus: {"focus":"button","name":"DEMO-PATENT-AWO · application5","row":null,"cell":null}
+announced:
+  [02:42:59.927970] leaving search.
+  [02:42:59.928517] navigation Patent family
+  [02:42:59.928892] All documents deduped push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #7
+focus: {"focus":"button","name":"DEMO-PATENT-BEP · application4","row":null,"cell":null}
+announced:
+  [02:43:01.074521] DEMO-PATENT-A WO · application 5 push button.
+  [02:43:01.075078] Illustrative inhibitor compounds, part A (synthetic demo record)
+  [02:43:02.211683] DEMO-PATENT-B EP · application 4 push button.
+  [02:43:02.212160] Illustrative inhibitor compounds, part B (synthetic demo record)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #8
+focus: {"focus":"button","name":"DEMO-PATENT-CUS · grant3","row":null,"cell":null}
+announced:
+  [02:43:03.346761] DEMO-PATENT-C US · grant 3 push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #9
+focus: {"focus":"button","name":"Structure ▾","row":null,"cell":null}
+announced:
+  [02:43:03.347408] Illustrative inhibitor compounds, part C (synthetic demo record)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #10
+focus: {"focus":"button","name":"Scaffold ▾","row":null,"cell":null}
+announced:
+  [02:43:04.492943] leaving navigation.
+  [02:43:04.493395] main content
+  [02:43:04.493652] Structure ▾ push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #11
+focus: {"focus":"button","name":"Save to project","row":null,"cell":null}
+announced:
+  [02:43:05.637682] Scaffold ▾ toggle button not pressed.
+  [02:43:05.638162] Group compounds by Murcko scaffold.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #12
+focus: {"focus":"button","name":"Export ▾","row":null,"cell":null}
+announced:
+  [02:43:06.772104] Save to project push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #13
+focus: {"focus":"input","name":"Select all loaded compounds","row":"1","cell":""}
+announced:
+  [02:43:07.919242] Export ▾ collapsed push button.
+  [02:43:07.919814] opens menu
+  [02:43:07.920979] Focus mode
+  [02:43:09.071438] Compounds in family DEMO-FAMILY-1.
+  [02:43:09.071882] table with 11 rows 6 columns
+  [02:43:09.072191] column header.
+  [02:43:09.072446] Select all loaded compounds check box not checked.
+  [02:43:09.075036] Browse mode
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab #14
+focus: {"focus":"div[role=row]","name":"Compound 1 of 10: ABBQHOQBGMUPJH-UHFFFAOYSA-M, C7H5NaO3, no activity shown, Example 12","row":"2","cell":null}
+announced: (nothing)
+> reached after 14 Tab press(es)
+
+family header/tree:
+[
+ {
+  "role": "table",
+  "name": "Compounds in family DEMO-FAMILY-1",
+  "ownedChildren": 2,
+  "ignored": false,
+  "parent": "none"
+ },
+ {
+  "role": "row",
+  "name": "",
+  "ownedChildren": 6,
+  "ignored": false,
+  "parent": "table"
+ },
+ {
+  "role": "rowgroup",
+  "name": "",
+  "ownedChildren": 10,
+  "ignored": false,
+  "parent": "table"
+ },
+ {
+  "role": "columnheader",
+  "name": "Select all loaded compounds",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Structure",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Compound",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Patent label",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Activity",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Evidence",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "row",
+  "name": "Compound 1 of 10: ABBQHOQBGMUPJH-UHFFFAOYSA-M, C7H",
+  "ownedChildren": 6,
+  "ignored": false,
+  "parent": "rowgroup"
+ },
+ {
+  "role": "row",
+  "name": "Compound 2 of 10: BSYNRYMUTXBXSQ-UHFFFAOYSA-N, C9H",
+  "ownedChildren": 6,
+  "ignored": false,
+  "parent": "rowgroup"
+ },
+ {
+  "role": "row",
+  "name": "Compound 3 of 10: CMWTZPSULFXXJA-SECBINFHSA-N, C14",
+  "ownedChildren": 6,
+  "ignored": false,
+  "parent": "rowgroup"
+ },
+ {
+  "role": "row",
+  "name": "Compound 4 of 10: HEFNNWSXXWATRW-SNVBAGLBSA-N, C13",
+  "ownedChildren": 6,
+  "ignored": false,
+  "parent": "rowgroup"
+ },
+ {
+  "role": "row",
+  "name": "Compound 5 of 10: HEFNNWSXXWATRW-UHFFFAOYSA-N, C13",
+  "ownedChildren": 6,
+  "ignored": false,
+  "parent": "rowgroup"
+ }
+]
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Orca next column (Ctrl+Alt+Right)
+focus: {"focus":"div[role=row]","name":"Compound 1 of 10: ABBQHOQBGMUPJH-UHFFFAOYSA-M, C7H5NaO3, no activity shown, Example 12","row":"2","cell":null}
+announced:
+  [02:43:10.196582] Compound 1 of 10: ABBQHOQBGMUPJH-UHFFFAOYSA-M, C7H5NaO3, no activity shown, Example 12.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Orca next row (Ctrl+Alt+Down)
+focus: {"focus":"div[role=row]","name":"Compound 2 of 10: BSYNRYMUTXBXSQ-UHFFFAOYSA-N, C9H8O4, 2 measurements, 2 patent labels","row":"3","cell":null}
+announced: (nothing)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: ArrowDown on the focused row
+focus: {"focus":"div[role=row]","name":"Compound 3 of 10: CMWTZPSULFXXJA-SECBINFHSA-N, C14H14O3, 2 measurements, Example 11","row":"4","cell":null}
+announced:
+  [02:43:12.485500] Compound 2 of 10: BSYNRYMUTXBXSQ-UHFFFAOYSA-N, C9H8O4, 2 measurements, 2 patent labels.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Tab to the row's own checkbox
+focus: {"focus":"input","name":"Select compound CMWTZPSULFXXJA-SECBINFHSA-N","row":"4","cell":""}
+announced:
+  [02:43:13.642285] Compound 3 of 10: CMWTZPSULFXXJA-SECBINFHSA-N, C14H14O3, 2 measurements, Example 11.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+> keyboard rule (B-19) on this build: after Space on a row checkbox — inspector open: false, checked row boxes: 1
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Space on the checkbox (selects, must not inspect)
+focus: {"focus":"input","name":"Select compound CMWTZPSULFXXJA-SECBINFHSA-N","row":"4","cell":""}
+announced:
+  [02:43:14.767135] Select compound CMWTZPSULFXXJA-SECBINFHSA-N check box not checked.
+  [02:43:15.916309] checked
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+> keyboard rule (B-19) on this build: after Enter on the focused row — dialogs: ["Evidence inspector"]
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: Shift+Tab back to the row, then Enter (inspects)
+focus: {"focus":"div[role=row]","name":"Compound 3 of 10: CMWTZPSULFXXJA-SECBINFHSA-N, C14H14O3, 2 measurements, Example 11","row":"4","cell":null}
+announced:
+  [02:43:17.565331] Compound 3 of 10: CMWTZPSULFXXJA-SECBINFHSA-N, C14H14O3, 2 measurements, Example 11.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### family view: close the inspector
+focus: {"focus":"div[role=row]","name":"Compound 3 of 10: CMWTZPSULFXXJA-SECBINFHSA-N, C14H14O3, 2 measurements, Example 11","row":"4","cell":null}
+announced: (nothing)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: open the stored investigation
+focus: {"focus":"document body"}
+announced:
+  [02:43:21.181985] Loading.  Please wait.
+  [02:43:21.187532] Finished loading SPAgo — small molecule patent analysis.
+  [02:43:21.189775] Page has 3 landmarks.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: enter the table
+focus: {"focus":"button","name":"Projects","row":null,"cell":null}
+announced: (nothing)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #1
+focus: {"focus":"button","name":"Analyses","row":null,"cell":null}
+announced:
+  [02:43:23.620161] Projects push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #2
+focus: {"focus":"button","name":"Demo dataset · demo-fixture-v1","row":null,"cell":null}
+announced:
+  [02:43:24.766413] Analyses push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #3
+focus: {"focus":"input","name":"Patent publication number or target","row":null,"cell":null}
+announced:
+  [02:43:25.905469] Demo dataset · demo-fixture-v1 push button.
+  [02:43:25.906002] This deployment serves the synthetic demo fixture dataset. Identifiers and structures are illustrative, not scientific data. Click for the loaded corpus inventory.
+  [02:43:25.906426] opens dialog
+  [02:43:27.052700] Patent publication number or target entry Patent number (WO2018000001A1) or target (TSLP, Q969D9)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #4
+focus: {"focus":"button","name":"Search","row":null,"cell":null}
+announced:
+  [02:43:28.205804] Search push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #5
+focus: {"focus":"button","name":"IL6R (receptor)","row":null,"cell":null}
+announced: (nothing)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #6
+focus: {"focus":"button","name":"IL6ST (signalling_component)","row":null,"cell":null}
+announced:
+  [02:43:29.349479] IL6R (receptor) push button.
+  [02:43:29.350285] Interleukin-6 receptor subunit alpha.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #7
+focus: {"focus":"summary","name":"Resolution provenance (2 notes)","row":null,"cell":null}
+announced:
+  [02:43:30.481039] IL6ST (signalling_component) push button.
+  [02:43:30.481527] Interleukin-6 receptor subunit beta.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #8
+focus: {"focus":"button","name":"Retry pubchem","row":null,"cell":null}
+announced:
+  [02:43:31.621112] Resolution provenance (2 notes) toggle button collapsed.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #9
+focus: {"focus":"button","name":"Refresh sources","row":null,"cell":null}
+announced:
+  [02:43:32.776707] Retry pubchem push button.
+  [02:43:32.777145] Ask pubchem again, and only pubchem: the other sources' stored outcomes are left as they are. last run 9/17/2026, 2:07:53 AM · 0 pages · 48 records seen · 0.6 s.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #10
+focus: {"focus":"summary","name":"Source notes and reference coverage","row":null,"cell":null}
+announced:
+  [02:43:33.929385] Refresh sources push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #11
+focus: {"focus":"button","name":"IC50 <1 nM","row":null,"cell":null}
+announced:
+  [02:43:35.067182] Source notes and reference coverage toggle button collapsed.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #12
+focus: {"focus":"button","name":"IC50 <1 nM","row":null,"cell":null}
+announced:
+  [02:43:36.210051] IC50 <1 nM push button.
+  [02:43:36.210744] measured_direct_binding · reported by chembl.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #13
+focus: {"focus":"button","name":"IC50 <1 nM","row":null,"cell":null}
+announced:
+  [02:43:37.366802] IC50 <1 nM push button.
+  [02:43:37.367377] measured_direct_binding · reported by bindingdb.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #14
+focus: {"focus":"button","name":"IC50 <1 nM","row":null,"cell":null}
+announced:
+  [02:43:38.495906] IC50 <1 nM push button.
+  [02:43:38.496440] measured_direct_binding · reported by bindingdb.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #15
+focus: {"focus":"button","name":"IC50 1.1 nM","row":null,"cell":null}
+announced:
+  [02:43:39.631982] IC50 <1 nM push button.
+  [02:43:39.632539] measured_direct_binding · reported by chembl.
+  [02:43:40.791604] IC50 1.1 nM push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #16
+focus: {"focus":"input","name":"Potency threshold in micromolar","row":null,"cell":null}
+announced:
+  [02:43:40.792135] measured_direct_binding · reported by chembl.
+  [02:43:41.951217] Potency threshold in micromolar 0.0 spin button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #17
+focus: {"focus":"button","name":"Add a row by hand","row":null,"cell":null}
+announced: (nothing)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #18
+focus: {"focus":"input","name":"","row":null,"cell":null}
+announced:
+  [02:43:43.072720] Add a row by hand push button.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #19
+focus: {"focus":"select","name":"anymeasured direct bindinginteraction disruptionfunctional e","row":null,"cell":null}
+announced:
+  [02:43:44.208676] Include peptides, oligonucleotides and biologics check box not checked.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #20
+focus: {"focus":"button","name":"Export ▾","row":null,"cell":null}
+announced:
+  [02:43:45.387685] Evidence class combo box.
+  [02:43:45.388338] any.
+  [02:43:45.388745] opens menu
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #21
+focus: {"focus":"input","name":"Select all loaded candidates","row":"1","cell":""}
+announced:
+  [02:43:46.500244] Export ▾ collapsed push button.
+  [02:43:46.500749] opens menu
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Tab #22
+focus: {"focus":"div[role=row]","name":"Candidate 1 of 157: UPJFTVFLSIQQAV-KOLCDFICSA-N, active IC50 1630 nM, measured binding, no patent mapping","row":"2","cell":null}
+announced:
+  [02:43:47.634853] Select all loaded candidates check box not checked.
+> reached after 22 Tab press(es)
+
+target header/tree:
+[
+ {
+  "role": "table",
+  "name": "Candidate compounds for IL6",
+  "ownedChildren": 2,
+  "ignored": false,
+  "parent": "none"
+ },
+ {
+  "role": "row",
+  "name": "",
+  "ownedChildren": 7,
+  "ignored": false,
+  "parent": "table"
+ },
+ {
+  "role": "rowgroup",
+  "name": "",
+  "ownedChildren": 10,
+  "ignored": false,
+  "parent": "table"
+ },
+ {
+  "role": "columnheader",
+  "name": "Select all loaded candidates",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Structure",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Candidate",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Activity",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Modality",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Evidence class",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "columnheader",
+  "name": "Patent linkage",
+  "ownedChildren": 1,
+  "ignored": false,
+  "parent": "row"
+ },
+ {
+  "role": "row",
+  "name": "Candidate 1 of 157: UPJFTVFLSIQQAV-KOLCDFICSA-N, a",
+  "ownedChildren": 7,
+  "ignored": false,
+  "parent": "rowgroup"
+ },
+ {
+  "role": "row",
+  "name": "Candidate 2 of 157: WEBQKRLKWNIYKK-UHFFFAOYSA-N, w",
+  "ownedChildren": 7,
+  "ignored": false,
+  "parent": "rowgroup"
+ },
+ {
+  "role": "row",
+  "name": "Candidate 3 of 157: BAFQDKPJKOLXFZ-UHFFFAOYSA-N, a",
+  "ownedChildren": 7,
+  "ignored": false,
+  "parent": "rowgroup"
+ },
+ {
+  "role": "row",
+  "name": "Candidate 4 of 157: HMUSVHZYELITJL-UHFFFAOYSA-N, w",
+  "ownedChildren": 7,
+  "ignored": false,
+  "parent": "rowgroup"
+ }
+]
+
+target table (candidate) accessibility shape:
+[
+ {
+  "role": "table",
+  "name": "Candidate compounds for IL6",
+  "ownedChildren": 2,
+  "ignored": false,
+  "parent": "none"
+ },
+ {
+  "role": "rowgroup",
+  "name": "",
+  "ownedChildren": 10,
+  "ignored": false,
+  "parent": "table"
+ }
+]
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Orca next column (Ctrl+Alt+Right)
+focus: {"focus":"div[role=row]","name":"Candidate 1 of 157: UPJFTVFLSIQQAV-KOLCDFICSA-N, active IC50 1630 nM, measured binding, no patent mapping","row":"2","cell":null}
+announced:
+  [02:43:48.797027] Candidate 1 of 157: UPJFTVFLSIQQAV-KOLCDFICSA-N, active IC50 1630 nM, measured binding, no patent mapping.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Orca next row (Ctrl+Alt+Down)
+focus: {"focus":"div[role=row]","name":"Candidate 2 of 157: WEBQKRLKWNIYKK-UHFFFAOYSA-N, weak IC50 13810 nM, measured binding, no patent mapping","row":"3","cell":null}
+announced:
+  [02:43:51.097190] Candidate 2 of 157: WEBQKRLKWNIYKK-UHFFFAOYSA-N, weak IC50 13810 nM, measured binding, no patent mapping.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Space on a candidate row (inspects)
+focus: {"focus":"document body"}
+announced:
+  [02:43:52.537085] No patent mapping is recorded for this candidate. That is a normal state: the compound is retained and saveable, and the absence of a patent link is not evidence about patent coverage.
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+# window activation: focused 0x4000004; _NET_ACTIVE_WINDOW=0x4000004 (exit 0)
+
+### target view: Escape closes
+focus: {"focus":"document body"}
+announced: (nothing)
+
+> after leaving the first row, 4 further Tab press(es) still landed inside rows
+
+# end of pass. Orca debug file kept at /tmp/spago-at-pass-1789584164303.log

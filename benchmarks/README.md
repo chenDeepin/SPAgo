@@ -182,3 +182,10 @@ children) with a same-build before/after measured through the platform table
 interface, the B-19 keyboard rules re-verified on the same build, and the limits —
 including that Orca's own Ctrl+Alt+arrow table commands cannot be driven by
 synthetic keys and stay untested.
+
+`table-keyboard-2026-09-17.md` (raw stream: `table-keyboard-2026-09-17-transcript.txt`)
+— the B-46 keyboard-model round: Tab stops through each virtualized table before and
+after (30 → 3 and → 1), arrow-key movement including a 60-press run across the virtual
+window, and the reader's announcements for the rows (`Compound 2 of 10: …`,
+`Candidate 2 of 157: …`) captured with the same harness as the B-44 pass. The
+repeatable DOM-level half is `npm run check:table-keyboard`.

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Candidate, CandidatePage } from "../api/types";
 import { MoleculeImage } from "./MoleculeImage";
@@ -63,6 +63,52 @@ export function CandidateTable({
   const loadedIds = page.items.map((r) => r.compound_id);
   const selectedLoaded = loadedIds.filter((id) => selectedIds.has(id)).length;
   const allSelected = loadedIds.length > 0 && selectedLoaded === loadedIds.length;
+
+  // The table is one tab stop, not one per row (B-46): the current row is the
+  // inspected row when it is loaded, otherwise where the user last moved to,
+  // otherwise the first row.
+  const [currentRow, setCurrentRow] = useState(-1);
+  const pendingFocus = useRef<number | null>(null);
+  const currentIndex = useMemo(() => {
+    if (currentRow >= 0 && currentRow < page.items.length) return currentRow;
+    const inspected = page.items.findIndex((r) => r.compound_id === selectedCompoundId);
+    return inspected >= 0 ? inspected : page.items.length > 0 ? 0 : -1;
+  }, [currentRow, page.items, selectedCompoundId]);
+
+  // The logical position, not the focused element's index: a held arrow key
+  // repeats faster than focus can move, and reading the index back from the DOM
+  // would stall on the row it is about to leave.
+  const currentRowRef = useRef(-1);
+  const moveRowFocus = (next: number) => {
+    if (page.items.length === 0) return;
+    const target = Math.max(0, Math.min(page.items.length - 1, next));
+    currentRowRef.current = target;
+    setCurrentRow(target);
+    pendingFocus.current = target;
+  };
+
+  // Move the keyboard with the rows: the target may still be outside the
+  // virtual window, so scroll it in first and focus after it renders.
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target == null) return;
+    pendingFocus.current = null;
+    virtualizer.scrollToIndex(target, { align: "auto" });
+    // The row is usually already rendered; when it is not (a jump across the
+    // virtual window) the scroll above renders it on the next commit, so retry
+    // a few frames instead of assuming one.
+    const focusTarget = (attempt = 0) => {
+      const row = scrollRef.current?.querySelector<HTMLElement>(`[role=rowgroup] [data-index="${target}"]`);
+      if (row) {
+        row.focus();
+        if (document.activeElement === row) return;
+      }
+      if (attempt < 4) window.setTimeout(() => focusTarget(attempt + 1), 20 * (attempt + 1));
+    };
+    focusTarget();
+  }, [currentRow, virtualizer]);
+
+  const rowTabIndex = (index: number) => (index === currentIndex ? 0 : -1);
 
   return (
     <div className="table-panel">
@@ -141,17 +187,51 @@ export function CandidateTable({
                 role="row"
                 aria-rowindex={virtualRow.index + 2}
                 aria-selected={selected}
-                tabIndex={0}
+                aria-label={`Candidate ${virtualRow.index + 1} of ${page.total}: ${
+                  row.inchikey
+                }, ${activityClassLabel(row.activity_class)}${
+                  row.potency_label ? ` ${row.potency_label}` : ""
+                }, ${evidenceClassLabel(row.evidence_class)}, ${
+                  row.patent_occurrences > 0
+                    ? `${row.patent_occurrences} patent occurrence${row.patent_occurrences === 1 ? "" : "s"}`
+                    : "no patent mapping"
+                }`}
+                tabIndex={rowTabIndex(virtualRow.index)}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
+                onFocus={() => {
+                  currentRowRef.current = virtualRow.index;
+                  setCurrentRow(virtualRow.index);
+                }}
                 onClick={() => onSelectCandidate(row.compound_id)}
                 onKeyDown={(e) => {
                   // Nested interactive controls (checkbox) own their keys:
                   // one keypress, one action.
                   if (e.target !== e.currentTarget) return;
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelectCandidate(row.compound_id);
+                  switch (e.key) {
+                    case "ArrowDown":
+                      e.preventDefault();
+                      moveRowFocus(currentRowRef.current + 1);
+                      return;
+                    case "ArrowUp":
+                      e.preventDefault();
+                      moveRowFocus(currentRowRef.current - 1);
+                      return;
+                    case "Home":
+                      e.preventDefault();
+                      moveRowFocus(0);
+                      return;
+                    case "End":
+                      e.preventDefault();
+                      moveRowFocus(page.items.length - 1);
+                      return;
+                    case "Enter":
+                    case " ":
+                      e.preventDefault();
+                      onSelectCandidate(row.compound_id);
+                      return;
+                    default:
+                      return;
                   }
                 }}
                 style={{
@@ -174,6 +254,7 @@ export function CandidateTable({
                     type="checkbox"
                     aria-label={`Select candidate ${row.inchikey}`}
                     checked={checked}
+                    tabIndex={rowTabIndex(virtualRow.index)}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => onToggleSelection(row.compound_id, e.target.checked)}
                   />

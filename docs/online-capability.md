@@ -577,8 +577,11 @@ The deployment is one app image plus one database. To roll back:
   `apps/web/scripts/at-pass.mjs` drives Orca over the two tables in Chrome and
   `benchmarks/screen-reader-pass-2026-09-17.md` holds what the reader announced. A
   reader is now told the tables' true shape ("table with 11 rows 6 columns", not
-  "1 row"); the remaining keyboard-model gap (one tab stop per row, no arrow-key cell
-  navigation, a silent row-focus) is B-46. Hermetic fixtures for the stored-data
+  "1 row"), the tables are one tab stop each, and the arrow keys move the current row
+  while the reader announces it (`benchmarks/table-keyboard-2026-09-17.md`). Cells are
+  not focus targets, so cell-level arrow navigation inside a row is not delivered, and
+  Orca's own Ctrl+Alt+arrow table commands are not exercised by that harness. Hermetic
+  fixtures for the stored-data
   browser specs, which resolve IL-6 through the live (free) UniProt endpoint today,
   remain open (B-45).
 - **Regression scope.** CI now runs the full backend suite against the shipped
@@ -586,7 +589,8 @@ The deployment is one app image plus one database. To roll back:
   (B-35), and the specs cover failed sources, stale responses, per-source retry,
   save/reopen and export-content parity (B-38); two stored-data specs skip loudly on
   a bare stack instead of failing on absent data. Not covered: live sources and hosted
-  mode. The screen-reader pass is now recorded (B-44) but is a manual, desktop-bound
-  check — it is not part of the automated suite, which is what B-46's keyboard model
-  change would need. Opening a patent from a target view pushes two history entries —
+  mode. The screen-reader pass is recorded (B-44) and the keyboard model changed with it
+  (B-46), but the reader half stays a manual, desktop-bound check; the keyboard
+  measurements are repeatable through `npm run check:table-keyboard` and are not wired
+  into CI. Opening a patent from a target view pushes two history entries —
   a polish defect with a press-Back-twice workaround (B-43).

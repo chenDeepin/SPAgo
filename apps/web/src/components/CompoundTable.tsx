@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { CompoundPage } from "../api/types";
 import { MoleculeImage } from "./MoleculeImage";
@@ -88,6 +88,52 @@ export function CompoundTable({
   const selectedLoaded = loadedIds.filter((id) => selectedIds.has(id)).length;
   const allSelected = loadedIds.length > 0 && selectedLoaded === loadedIds.length;
 
+  // The table is one tab stop, not one per row (B-46): the current row is the
+  // inspected row when it is loaded, otherwise where the user last moved to,
+  // otherwise the first row.
+  const [currentRow, setCurrentRow] = useState(-1);
+  const pendingFocus = useRef<number | null>(null);
+  const currentIndex = useMemo(() => {
+    if (currentRow >= 0 && currentRow < items.length) return currentRow;
+    const inspected = items.findIndex((r) => r.compound.id === selectedCompoundId);
+    return inspected >= 0 ? inspected : items.length > 0 ? 0 : -1;
+  }, [currentRow, items, selectedCompoundId]);
+
+  // The logical position, not the focused element's index: a held arrow key
+  // repeats faster than focus can move, and reading the index back from the DOM
+  // would stall on the row it is about to leave.
+  const currentRowRef = useRef(-1);
+  const moveRowFocus = (next: number) => {
+    if (items.length === 0) return;
+    const target = Math.max(0, Math.min(items.length - 1, next));
+    currentRowRef.current = target;
+    setCurrentRow(target);
+    pendingFocus.current = target;
+  };
+
+  // Move the keyboard with the rows: the target may still be outside the
+  // virtual window, so scroll it in first and focus after it renders.
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target == null) return;
+    pendingFocus.current = null;
+    virtualizer.scrollToIndex(target, { align: "auto" });
+    // The row is usually already rendered; when it is not (a jump across the
+    // virtual window) the scroll above renders it on the next commit, so retry
+    // a few frames instead of assuming one.
+    const focusTarget = (attempt = 0) => {
+      const row = scrollRef.current?.querySelector<HTMLElement>(`[role=rowgroup] [data-index="${target}"]`);
+      if (row) {
+        row.focus();
+        if (document.activeElement === row) return;
+      }
+      if (attempt < 4) window.setTimeout(() => focusTarget(attempt + 1), 20 * (attempt + 1));
+    };
+    focusTarget();
+  }, [currentRow, virtualizer]);
+
+  const rowTabIndex = (index: number) => (index === currentIndex ? 0 : -1);
+
   return (
     <div className="table-panel">
       <div
@@ -162,23 +208,67 @@ export function CompoundTable({
             const prev = virtualRow.index > 0 ? items[virtualRow.index - 1] : null;
             const scaffoldBreak =
               sarMode && compound.scaffold && prev?.compound.scaffold !== compound.scaffold;
+            // A row is now a focus target for the arrow keys, so it needs a name:
+            // focus on a nameless row announces nothing (B-46, measured by B-44's
+            // pass). The name carries what the row's cells hold, because the row
+            // is what the reader lands on.
+            const rowActivity =
+              row.activity.length === 0
+                ? "no activity shown"
+                : row.activity.length === 1
+                  ? activityText(row.activity[0])
+                  : `${row.activity.length} measurements`;
+            const rowLabel =
+              row.mentions.length === 0
+                ? "no patent label"
+                : row.mentions.length === 1
+                  ? (row.mentions[0].patent_label ?? "label not provided")
+                  : `${row.mentions.length} patent labels`;
             return (
               <div
                 key={compound.id}
                 role="row"
                 aria-rowindex={virtualRow.index + 2}
                 aria-selected={selected}
-                tabIndex={0}
+                aria-label={`Compound ${virtualRow.index + 1} of ${page.total}: ${
+                  compound.inchikey
+                }${compound.molecular_formula ? `, ${compound.molecular_formula}` : ""}, ${rowActivity}, ${rowLabel}`}
+                tabIndex={rowTabIndex(virtualRow.index)}
                 data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
+                onFocus={() => {
+                  currentRowRef.current = virtualRow.index;
+                  setCurrentRow(virtualRow.index);
+                }}
                 onClick={() => onSelectCompound(compound.id)}
                 onKeyDown={(e) => {
                   // Nested interactive controls (checkbox, structure preview,
                   // evidence link) own their keys: one keypress, one action.
                   if (e.target !== e.currentTarget) return;
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelectCompound(compound.id);
+                  switch (e.key) {
+                    case "ArrowDown":
+                      e.preventDefault();
+                      moveRowFocus(currentRowRef.current + 1);
+                      return;
+                    case "ArrowUp":
+                      e.preventDefault();
+                      moveRowFocus(currentRowRef.current - 1);
+                      return;
+                    case "Home":
+                      e.preventDefault();
+                      moveRowFocus(0);
+                      return;
+                    case "End":
+                      e.preventDefault();
+                      moveRowFocus(items.length - 1);
+                      return;
+                    case "Enter":
+                    case " ":
+                      e.preventDefault();
+                      onSelectCompound(compound.id);
+                      return;
+                    default:
+                      return;
                   }
                 }}
                 style={{
@@ -203,6 +293,7 @@ export function CompoundTable({
                     type="checkbox"
                     aria-label={`Select compound ${compound.inchikey}`}
                     checked={checked}
+                    tabIndex={rowTabIndex(virtualRow.index)}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => onToggleSelection(compound.id, e.target.checked)}
                   />
@@ -214,6 +305,7 @@ export function CompoundTable({
                       e.stopPropagation();
                       onOpenStructure(compound.id);
                     }}
+                    tabIndex={rowTabIndex(virtualRow.index)}
                     aria-label={`Open larger structure preview for ${compound.inchikey}`}
                     title="Open larger preview"
                   >
@@ -258,6 +350,7 @@ export function CompoundTable({
                   {row.mentions.length > visibleMentions.length && (
                     <button
                       className="show-all-occ"
+                      tabIndex={rowTabIndex(virtualRow.index)}
                       onClick={(e) => {
                         e.stopPropagation();
                         setExpanded((prev) => ({ ...prev, [compound.id]: true }));
@@ -291,6 +384,7 @@ export function CompoundTable({
                       e.stopPropagation();
                       onSelectCompound(compound.id);
                     }}
+                    tabIndex={rowTabIndex(virtualRow.index)}
                     aria-label={`Inspect evidence for compound ${compound.inchikey}`}
                   >
                     Source record

@@ -182,7 +182,10 @@ reader speaks for the active window only — `scripts/x11-focus.py`, which gives
 driven window the session's activation. Read
 [`benchmarks/screen-reader-pass-2026-09-17.md`](benchmarks/screen-reader-pass-2026-09-17.md)
 for the prerequisites in full, what the reader announced and what such a pass does not
-prove. It is not part of CI.
+prove. It is not part of CI. The keyboard half is repeatable without a reader:
+`npm run check:table-keyboard` measures how many Tab stops it takes to cross each
+virtualized table and whether the arrow keys move the current row
+(`benchmarks/table-keyboard-2026-09-17.md`).
 
 ### Distinguishable builds
 
