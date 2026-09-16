@@ -31,7 +31,6 @@ file.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-13 | Gate support kit: restore-verification rehearsal + deployment configuration examples | NEXT | S–M | host chosen (operator) |
 | P1 | B-01 | Corpus scale-up workflow: batch extract/import + "what is loaded" surface | NEXT | M | — |
 | P1 | B-10 | Summary archive and retrieval *(owner request)* | NEXT | M | — |
 | P1 | B-02 | Live source-declared patent linkage + candidate→corpus match display | NEXT | M | upstream source behaviour |
@@ -64,6 +63,13 @@ P1 = worth doing before or alongside the invited beta because it strengthens the
 workflow the gate tests. P2 = the next implementation round candidates, in the order
 shown. P3 = deliberately later; a P3 item needs a decision or a measured need before it
 becomes P2.
+
+**Delivered from this register (kept out of the table, with the artifact that closed
+it):**
+
+| ID | Delivered | Artifact |
+| --- | --- | --- |
+| B-13 | 2026-09-16 | `scripts/restore_check.sh` (dumps, restores, compares the §H7 counts, fails non-zero on mismatch, verified against the rehearsal stack and against a deliberate mismatch) and the §H2 ingress-duty table (compression, TLS, throttling, logs, backup schedule) in `docs/runbook.md`. |
 
 ## 2. Items
 
@@ -230,6 +236,10 @@ becomes P2.
 - **Class LATER · P3 · M.**
 
 ### B-13 — Gate support kit: restore rehearsal and deployment configuration examples
+
+**Delivered 2026-09-16** — `scripts/restore_check.sh` plus the §H2 ingress-duty table.
+Kept below as the original statement of the problem; the priority table no longer lists
+it.
 
 - **Problem.** The §6 checklist is hand-run from prose: TLS/secret injection, the
   restore rehearsal (§H7), and readiness verification. One checklist entry ("backup
@@ -551,3 +561,4 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 | --- | --- |
 | 2026-09-16 | Register created (planning-only stage). Items grounded by reading `PROMPT.md`, `AGENTS.md`, `docs/online-capability.md`, `docs/runbook.md`, the active plans, and the current checkout (`services/core`, `apps/web`, `scripts/`, `migrations/`). Owner request recorded: target-led open-database work (ChEMBL/BindingDB/PubChem) and LLM-summary archive/retrieval enter the backlog as B-06…B-09, B-07, B-08 and B-10. No code changed. |
 | 2026-09-16 | Second planning-only stage. `BindingDB_IO` reviewed read-only; §3 added with the adopt/defer/reject argument; new items B-23 (local snapshot search), B-24 (patent-led ChEMBL compounds), B-25 (supplement bundle import), B-26 (patent coverage audit), B-27 (review sheet, LATER) and the B-28 note recorded; priority table and P2 order updated. `AGENTS.md` gained the snapshot, agent-retrieval, repository-hygiene and acceptance/verifier rules; `docs/online-capability.md` §6 gained the hosted-acceptance definition and success criteria. No application code changed. |
+| 2026-09-16 | **B-13 delivered** after the hosted-acceptance rehearsal: `scripts/restore_check.sh` (scripted §H7 rehearsal; verified against the rehearsal stack and against a deliberate mismatch) and the §H2 "ingress duties" table (TLS, compression with the measured 20.3 MB → 4.95 MB figure, throttling, logs, backup schedule). The rehearsal also produced `docs/plans/2026-09-16-hosted-acceptance-rehearsal.md` and five defect fixes (target-summary bounds, rejected-call token accounting, transport-failure outcome, drill mode, §H7 column name). |

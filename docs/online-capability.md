@@ -212,7 +212,8 @@ The run record names the build identity from `/healthz`.
    threshold recorded next to it and every source's outcome explicit (`complete` /
    `partial` / `empty` / `failed` / `not_queried`).
 6. **Restore is rehearsed.** A backup is taken and restored per §H7 with ownership
-   counts matching; the rehearsal result is part of the run record.
+   counts matching (`scripts/restore_check.sh` performs and checks exactly this); the
+   rehearsal result is part of the run record.
 7. **Isolation is verified.** With two accounts, one owner cannot see the other's
    projects.
 8. **A non-implementer completes the script.** The invited user finishes all eight

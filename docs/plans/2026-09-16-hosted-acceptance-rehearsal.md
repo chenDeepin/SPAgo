@@ -103,4 +103,21 @@ Each one is reproduced by a test or by the drill named in the last column.
 
 ### 4.3 Backlog queue results
 
-_Pending._
+For each item: what was built, what verified it, and where the artifact lives. The
+product-vision check is the same for every item (does it strengthen
+`patents → families → structures → examples → activity → evidence → interpretation`
+rather than add a toolbox entry?) and is stated once here.
+
+**B-13 — Gate support kit (P1).** Built: `scripts/restore_check.sh`, a scripted §H7
+rehearsal that reads the live deployment's role/database, records source counts before
+dumping, restores into a scratch database, compares the documented counts plus the
+per-user split, runs an RDKit substructure query in the restored database, and exits
+non-zero on mismatch. Documented: the §H2 "what the app does not do" table (TLS,
+compression with the measured editor figure, request throttling, log retention, backup
+schedule), and §H7 now names the script while keeping the manual commands for
+non-compose hosts. Verified: two clean runs against the rehearsal stack (3 users,
+3 projects, 8 analyses, 2,639 structures, 2,593 benzene-containing rows) and a
+deliberate-mismatch run that reported the exact drifted metrics and exited 1. Vision
+check: it removes hand-error from the one checklist entry that is mechanical, and it
+makes the ingress gaps (compression, throttling) an operator decision that is written
+down instead of assumed — it adds no user-facing surface.

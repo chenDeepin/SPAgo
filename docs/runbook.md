@@ -242,6 +242,20 @@ SPAGO_LLM_QUOTA_WINDOW=month
 - The database must not have a public listener. Verify from outside: a
   connection attempt to the database port must fail.
 
+### What the app does not do — the ingress duties
+
+The app container is one worker behind whatever terminates HTTPS. These duties are the
+proxy's or the platform's, and none of them is optional for a beta that will be used by
+someone other than the operator:
+
+| Duty | Why the app cannot cover it | What to configure |
+| --- | --- | --- |
+| TLS termination and certificate renewal | The app sets `Secure` cookies and never serves a certificate. | Your proxy or platform ingress, with a chain your users' browsers accept. |
+| **Compression** | The image serves assets uncompressed; measured, the embedded structure editor's first open transfers 20.3 MB raw instead of 4.95 MB gzip (`benchmarks/online08-structure-editor-2026-09-16.md`). | Enable gzip or brotli for `text/*`, `application/javascript`, `application/json` and the `.wasm`/`.data` editor assets. This is the cheapest perceived-speed win available before inviting users. |
+| Connection and request limits, sign-in throttling | The service enforces model **token quotas** and nothing else; there is no per-IP or per-account rate limiting, and no sign-in attempt lockout. | Put a request rate limit in front. For a small invited cohort, record the decision not to and why. |
+| Log retention and access control | The app writes operational logs to stdout. | Your platform's log pipeline. Never log cookies, API keys or model payloads. |
+| Backup schedule | §H7 rehearses a restore; it does not schedule one. | A periodic `pg_dump` (or the platform's snapshot) plus the §H7 rehearsal after any change to the database shape. |
+
 ## H3. First deployment
 
 ```bash
@@ -319,6 +333,27 @@ project individually; do not bulk-assign.
 Same shape as the local runbook §3, with one addition: owned rows must survive a
 restore *with their ownership*.
 
+**The rehearsal is scripted.** `scripts/restore_check.sh` performs the whole procedure
+below against the running compose stack and **fails loudly on any count mismatch** — it
+is what §6 criterion 6 should be closed with:
+
+```bash
+scripts/restore_check.sh --project spago --env-file .env      # exits non-zero on mismatch
+scripts/restore_check.sh ... --keep                            # keep the scratch DB + dump to inspect
+```
+
+It reads the role and database names from the running db container (so the rehearsal
+cannot check a deployment different from the one that is up), records the source counts
+before dumping, restores into a scratch database, compares users, projects
+(owned/unowned), analyses, saved project items, compounds-with-structure and the per-user
+project split, runs an RDKit substructure query in the restored database, and drops the
+scratch database unless `--keep` is given. Stop the app container first (`docker compose
+stop app`) if the deployment may receive writes while it runs: the comparison is honest
+only for a source that is not changing.
+
+The manual procedure below stays for a host where the database is not a compose service;
+it is the same two pitfalls and the same counts.
+
 ```bash
 docker compose exec db pg_dump -U spago -d spago -Fc > spago-$(date +%F).dump
 
@@ -354,11 +389,15 @@ A restore that loses ownership would either hide everyone's work (all rows
 unowned) or, worse, expose it. Never point a restored database at the production
 app until the counts and the per-user split match the source.
 
-### Drill log (2026-09-15)
+### Drill log (2026-09-15; script re-run 2026-09-16)
 
 Executed on the verification stack: two users, one project each with the same
 name plus one unowned legacy project, one analysis per user, and the seeded
-compound structures.
+compound structures. Re-run on 2026-09-16 by `scripts/restore_check.sh` against the
+hosted-shape rehearsal stack (3 users, 3 projects, 8 analyses, 2,639 structures), which
+also verified the deliberate-mismatch path: after deleting one restored project the
+script reported `MISMATCH projects_total: source='3' restored='2'` and the per-user
+split, and exited 1.
 
 | Check after restore | Result |
 | --- | --- |
