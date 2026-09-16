@@ -786,3 +786,128 @@ class SupplementConfirmation(BaseModel):
     #: True when the import had already been confirmed: answering "already confirmed"
     #: is not the same as writing a second confirmation (AGENTS.md §22).
     already_confirmed: bool = False
+
+
+# --- B-26: what is stored for a publication, and what nobody asked ---------------
+
+#: Version of the coverage rule. It travels with every row, report and export, so a
+#: changed precedence is visible in the artifact rather than hidden in a session.
+COVERAGE_RULE = "patent-coverage-v1"
+
+#: How many publications one audit request may carry (§13: bounded work per request).
+MAX_COVERAGE_PUBLICATIONS = 50
+
+#: What one leg of the audit can say. `has_records` is the only state that means
+#: "SPAgo holds something here"; `asked_empty` and `failed` are different answers, and
+#: `not_queried` is not an answer at all (AGENTS.md §11).
+CoverageLegState = Literal["has_records", "unconfirmed", "asked_empty", "failed", "not_queried"]
+
+#: The headline for a publication. The first four name the strongest stored answer and
+#: its leg; the last three are the absence of an answer, kept apart.
+CoverageStatus = Literal[
+    "corpus", "declared", "supplement", "proposed", "empty", "failed", "not_queried"
+]
+
+
+class CoverageAnswer(BaseModel):
+    """One stored answer inside a leg, labelled by the path that stored it.
+
+    Answers are kept per path and per source rather than merged into one status:
+    a source-declared set reached from the publication (B-24), a row a source
+    already declared for a target (B-02), and a person's own addition (B-25) are
+    three different facts (AGENTS.md §10/§11), and a merged status would hide a
+    failed ask behind a word like "covered".
+    """
+
+    #: Which stored path answered: the corpus read, a per-publication source
+    #: lookup, a target-led retrieval, or the hand-added rows.
+    kind: Literal["corpus", "patent_source_lookup", "target_led_source", "hand_added"]
+    #: The external source, where the path has one (`chembl`); the corpus and the
+    #: hand-added rows are not a source's answer and leave it empty.
+    source_name: Optional[str] = None
+    state: CoverageLegState
+    #: The stored status word of the underlying record (`complete` / `partial` /
+    #: `empty` / `failed`, or a short corpus/hand-added label), never a new one.
+    status: str
+    records: int = 0
+    compounds: int = 0
+    #: Stored rows no person has confirmed (B-25 proposals) — readable, not coverage.
+    unconfirmed_records: int = 0
+    match_rule: Optional[str] = None
+    source_version: Optional[str] = None
+    dataset_version: Optional[str] = None
+    #: When the ask happened (for a failed lookup: when the failed attempt was stored).
+    retrieved_at: Optional[datetime] = None
+    #: When the shown rows were retrieved — different from `retrieved_at` after a
+    #: failed ask, because a failed lookup keeps the last successful set.
+    rows_retrieved_at: Optional[datetime] = None
+    #: One sentence naming what this answer read, recheckable against the tables.
+    detail: str
+
+
+class CoverageLeg(BaseModel):
+    """What one path holds for one publication, with its own state and counts.
+
+    Legs are never summed: a corpus occurrence, a source-declared compound and a
+    hand-added row are three different facts (AGENTS.md §10/§11), and the report
+    keeps them in separate fields, columns and labels. A leg's state is the
+    strongest state among its answers (`has_records` > `failed` > `unconfirmed` >
+    `asked_empty` > `not_queried`), so a leg that was asked and failed never reads
+    as one that was never asked.
+    """
+
+    leg: Literal["corpus", "declared", "supplement"]
+    state: CoverageLegState
+    #: Live rows stored under this leg for this publication, across its answers.
+    records: int = 0
+    #: Distinct compounds, where the leg's rows carry a structure.
+    compounds: int = 0
+    #: Stored rows no person has confirmed (B-25 proposals). Only the supplement
+    #: leg can have them.
+    unconfirmed_records: int = 0
+    #: Distinct targets whose investigation the rows belong to (supplement leg).
+    targets: int = 0
+    #: One sentence naming what this leg read, recheckable against the tables.
+    detail: str
+    answers: list[CoverageAnswer] = Field(default_factory=list)
+
+
+class PublicationCoverage(BaseModel):
+    """One publication's audit row: three legs and the headline they add up to."""
+
+    #: Exactly what the caller asked for.
+    requested: str
+    #: The identifier the corpus stores for the same publication, when it holds one.
+    matched: Optional[str] = None
+    #: The normalized tokens the declared and supplement legs compare on.
+    normalized: list[str] = Field(default_factory=list)
+    in_corpus: bool = False
+    family_id: Optional[uuid.UUID] = None
+    family_key: Optional[str] = None
+    doc_type: Optional[str] = None
+    #: Other stored identifiers the request also matches: reported, never chosen
+    #: between (the same rule `find_patent` follows).
+    ambiguous: list[str] = Field(default_factory=list)
+    status: CoverageStatus
+    status_rule: str
+    #: Why the headline is what it is, in the legs' own terms.
+    status_reason: str
+    #: Legs that were never asked and could still add records — so `empty` is never
+    #: read as "nothing exists".
+    unqueried: list[Literal["corpus", "declared", "supplement"]] = Field(default_factory=list)
+    legs: list[CoverageLeg] = Field(default_factory=list)
+
+
+class CoverageReport(BaseModel):
+    """The audit for a bounded set of publications, computed on read (never stored)."""
+
+    rule: str
+    rule_text: str
+    generated_at: datetime
+    publications: list[PublicationCoverage] = Field(default_factory=list)
+    #: Headline status → how many publications, plus this report's own counts
+    #: (`publications`, `not_fully_asked`, `failed_legs`, `ambiguous`).
+    totals: dict[str, int] = Field(default_factory=dict)
+    #: Report-level statements a reader needs: what this audit cannot see, and any leg
+    #: whose ask did not complete.
+    notes: list[str] = Field(default_factory=list)

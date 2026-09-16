@@ -22,6 +22,7 @@ from spago_core.adapters import SureChemblFixtureAdapter
 from spago_core.chemistry import StructureParseError, depict_svg
 from spago_core.config import Settings, get_settings
 from spago_core.domain import (
+    MAX_COVERAGE_PUBLICATIONS,
     MAX_SUPPLEMENT_ROWS,
     PatentDocument,
     PatentFamily,
@@ -426,6 +427,130 @@ def export_patent_source_compounds(
             "X-Spago-Source-Set": "source_declared",
         },
     )
+
+
+# --- coverage (B-26) ---------------------------------------------------------------
+
+
+class CoverageRequest(BaseModel):
+    """The publications to audit. Bounded by the rule's own limit, not by a page."""
+
+    publications: list[str] = Field(default_factory=list)
+
+
+class CoverageAnswerResponse(BaseModel):
+    kind: str
+    source_name: Optional[str] = None
+    state: str
+    status: str
+    records: int
+    compounds: int
+    unconfirmed_records: int
+    match_rule: Optional[str] = None
+    source_version: Optional[str] = None
+    dataset_version: Optional[str] = None
+    retrieved_at: Optional[datetime] = None
+    rows_retrieved_at: Optional[datetime] = None
+    detail: str
+
+
+class CoverageLegResponse(BaseModel):
+    leg: str
+    state: str
+    records: int
+    compounds: int
+    unconfirmed_records: int
+    targets: int
+    detail: str
+    answers: list[CoverageAnswerResponse]
+
+
+class PublicationCoverageResponse(BaseModel):
+    requested: str
+    matched: Optional[str] = None
+    normalized: list[str]
+    in_corpus: bool
+    family_id: Optional[uuid.UUID] = None
+    family_key: Optional[str] = None
+    doc_type: Optional[str] = None
+    ambiguous: list[str]
+    status: str
+    status_rule: str
+    status_reason: str
+    unqueried: list[str]
+    legs: list[CoverageLegResponse]
+
+
+class CoverageReportResponse(BaseModel):
+    rule: str
+    rule_text: str
+    generated_at: datetime
+    publications: list[PublicationCoverageResponse]
+    totals: dict[str, int]
+    notes: list[str]
+
+
+@router.post("/patents/coverage", response_model=CoverageReportResponse)
+def audit_patent_coverage(payload: CoverageRequest, engine=Depends(get_engine)):
+    """What SPAgo holds for each publication, from where, and what nobody asked (B-26).
+
+    A read of stored rows only — no source is called, so this needs no user action and
+    changes nothing (AGENTS.md §16). Legs are never summed, and a leg nobody asked is
+    reported as `not_queried` **with the leg named in `unqueried`**, so an empty row is
+    never read as "this publication has no compounds" (AGENTS.md §11).
+    """
+    from spago_core.services import coverage as coverage_svc
+
+    try:
+        report = coverage_svc.audit_publications(engine, payload.publications)
+    except coverage_svc.CoverageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return report
+
+
+@router.post("/patents/coverage/export")
+def export_patent_coverage(
+    payload: CoverageRequest,
+    format: str = "markdown",
+    engine=Depends(get_engine),
+):
+    """The same audit as a file: the rule, every leg's counts and the reason per row.
+
+    `json` is the report itself; `csv` is long form (one row per publication-leg),
+    which is what an operator re-derives from; `markdown` is the readable audit.
+    """
+    from fastapi.responses import JSONResponse
+
+    from spago_core.services import coverage as coverage_svc
+
+    if format not in {"json", "csv", "markdown"}:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported export format '{format}'. Use json, csv or markdown.",
+        )
+    try:
+        report = coverage_svc.audit_publications(engine, payload.publications)
+    except coverage_svc.CoverageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    filename = coverage_svc.coverage_filename(report, format)
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        # Lets a caller confirm which rule produced the file without parsing it.
+        "X-Spago-Coverage-Rule": report.rule,
+        "X-Spago-Coverage-Publications": str(len(report.publications)),
+    }
+    if format == "json":
+        return JSONResponse(content=report.model_dump(mode="json"), headers=headers)
+    text = (
+        coverage_svc.render_coverage_csv(report)
+        if format == "csv"
+        else coverage_svc.render_coverage_markdown(report)
+    )
+    media_type = (
+        "text/csv; charset=utf-8" if format == "csv" else "text/markdown; charset=utf-8"
+    )
+    return Response(content=text.encode("utf-8"), media_type=media_type, headers=headers)
 
 
 # --- compounds ---------------------------------------------------------------------

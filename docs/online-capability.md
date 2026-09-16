@@ -195,6 +195,47 @@ declares under that number, whether or not SPAgo holds the family:
 What this is not: a completeness claim for a publication (one source, one rule), a
 resolution-rate claim over a cohort, or a corpus occurrence. See *Not supported*.
 
+## 3c. Supported: what is stored for a publication, and what nobody asked (B-26)
+
+The three paths above can each contribute chemistry to one publication, and nothing
+put them side by side: a reader could conclude "this patent has no compounds" from a
+compound table that only ever showed the imported corpus. `POST /api/v1/patents/coverage`
+takes up to 50 publication numbers and answers, per publication, what SPAgo holds, from
+which leg, and which leg nobody has asked:
+
+- **Three legs, never summed.** `corpus` (live compound mentions of an imported
+  document), `declared` (a stored B-24 lookup, plus B-02's target-led rows for the same
+  number) and `supplement` (hand-added rows citing it). Each carries its own state and
+  counts. A declared compound is not an occurrence and a hand-added row is not evidence
+  (`AGENTS.md` §10/§11), so the report has no cross-leg total — counting them together
+  would be the exact confusion the surface exists to prevent.
+- **`not_queried` is not `empty`** (the rule's whole point). A leg nobody asked is
+  reported as never asked, with the row naming which legs were never asked and could
+  still add records; `asked_empty` means a source was asked and answered nothing.
+  `patent-coverage-v1` is the versioned rule and it travels with every row, every
+  summary and the export.
+- **Read-only, on read, no external call.** Every leg is a stored-row read, so the audit
+  needs no user action and spends no rate limit — unlike the B-24 lookup it summarizes.
+  Nothing is persisted: a later retrieval or import cannot leave a stale status behind
+  (`AGENTS.md` §11), and the surface has no verdict to invalidate.
+- **Four states of "an answer that did not resolve", kept apart.** `corpus` / `declared`
+  / `supplement` / `proposed` name a leg that holds records; `empty`, `failed` and
+  `not_queried` are the absence of an answer, and a failed ask says so in the row's
+  reason rather than reading as a complete answer.
+- **Ambiguity is reported, not guessed.** A number matching two stored documents lists
+  both identifiers on the row rather than choosing between them, following `find_patent`.
+- **The limits are in the report.** The corpus leg can only report documents SPAgo
+  imported (the true sibling set needs a bibliographic source, B-22); no snapshot leg is
+  reported in this build (B-23 does not exist, and the note says so rather than showing a
+  dead column); and `not_queried` is never an absent verdict.
+- **Two surfaces, one rule.** The patent view's *Coverage* strip (collapsed to one line,
+  on the family view and on the 404 "the corpus does not hold it" path, where coverage is
+  the question the reader actually has) and `scripts/patent_coverage.py` for an operator
+  auditing a portfolio file against the database, with Markdown/CSV export from both.
+
+What this is not: a statement about a patent's true content, a completeness claim for a
+family's publication set, or a substitute for asking a source. See *Not supported*.
+
 ## 4. Supported: interpretation, with limits
 
 - Scoped summaries for a family, one document, or a target investigation.

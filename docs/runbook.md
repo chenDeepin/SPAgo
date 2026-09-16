@@ -237,6 +237,43 @@ What to expect, and what to check:
   and §12). The verdict's `unreviewed_supplements` count is the honest state of the
   proposal before a person confirms it.
 
+### 2.6 What is stored for a publication, and what nobody asked (B-26)
+
+Four paths can contribute chemistry to one publication — the imported corpus, a
+per-publication source lookup (B-24), target-led source rows (B-02) and hand-added
+rows (B-25). The audit puts them side by side per publication and names what is
+missing:
+
+```bash
+SPAGO_DATABASE_URL=postgresql+psycopg://spago:spago@127.0.0.1:5432/spago \
+services/core/.venv/bin/python scripts/patent_coverage.py \
+    --patents-file portfolio.txt --json > benchmarks/patent-coverage-<date>.json
+```
+
+It runs against the database directly (no HTTP) and **calls no source**: every leg is
+a read of stored rows, so it costs no rate limit and needs no user action. Read the
+per-row status and the `unqueried` list, not just the counts:
+
+| Status | Means | What to do |
+| --- | --- | --- |
+| `corpus` | The imported corpus holds live mentions. | Nothing; open the document and read the table. |
+| `declared` | A stored source lookup declares compounds for the number. | Check the retrieval time; re-ask if it is old or `failed`. |
+| `supplement` | Confirmed hand-added rows cite it. | Nothing to fetch; read the rows in the target investigation. |
+| `proposed` | Only unconfirmed proposals (a B-25 bundle) cite it. | Review the bundle and confirm it, or the row is not part of any investigation. |
+| `empty` | No leg holds records, and at least one applicable leg **was** asked. | A stored answer, not a verdict that the patent has no compounds. |
+| `failed` | Nothing found, and an asked leg did not complete. | Re-run that lookup; the row is not the whole picture. |
+| `not_queried` | No applicable leg was ever asked. | Ask: `Ask ChEMBL what it declares` in the patent view, or a target-led retrieval. |
+
+Exit code `1` means the operator has something to do: a publication nobody asked
+about, or an ask that did not complete. A leg deliberately never asked on a row that
+already holds records is a gap the report names, not a failure.
+
+Two things the report says about itself, and neither should be dropped when quoting
+it: the corpus leg can only report documents SPAgo *imported* (the true sibling set
+needs a bibliographic source, B-22), and `not_queried` is never an absent verdict
+(`AGENTS.md` §11). The UI surface is the *Coverage* strip in the patent view,
+collapsed to one line; the same report is exported as Markdown or CSV from it.
+
 ## 3. Backup
 
 Backs up everything scientific: projects, saved items, evidence, source

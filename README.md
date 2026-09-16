@@ -52,6 +52,16 @@ section; local single-user mode needs no accounts, `SPAGO_AUTH_MODE=disabled`):
   (`POST …/supplement-imports/{id}/confirm`). Every run is stored with its per-row answers,
   including the rows it refused and why; re-importing the same file is marked as a repeat;
   provenance never downgrades.
+- **What is stored for a publication, and what nobody asked (B-26).**
+  `POST /patents/coverage` audits up to 50 publication numbers against stored rows only —
+  no source is called — and reports per publication three legs (`corpus` occurrences, a
+  source's `declared` set, hand-added `supplement` rows) with their own states and counts,
+  never summed, plus the headline status and which legs were **never asked**. `not_queried`
+  is kept apart from `asked_empty` and from `failed`, because reading "nobody asked" as
+  "this patent has no compounds" is the failure the audit exists to prevent. Read-only and
+  computed on read (no stored verdict to go stale); exported as Markdown/CSV, shown as the
+  patent view's collapsed *Coverage* strip, and runnable as
+  `scripts/patent_coverage.py --patents-file …` for a portfolio.
 - **Scoped, cited summaries (ONLINE-01)** for a patent family, one document or a target,
   with separate prompt versions and cache keys per scope, and an offline extractive
   provider that needs no model.

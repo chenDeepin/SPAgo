@@ -205,6 +205,29 @@ export const api = {  // --- ONLINE-03: hosted access ---
       `spago-${safeName}-source-declared.${format}`,
     );
   },
+  // --- B-26: what SPAgo holds for a publication, and what nobody asked ---
+  /** Audit a bounded set of publications. A read of stored rows: no source is
+   * called, so this needs no user action and changes nothing. */
+  patentCoverage: (publications: string[], signal?: AbortSignal) =>
+    postJson<import("./types").CoverageReport>(
+      "/api/v1/patents/coverage",
+      { publications },
+      signal,
+    ),
+  exportPatentCoverage: async (
+    publications: string[],
+    format: "markdown" | "csv" | "json",
+  ) => {
+    const scope =
+      publications.length === 1
+        ? canonicalPublicationNumber(publications[0]).replace(/[^A-Za-z0-9._-]+/g, "-")
+        : `${publications.length}-publications`;
+    await downloadFile(
+      `/api/v1/patents/coverage/export?format=${format}`,
+      { publications },
+      `spago-coverage-${scope}.${format}`,
+    );
+  },
   family: (familyId: string, signal?: AbortSignal) =>
     getJson<import("./types").FamilyResponse>(
       `/api/v1/families/${familyId}`,

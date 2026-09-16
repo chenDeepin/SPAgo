@@ -25,7 +25,9 @@ import { SaveToProjectDialog } from "./components/SaveToProjectDialog";
 import { StructureDrawer } from "./components/StructureDrawer";
 import { TargetEvidencePanel } from "./components/TargetEvidencePanel";
 import { ReferenceStrip } from "./components/ReferenceStrip";
-import { SourceDeclaredCompounds } from "./components/SourceDeclaredCompounds";import { TargetHeader, coverageChipId, REFERENCE_VERDICT_ID } from "./components/TargetHeader";
+import { SourceDeclaredCompounds } from "./components/SourceDeclaredCompounds";
+import { PublicationCoverage } from "./components/PublicationCoverage";
+import { TargetHeader, coverageChipId, REFERENCE_VERDICT_ID } from "./components/TargetHeader";
 import type { StructureSearchSummary } from "./components/StructureSearchDialog";
 const StructureSearchDialog = lazy(() => import("./components/StructureSearchDialog").then((m) => ({ default: m.StructureSearchDialog })));
 import { SearchBar } from "./components/SearchBar";
@@ -557,6 +559,33 @@ export function App() {
     cancelProjectNavigation();
     updateUrl({ ...urlState, doc: docId });
   };
+
+  /** B-26: the publications a family's audit covers — every stored document of the
+   * family, in the order the sidebar lists them, so "3 of 4 hold compounds" counts
+   * the same set the reader can browse. */
+  const familyCoveragePublications = useMemo(
+    () =>
+      (patentQuery.data?.documents ?? [])
+        .map((doc) => doc.publication_number)
+        .filter((number): number is string => Boolean(number)),
+    [patentQuery.data],
+  );
+
+  /** Opening a coverage row selects that document, using the family's own document
+   * ids — the audit reports a number, and the number is matched back to the stored
+   * document rather than being turned into a new request. */
+  const handleSelectCoveragePublication = useCallback(
+    (publicationNumber: string) => {
+      const doc = (patentQuery.data?.documents ?? []).find(
+        (candidate) => candidate.publication_number === publicationNumber,
+      );
+      if (doc) handleSelectDoc(doc.id);
+    },
+    // `handleSelectDoc` is a fresh closure each render; the documents it reads are
+    // the dependency that matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [patentQuery.data],
+  );
 
   const handleSelectCompound = (compoundId: string) => {
     cancelProjectNavigation();
@@ -1337,6 +1366,16 @@ export function App() {
               />
             )}
 
+            {/* B-26: a family-level statement about its documents — what SPAgo holds
+                for each one, from which leg, and which leg nobody has asked yet.
+                Collapsed to a single line so it stays out of the way of the table. */}
+            {patentQuery.data && familyCoveragePublications.length > 0 && (
+              <PublicationCoverage
+                publications={familyCoveragePublications}
+                onSelectPublication={handleSelectCoveragePublication}
+              />
+            )}
+
             {patentQuery.isLoading ? (
               <SkeletonRows />
             ) : patentQuery.data ? (
@@ -1468,6 +1507,19 @@ export function App() {
                     publicationNumber={submittedQuery}
                     notHeldByCorpus
                   />
+                </div>
+              )}
+
+            {/* B-26: "the corpus does not hold it" is not "nothing is stored for it".
+                A lookup the reader ran earlier, target-led rows or a hand-added row
+                may already hold records under this number, and a leg nobody asked is
+                named as never asked rather than rendered as absent. */}
+            {!patentQuery.isLoading &&
+              patentError?.status === 404 &&
+              submittedQuery !== null &&
+              looksLikePublicationNumber(submittedQuery) && (
+                <div className="coverage-standalone">
+                  <PublicationCoverage publications={[submittedQuery]} notHeldByCorpus />
                 </div>
               )}
           </main>

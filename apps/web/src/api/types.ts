@@ -944,3 +944,88 @@ export interface PatentSourceResponse {
   limit: number;
   rows: PatentSourceRow[];
 }
+
+/* --- B-26: what SPAgo holds for a publication, from where, and what nobody asked --- */
+
+/** What one leg of the audit can say.
+ *
+ * `has_records` is the only state that means "SPAgo holds something here";
+ * `asked_empty` and `failed` are different answers, and `not_queried` is not an
+ * answer at all — it is never an `absent` verdict (AGENTS.md §11). */
+export type CoverageLegState =
+  | "has_records"
+  | "unconfirmed"
+  | "asked_empty"
+  | "failed"
+  | "not_queried";
+
+/** The headline for a publication: the first four name the strongest stored
+ * answer and its leg; the last three are the absence of an answer, kept apart. */
+export type CoverageStatus =
+  | "corpus"
+  | "declared"
+  | "supplement"
+  | "proposed"
+  | "empty"
+  | "failed"
+  | "not_queried";
+
+export type CoverageLegName = "corpus" | "declared" | "supplement";
+
+export interface CoverageAnswer {
+  /** Which stored path answered: the corpus read, a per-publication source lookup,
+   * a target-led retrieval, or the hand-added rows. */
+  kind: "corpus" | "patent_source_lookup" | "target_led_source" | "hand_added";
+  source_name: string | null;
+  state: CoverageLegState;
+  status: string;
+  records: number;
+  compounds: number;
+  unconfirmed_records: number;
+  match_rule: string | null;
+  source_version: string | null;
+  dataset_version: string | null;
+  retrieved_at: string | null;
+  rows_retrieved_at: string | null;
+  detail: string;
+}
+
+export interface CoverageLeg {
+  leg: CoverageLegName;
+  state: CoverageLegState;
+  records: number;
+  compounds: number;
+  unconfirmed_records: number;
+  /** Distinct targets whose investigation the rows belong to (supplement leg). */
+  targets: number;
+  detail: string;
+  answers: CoverageAnswer[];
+}
+
+export interface PublicationCoverage {
+  requested: string;
+  /** The identifier the corpus stores for the same publication, when it holds one. */
+  matched: string | null;
+  normalized: string[];
+  in_corpus: boolean;
+  family_id: string | null;
+  family_key: string | null;
+  doc_type: string | null;
+  /** Other stored identifiers the request also matches: reported, never chosen between. */
+  ambiguous: string[];
+  status: CoverageStatus;
+  status_rule: string;
+  status_reason: string;
+  /** Legs that were never asked and could still add records. */
+  unqueried: CoverageLegName[];
+  legs: CoverageLeg[];
+}
+
+export interface CoverageReport {
+  rule: string;
+  rule_text: string;
+  generated_at: string;
+  publications: PublicationCoverage[];
+  totals: Record<string, number>;
+  notes: string[];
+}

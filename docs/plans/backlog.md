@@ -7,14 +7,15 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-16 (B-25 delivered; B-26 promoted to P1)** — the priority table was
-re-sorted when B-25 landed: the P1 group is empty again, so **B-26 (per-publication
-coverage audit) takes the top** — it is the one item left that answers "what do we have
-for this publication, from where, and what is missing", it composes data the last three
-rounds created (corpus occurrences, B-02's reference tally, B-24's declared sets, B-25's
-supplements), and it is ungated. B-06 stays next as the cheapest recovery gap in the
-primary loop. See the update log at the end of this file and §4 for the one-sentence
-arguments.
+Last updated: **2026-09-16 (B-26 delivered; B-06 promoted to P1)** — the priority table was
+re-sorted when B-26 landed: the P1 group is empty again, so **B-06 (per-source re-run for
+target investigations) takes the top** — it is the last recovery gap the beta's own workflow
+can hit live (one source fails → the investigation is only complete after re-running all of
+them), it is ungated, `S–M`, and the per-source status machine it needs is already served.
+**B-23 stays the first P2 with its operator/file gate unchanged** — the B-26 report now says
+in every note that it has no snapshot leg, which makes the gap visible but does not change
+that it needs the snapshot's terms and §25 versioning before engineering can finish it. See
+the update log at the end of this file and §4 for the one-sentence arguments.
 
 ## 0. Standing constraints for everything below
 
@@ -34,9 +35,8 @@ arguments.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
-| P1 | B-26 | Patent coverage audit (corpus / snapshot / ChEMBL / supplement / absent) | NEXT | M | — |
+| P1 | B-06 | Per-source re-run for target investigations *(owner request group)* | NEXT | S–M | — |
 | P2 | B-23 | Local BindingDB snapshot search (operator dataset, TSV first) | NEXT | M (TSV) | snapshot terms + §25 versioning |
-| P2 | B-06 | Per-source re-run for target investigations *(owner request group)* | NEXT | S–M | — |
 | P2 | B-15 | Compress served assets (Ketcher first open) | NEXT | S–M | deployment proxy or image config |
 | P2 | B-04 | Import refresh completeness and interrupted-import resume | NEXT | M | — |
 | P2 | B-14 | CI running the existing check script | NEXT | S | repo hosting decision |
@@ -74,6 +74,7 @@ it):**
 | B-24 | 2026-09-16 | The patent-led read path: `ChEMBLDiscoveryAdapter.declared_compounds` (body-search rule `chembl-document-patent-body-v1`, exact-normalization verification, near matches listed and excluded), `services/patent_sources.py` + migration 0017 (`patent_source_lookups` / `patent_source_compounds`, no `compound_mentions` row ever written), `POST`/`GET /api/v1/patents/{number}/source-compounds` and `/export?format=csv|sdf`, `SourceDeclaredCompounds.tsx` (under the patent view and on a publication the corpus does not hold, where the 404 used to be a dead end), and `scripts/patent_source_lookup.py`; live record `benchmarks/patent-source-declarations-2026-09-16.{md,json}` (US10508115 → 134 declared records for 73 compounds out of 402 seen, 5 states kept apart). |
 | B-03 | 2026-09-16 | Tolerant publication entry: `domain/patent_numbers.py` `looks_like_publication_number` + `MATCH_RULE` (`publication-number-tolerant-v1`, one pattern mirrored in `apps/web/src/state/url.ts` and kept in step by a parity test), `services.find_patent` exact-first then one normalized comparison, `PatentLookup` + `AmbiguousError` (409 with the candidates named), `PatentMatch` in the response, the `match-note` in the table heading, and the same rule in `planner.py` / `plan_execution.py`; `services/core/tests/test_b03_tolerant_lookup.py` (48 cases, suite 595 → 643) and `benchmarks/tolerant-lookup-2026-09-16.{md,json}` (exact 1.35 ms unchanged; a tolerant hit or miss costs one metadata scan, 155 ms at 50 000 documents). |
 | B-25 | 2026-09-16 | The bundle path: `domain/models.py` `SupplementBundle` / `SupplementImportReport` / `SupplementConfirmation` / `SuppliedRowState`, `services/supplements.py` (`map_bundle_record` alias table + contradiction refusals, `import_supplement_bundle`, `confirm_supplement_import`, provenance-preserving upserts), migrations 0018 (`supplement_imports` — the run, its per-row answers including refusals, and who confirmed it) and 0019 (remark provenance constraint widened to the five states), `POST /targets/{id}/supplements/bundle` + `GET …/supplement-imports` + `POST …/supplement-imports/{id}/confirm`, `unreviewed_supplements` on the verdict, `SupplementDialog`'s bundle pane and `ReferenceStrip`'s review control; `tests/test_b25_supplement_bundle.py` (34 cases, suite 643 → 677). Browser-verified end to end on the local stack (import → report → confirm → verdict/candidates → withdraw → re-import → read back), which found and fixed three defects the unit tests could not (duplicate rendering of the fresh report, a re-posted remark not counted as an update, `repeated_of` not derived on read-back). |
+| B-26 | 2026-09-16 | The coverage audit: `CoverageAnswer` / `CoverageLeg` / `PublicationCoverage` / `CoverageReport` + `COVERAGE_RULE = patent-coverage-v1`, `services/coverage.py` (`audit_publications` over the corpus, stored per-publication lookups, target-led rows and hand-added rows; `_headline` order `corpus > declared > supplement > proposed > empty > failed > not_queried`; `unqueried` naming every leg nobody asked; `merge_coverage_reports` for lists over the 50 bound; CSV/Markdown renderers), `POST /api/v1/patents/coverage` and `/coverage/export?format=markdown\|csv\|json` (rule in a header *and* in the file), `PublicationCoverage.tsx` (the collapsed *Coverage* strip in the patent view and on the 404 path, with the document jump and the export control) and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py` (39 cases, suite 677 → 741); live record `benchmarks/patent-coverage-2026-09-16.{md,json}` (5 publications p50 4.4 ms / 11.7 KB, the 50-publication bound p50 5.5 ms, and one request showing `corpus` / `declared` ×2 / `asked_empty` / `not_queried` kept apart). Browser-verified on the local stack (404 path, family view, document jump, never-asked row, export request) including the failure state by blocking the route: the strip then shows no counts at all, so a failed read cannot be misread as an absence. |
 
 ## 2. Items
 
@@ -176,6 +177,14 @@ its string comparison silently discarded a successful lookup for a slash form
 
 ### B-06 — Per-source re-run for target investigations *(owner request group)*
 
+**Promoted to P1 on 2026-09-16**, when B-26 landed and emptied the P1 group. The argument
+is §4's: every source outcome now has a surface of its own (including `failed`, named on
+the coverage row, in the reference tally and in the target header), and the recovery from
+that outcome is the one step the beta's own workflow can still hit live and cannot do —
+retrying a failed BindingDB re-spends ChEMBL's and PubChem's rate limits and rewrites rows
+that did not need touching. The status machine, the stored retriever ids and the
+per-retrieval tally a targeted re-run needs all already exist.
+
 - **Problem.** The base path is implemented and recorded (ONLINE-00/06/07), but
   recovery from a single bad source is all-or-nothing. `DiscoverRequest.sources`
   accepts a subset, yet the UI always sends all three (`App.tsx`) and the control is
@@ -187,7 +196,7 @@ its string comparison silently discarded a successful lookup for a slash form
   costs (upstream requests, wall time) before it runs.
 - **Acceptance sketch.** A target with one failed source retries only that source; the
   other summaries/verdicts do not change; the retry is visible in `source_retrievals`.
-- **Class NEXT · P2 · S–M.**
+- **Class NEXT · P1 · S–M.**
 
 ### B-07 — PubChem BioAssay bounded CID→AID path *(owner request group)*
 
@@ -498,30 +507,36 @@ remembered at insert time.
 
 ### B-26 — Patent coverage audit
 
-**Promoted to P1 on 2026-09-16**, when B-25 landed and emptied the P1 group. The argument
-is §4's: it is the one item left that answers "what do we have for this publication, from
-where, and what is missing", in a build where four independent paths now contribute to
-that answer (the imported corpus, B-02's reference tally, B-24's declared sets, B-25's
-hand-added rows) and nothing summarizes them per publication. It is ungated, and its
-`not_queried` state is exactly the honesty rule the last three rounds were about.
+**Delivered 2026-09-16** (see the delivered table in §1 and
+`docs/plans/2026-09-16-patent-coverage-audit.md`). Kept here as the item's record: what was
+promised, and what was deliberately left out.
 
-- **Problem.** Nobody can currently answer "which publications in this family have
-  compounds, from where, and which are uncovered?" `BindingDB_IO` answers exactly this
-  per patent: `cli/audit_patent_coverage.py` reports a status — `bindingdb` (dump
-  hits), `chembl` (structured activities), `structured_supplement`, `chembl_document_only`,
-  `absent` — with per-source counts and samples, plus a summary block. SPAgo has the
-  ingredients (`source_declared_patents`, `patent_occurrences`, `source_retrievals`,
-  `target_supplement_remarks`) but no audit view or report.
-- **Scope if built.** A per-publication coverage report for a family/document (and for
-  an operator-supplied manifest): corpus occurrence counts, snapshot hits (if B-23
-  exists), ChEMBL documents/compounds (if B-24 exists), hand-added rows, and an
-  explicit `not_queried` distinct from `absent`; export JSON/Markdown for the operator
-  and a compact strip in the patent view. Every status is reproducible from stored
-  rows.
-- **Acceptance sketch.** A family with mixed coverage yields a table whose every
-  status can be re-derived from the database; a publication never checked reads
+The argument as it stood when it was promoted to P1, when B-25 landed and emptied the P1
+group: it is the one item that answers "what do we have for this publication, from where,
+and what is missing", in a build where four independent paths now contribute to that answer
+(the imported corpus, B-02's reference tally, B-24's declared sets, B-25's hand-added rows)
+and nothing summarized them per publication. It is ungated, and its `not_queried` state is
+exactly the honesty rule the last three rounds were about.
+
+- **Problem.** Nobody could answer "which publications in this family have compounds, from
+  where, and which are uncovered?" `BindingDB_IO` answers exactly this per patent:
+  `cli/audit_patent_coverage.py` reports a status — `bindingdb` (dump hits), `chembl`
+  (structured activities), `structured_supplement`, `chembl_document_only`, `absent` — with
+  per-source counts and samples, plus a summary block.
+- **Delivered scope.** A per-publication coverage report for a family/document and for an
+  operator-supplied manifest: corpus occurrence counts, declared sets (per-publication
+  lookup + target-led rows, kept apart), hand-added rows, and an explicit `not_queried`
+  distinct from `asked_empty` and from `failed`; Markdown/CSV/JSON export for the operator
+  and a collapsed strip in the patent view. Every status is re-derived from stored rows on
+  read.
+- **Not built, deliberately.** No snapshot leg (B-23 does not exist; the report's notes say
+  so instead of carrying a dead column), no external call of any kind, no persisted verdict,
+  no cross-leg totals, no new UI destination.
+- **Acceptance sketch, met.** A family with mixed coverage yields a table whose every status
+  is re-derivable from the database (checked against the live stack in
+  `benchmarks/patent-coverage-2026-09-16.md`); a publication never checked reads
   `not_queried`, never `absent`.
-- **Class NEXT · P2 · M (depends on B-23/B-24 for content, not for the shape).**
+- **Class NEXT · delivered · M (the B-23 leg remains open behind its own gate).**
 
 ### B-27 — Structure review sheet (fixed-scale cards, scaffold folding, lossless PDF)
 
@@ -580,7 +595,7 @@ was copied into SPAgo by this register.
 | Patent → compounds via ChEMBL documents + activities | `readers/api.py::search_chembl_patent_api` | Target-led ChEMBL only; the document lookup serves declared patents of already-discovered compounds | **Adopt** → B-24 |
 | Two snapshots of one source merged by a stated priority (newer wins, empties backfilled), keyed by reactant id with an InChIKey fallback | `dedupe.py`, `docs/version_merge.md` | Per-InChIKey union across *different* sources; no two-snapshot case exists yet | Adopt as the policy when B-23 lands |
 | Web/literature supplement: mandatory note, refs, structure-less remarks, applied only when the set is empty or fails the gate | `web_supplement.py`, `extract_target.py` (`--web-only-if-empty`, `--web-if-no-active`) | One-row POST + dialog (ONLINE-07); no bundle, no prompt at gate failure | **Adopt** → B-25 |
-| Per-patent coverage audit with named statuses and a summary | `cli/audit_patent_coverage.py`, `patents.py` | Ingredients stored, no report or view | **Adopt** → B-26 |
+| Per-patent coverage audit with named statuses and a summary | `cli/audit_patent_coverage.py`, `patents.py` | Ingredients stored, no report or view | **Adopted** → B-26 (delivered 2026-09-16) |
 | Activity classes + screening-reference gate | `activity.py` | Already ported and extended (ONLINE-06; deterministic modality classifier, policy version travels) | **Done — do not re-import** |
 | MW ≤ 1000 peptide filter | `filters.py` | Deliberately not used; modality classification decides instead | **Reject** (noise filter, not identity) |
 | Real target names kept out of source; aliases via tempfile | `alias_io.py`, `BindingDB_IO/AGENTS.md` §Confidentiality | Target queries are runtime user input; the risk is committed fixtures and alias files | **Adopt as hygiene** → `AGENTS.md` §34 |
@@ -594,8 +609,10 @@ loop (enter a patent → see its compounds) that exists today whenever the corpu
 thin. B-25 is second because the supplement path is already shipped and the missing
 piece is the shape its real producers use — without it, "agent + sources" stays manual
 data entry. B-23 is third: the largest coverage gain, but operator- and file-gated, and
-its value is local; it must not be mistaken for a beta capability. B-26 follows because
-it is only as useful as the sources it summarizes (B-02, B-23, B-24). None of the new
+its value is local; it must not be mistaken for a beta capability. B-26 followed
+because it is only as useful as the sources it summarizes (B-02, B-23, B-24). All four
+of the first group have since been delivered (B-24, B-25, B-26 on 2026-09-16); the
+B-23 port remains the one of the four behind its operator gate. None of the new
 items closes a `docs/online-capability.md` §6 checkbox, and none of them changes the
 recommendation to pass the hosted gate first.
 
@@ -621,20 +638,25 @@ ports, not for adopting the source project as a component (AGENTS §2, §6).
 7. **B-25** — *delivered 2026-09-16:* let a set of literature rows arrive as one reviewed
    artifact instead of one POST per row, with a proposal that is not evidence until a
    person confirms it.
+8. **B-26** — *delivered 2026-09-16:* answer "what do we hold for this publication, from
+   which leg, and what has nobody asked" in one read, without letting "never asked" pass
+   for "no compounds".
 
-**Why B-26 is now at the top.** B-25 was argued from the gate's own success criteria (a
-thin target ends in manual data entry today). B-26 is argued from the same place, one
-level down: the acceptance run's criterion 5 is a coverage matrix whose every source
-outcome is explicit, and the build now has **four** independent contributors to a
-publication's coverage — the imported corpus, the reference tally (B-02), the declared
-sets (B-24) and hand-added rows (B-25) — with nothing that puts them side by side for a
-*publication*. So the question the item asks ("what do we have here, from where, and what
-is missing") is currently answerable only by reading four surfaces and a database. It is
-ungated, it reuses stored rows rather than new sources, and its `not_queried` state is the
-same honesty rule the last three rounds established. **B-06 stays second** and is the next
-cheapest recovery gap: a single failed source still forces a full re-run of the other two,
-and the per-source status machine to do better already exists. **B-15** is unchanged and
-still waits on a deployment-config decision, which is the operator's.
+**Why B-06 is now at the top.** B-26 was argued from the gate's own success criteria
+(criterion 5 asks for a coverage matrix whose every source outcome is explicit), and with
+the audit in place every one of those outcomes now has a surface — including the failed
+one. What the beta's own workflow can still hit live is the *recovery* from that failed
+outcome: if BindingDB fails for a target (as it did for IL-6R in the recorded cohort run),
+today the only way to get it is to re-run the whole investigation, which re-spends the
+other sources' rate limits and re-writes rows that did not need touching. The per-source
+status machine, the stored retriever ids and the reference-coverage tally that a targeted
+re-run needs are all already served, so this is a bounded addition (S–M) to a workflow the
+gate tests rather than a new capability. It is ungated, and unlike B-23 it needs no
+operator decision. **B-23 stays the first P2** with its snapshot-terms and §25 gates
+unchanged: the audit's own notes now say in every report that no snapshot leg is
+configured, which makes the gap legible but does not make it buildable — a licensed dump
+without recorded terms and version would violate §7/§25 rather than fill the leg. **B-15**
+is unchanged and still waits on a deployment-config decision, which is the operator's.
 
 ## 5. Deliberately out (do not treat as queued)
 
@@ -662,3 +684,4 @@ still waits on a deployment-config decision, which is the operator's.
 | 2026-09-16 | **B-24 delivered** (`ChEMBLDiscoveryAdapter.declared_compounds`, `services/patent_sources.py`, migration 0017, the `source-compounds` read/lookup/export routes, `SourceDeclaredCompounds.tsx`, `scripts/patent_source_lookup.py`; live record in `benchmarks/patent-source-declarations-2026-09-16.md`). Re-sorted, with the moves stated: **B-03 is promoted to P1** — with the corpus no longer the only answer, the remaining primary-loop failure is the *entry*: `find_patent` matches the stored string exactly, and the search box classifies by a kind-code-shaped regex, so `wo 2020/123456` for a stored `WO-2020-123456-A` opens nothing. It is a day of work, ungated, and it feeds the same normalizer the patent-led path already uses. **B-26 moves ahead of B-23**: B-24 landed, so the audit's ChEMBL leg is content that exists today, while B-23 stays operator- and file-gated and is explicitly a workstation gain rather than a beta capability. B-24 leaves the table, and B-25 heads the P2 order unchanged. |
 | 2026-09-16 | **B-03 delivered** (`looks_like_publication_number` + `MATCH_RULE`, exact-first `find_patent` with the one normalized comparison, `PatentLookup`/`AmbiguousError`/`PatentMatch`, the `match-note`, the mirrored client rule and the same rule in the plan path; `services/core/tests/test_b03_tolerant_lookup.py`, suite 595 → 643; `benchmarks/tolerant-lookup-2026-09-16.md`: exact 1.35 ms unchanged, tolerant 155 ms at 50 000 documents). Re-sorted, with the reason stated: the P1 group is empty, so **B-25 is promoted to P1** — the thin-target moment the §6 gate exercises ends in one-row-per-POST manual entry today, and B-25 is the control that offers the supplement in the shape the rows are produced in (§4 argues it). B-26 stays second and B-23 stays third with its operator/file gate unchanged. Two scope notes: the tolerant comparison runs **only** after the indexed miss (so the common case pays nothing) and it is a metadata scan, not a maintained normalized column — a second writer of the rule that can go stale silently was the alternative, and 155 ms at 50 000 documents did not buy it. The delivery also fixed a defect the browser found in B-24's panel (a string comparison of the requested number discarded a successful lookup for slash forms). |
 | 2026-09-16 | **B-25 delivered** (`SupplementBundle` + the bundle service, migrations 0018/0019, the three `supplement-imports` routes, `unreviewed_supplements` on the verdict, `SupplementDialog`'s bundle pane, `ReferenceStrip`'s review control; `tests/test_b25_supplement_bundle.py`, suite 643 → 677; docs in `docs/online-capability.md` §3a, `README.md` and `docs/runbook.md` §2.5). Browser-verified end to end on the local stack, which found three defects the unit tests did not (the fresh report rendered twice, a re-posted remark not counted as an update, `repeated_of` not derived on read-back — all fixed in the round). Re-sorted, with the reason stated: the P1 group is empty again, so **B-26 is promoted to P1** — with four paths now contributing to a publication's coverage, nothing puts them side by side for one publication, and the gate's criterion 5 asks for exactly that shape at the target level. **B-06 stays second** (a single failed source still forces a full re-run; the status machine to do better already exists), B-23 third with its operator/file gate unchanged. |
+| 2026-09-16 | **B-26 delivered** (the coverage service + `patent-coverage-v1`, `POST /api/v1/patents/coverage` and its three exports, `PublicationCoverage.tsx` — the collapsed *Coverage* strip in the patent view and on the 404 path — and `scripts/patent_coverage.py`; `tests/test_b26_coverage_audit.py`, suite 677 → 741; live record `benchmarks/patent-coverage-2026-09-16.{md,json}`). Re-sorted, with the moves stated: the P1 group is empty, so **B-06 is promoted to P1** — the audit gave every source outcome a surface, including `failed`, and what the beta workflow can still hit live is the recovery from a failed source, which today means re-running the whole investigation and re-spending the other sources' rate limits. It is ungated and S–M. **B-23 stays the first P2** with its gates unchanged, and B-15 moves down with them. Three notes recorded from the round: (1) `holds_records` was added to the report's `totals` so the strip reads the service's own headline count instead of re-deriving it (`AGENTS.md` §11); (2) the strip filters its publication list with the mirrored client shape rule before asking, because the synthetic fixture's ids are deliberately not publication numbers and a request carrying none of them is refused 422 — a refusal banner where a coverage line belongs would be worse than no strip; (3) the notes/export `<details>` is controlled state after the browser check found it snapping shut between opening it and clicking export (a DOM-owned marker reset by an unrelated re-render). |

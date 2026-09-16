@@ -1,0 +1,256 @@
+{
+  "measured_at": "2026-09-16",
+  "build": {
+    "status": "ok",
+    "database": "up",
+    "chemistry": "ok",
+    "rdkit_cartridge": "installed",
+    "dataset_version": "demo-fixture-v1",
+    "ingestion_issues": 1,
+    "api_version": "0.1.0"
+  },
+  "rule": "patent-coverage-v1",
+  "audit": {
+    "five_publications": {
+      "publications": 5,
+      "runs": 20,
+      "p50_ms": 4.42,
+      "p95_ms": 4.96,
+      "min_ms": 3.54,
+      "max_ms": 40.91,
+      "payload_bytes": 11723
+    },
+    "fifty_publications": {
+      "publications": 50,
+      "runs": 10,
+      "p50_ms": 5.49,
+      "p95_ms": 6.4,
+      "min_ms": 4.47,
+      "max_ms": 6.66,
+      "payload_bytes": 81132
+    }
+  },
+  "export": {
+    "markdown": {
+      "wall_ms": 5.61,
+      "bytes": 3895,
+      "rule_header": "patent-coverage-v1",
+      "publications_header": "5",
+      "content_disposition": "attachment; filename=\"spago-coverage-5-publications.markdown\""
+    },
+    "csv": {
+      "wall_ms": 4.01,
+      "bytes": 10398,
+      "rule_header": "patent-coverage-v1",
+      "publications_header": "5",
+      "content_disposition": "attachment; filename=\"spago-coverage-5-publications.csv\""
+    },
+    "json": {
+      "wall_ms": 3.98,
+      "bytes": 11723,
+      "rule_header": "patent-coverage-v1",
+      "publications_header": "5",
+      "content_disposition": "attachment; filename=\"spago-coverage-5-publications.json\""
+    }
+  },
+  "stored_state_read": {
+    "WO-2020-123456-A": {
+      "status": "corpus",
+      "legs": {
+        "corpus": {
+          "state": "has_records",
+          "records": 1,
+          "compounds": 1,
+          "answers": [
+            "corpus"
+          ]
+        },
+        "declared": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": []
+        },
+        "supplement": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": []
+        }
+      },
+      "unqueried": [
+        "declared",
+        "supplement"
+      ]
+    },
+    "US10508115": {
+      "status": "declared",
+      "legs": {
+        "corpus": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": [
+            "corpus"
+          ]
+        },
+        "declared": {
+          "state": "has_records",
+          "records": 191,
+          "compounds": 73,
+          "answers": [
+            "patent_source_lookup",
+            "target_led_source"
+          ]
+        },
+        "supplement": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": []
+        }
+      },
+      "unqueried": [
+        "corpus",
+        "supplement"
+      ]
+    },
+    "US10919895": {
+      "status": "declared",
+      "legs": {
+        "corpus": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": [
+            "corpus"
+          ]
+        },
+        "declared": {
+          "state": "has_records",
+          "records": 29,
+          "compounds": 29,
+          "answers": [
+            "target_led_source"
+          ]
+        },
+        "supplement": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": []
+        }
+      },
+      "unqueried": [
+        "corpus",
+        "supplement"
+      ]
+    },
+    "WO2020999999": {
+      "status": "empty",
+      "legs": {
+        "corpus": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": [
+            "corpus"
+          ]
+        },
+        "declared": {
+          "state": "asked_empty",
+          "records": 0,
+          "compounds": 0,
+          "answers": [
+            "patent_source_lookup"
+          ]
+        },
+        "supplement": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": []
+        }
+      },
+      "unqueried": [
+        "corpus",
+        "supplement"
+      ]
+    },
+    "US9999999": {
+      "status": "not_queried",
+      "legs": {
+        "corpus": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": [
+            "corpus"
+          ]
+        },
+        "declared": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": []
+        },
+        "supplement": {
+          "state": "not_queried",
+          "records": 0,
+          "compounds": 0,
+          "answers": []
+        }
+      },
+      "unqueried": [
+        "corpus",
+        "declared",
+        "supplement"
+      ]
+    }
+  },
+  "totals": {
+    "publications": 5,
+    "not_fully_asked": 5,
+    "failed_legs": 0,
+    "ambiguous": 0,
+    "corpus": 1,
+    "declared": 2,
+    "empty": 1,
+    "not_queried": 1,
+    "holds_records": 3
+  },
+  "refusals": [
+    {
+      "asked": [],
+      "n": 0,
+      "http": 422,
+      "detail": "A coverage audit needs at least one publication number."
+    },
+    {
+      "asked": [
+        "DEMO-PATENT-A"
+      ],
+      "n": 1,
+      "http": 422,
+      "detail": "None of the requested values carries a publication number, so there is nothing to audit."
+    },
+    {
+      "asked": [
+        "TSLP",
+        "thirteen elephants"
+      ],
+      "n": 2,
+      "http": 422,
+      "detail": "None of the requested values carries a publication number, so there is nothing to audit."
+    },
+    {
+      "asked": [
+        "US3000000",
+        "US3000001"
+      ],
+      "n": 51,
+      "http": 422,
+      "detail": "51 publications were asked about; one audit covers at most 50 (AGENTS.md \u00a713). Split the list."
+    }
+  ]
+}

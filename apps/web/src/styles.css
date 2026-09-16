@@ -1942,6 +1942,145 @@ button.dataset-badge:hover {
   margin: 0;
 }
 
+/* --- B-26: what is stored for a publication, from where, and what nobody asked ---- */
+
+/* A family-level strip: it sits between the table header and the compound table, so
+   it reads as context for the family rather than as another table control. */
+.coverage-surface {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+/* The 404 path: the corpus cannot answer, so the audit is the whole reading surface
+   there and gets the same separation the declared strip has. */
+.coverage-standalone {
+  margin-top: 16px;
+  border-top: var(--border-w) solid var(--border);
+  padding-top: 10px;
+}
+
+.coverage-standalone .coverage-surface {
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.coverage-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coverage-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.coverage-body {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coverage-table-wrap,
+.coverage-table {
+  overflow-x: auto;
+}
+
+.coverage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.coverage-table th {
+  background: var(--canvas);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-2);
+  border-bottom: var(--border-w) solid var(--border);
+  padding: 6px 8px;
+}
+
+.coverage-table td {
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+.coverage-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Opening a row's document reuses the family's own selection transition; it is a
+   link-shaped button rather than a second navigation control. */
+.coverage-open {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-family: var(--mono, monospace);
+  color: var(--accent-strong);
+  cursor: pointer;
+  text-align: left;
+}
+
+.coverage-open:hover {
+  text-decoration: underline;
+}
+
+.coverage-reason {
+  margin: 0;
+}
+
+.coverage-notes {
+  margin: 6px 0 0 18px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Leg states. `has_records` is the only one that means SPAgo holds something; a
+   never-asked leg is dotted and muted so it cannot be read as an absence verdict. */
+.coverage-chip.coverage-corpus,
+.coverage-chip.coverage-has_records {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+}
+
+.coverage-chip.coverage-declared {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.coverage-chip.coverage-supplement {
+  border-style: solid;
+  color: var(--accent-strong);
+}
+
+.coverage-chip.coverage-proposed,
+.coverage-chip.coverage-unconfirmed {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.coverage-chip.coverage-asked_empty {
+  border-style: dashed;
+}
+
+
 /* --- B-25: a bundle of literature rows, and the review that admits it ------------ */
 
 .bundle-pane {

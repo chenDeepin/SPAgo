@@ -89,6 +89,14 @@ measurable — they are **not** capacity claims for bulk datasets.
   rule** in 5.9 s. The exports are checked in the same run (CSV 135 lines, SDF 134
   records, all parsed back). Row payloads are deliberately not committed; the counts,
   the CSV header and the export checks are.
+- `patent-coverage-2026-09-16.md` (raw: `...json`) — B-26: the per-publication coverage
+  audit, measured live on the local stack. A five-publication request answers in 4.4 ms
+  p50 / 5.0 ms p95 (11.7 KB), the 50-publication bound in 5.5 ms p50 (81.1 KB), and the
+  three exports carry the rule in a header and in the file. One live request shows the
+  four states kept apart — `corpus` (WO-2020-123456-A), `declared` from a stored lookup
+  *and* from target-led rows (US10508115: 73 compounds; US10919895: 29, target-led only),
+  `asked_empty` (WO2020999999, a stored ChEMBL `empty`), and `not_queried` (US9999999,
+  all three legs named). No source is called: every leg is a stored-row read.
 - `tolerant-lookup-2026-09-16.md` (raw: `...json`) — B-03: the cost of answering a
   typed publication number by normalizing it and scanning the metadata table, on a
   synthetic 50 000-document corpus (12 500 families of four) added to the rehearsal
