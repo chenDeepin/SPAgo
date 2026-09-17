@@ -1,13 +1,16 @@
 # SPAgo capability and coverage — invited beta
 
 Status: **local implementation with historical verification; hosted acceptance open**.
-Documentation refreshed 2026-09-17 against implementation round 1 (`232080a`); the full
-backend suite ran green on that checkout (**831 passed**) and the frontend build is clean,
-but no browser run or hosted deployment was re-checked in this documentation round.
+Documentation re-reviewed 2026-09-17 at `c0d2cdc` using current code/configuration and
+recorded results. The earlier `232080a` documentation round recorded **831 backend
+tests passed** and a clean frontend build; the latest navigation round records **8
+local browser tests passed**. None was rerun in this review, and the current remote
+CI/service/deployment state was not checked.
 “Supported” below refers to the implemented scope with the limits stated here, not an
 accepted hosted deployment. Tests, local browser records and selected live-source
 measurements prove different things; §6 remains the release gate. Current proposals:
-[backlog](plans/backlog.md); the dated review that produced this queue is
+[backlog](plans/backlog.md) and [pilot acceptance plan](plans/2026-09-17-pilot-acceptance-plan.md);
+the earlier review that produced the implementation queue is
 [archived here](archive/2026-09-16-product-review-qa.md).
 
 Update this page whenever a capability or a source version changes. The
@@ -17,7 +20,7 @@ Update this page whenever a capability or a source version changes. The
 
 | Component | Version / identity |
 | --- | --- |
-| Application | reviewed checkout `232080a`; `/healthz` reports package `api_version=0.1.0` plus a packaging-time `build_id`/`build_source` (B-34): `git describe --always --dirty` when built with `scripts/build_app.sh`, an explicit `unknown` from a plain compose build; images built before B-34 carry no `build_id` field |
+| Application | reviewed checkout `c0d2cdc`; `/healthz` reports package `api_version=0.1.0` plus a packaging-time `build_id`/`build_source` (B-34): `git describe --always --dirty` when built with `scripts/build_app.sh`, an explicit `unknown` from a plain compose build; images built before B-34 carry no `build_id` field |
 | Database | PostgreSQL 15 + RDKit cartridge 4.2.0 |
 | Schema | migrations 0001–0022 present (forward-only); verify the deployed schema separately |
 | UniProt | `rest.uniprot.org/uniprotkb/search` (REST, `uniprot-rest-uniprotkb`) |
@@ -367,6 +370,12 @@ family's publication set, or a substitute for asking a source. See *Not supporte
 
 ## 6. Required before admitting users
 
+The next-stage [pilot acceptance plan](plans/2026-09-17-pilot-acceptance-plan.md)
+organizes B-31/B-32's operator inputs and evidence collection; it does not replace or
+close this gate. The committed B-32 compact pack is historical (schema 0020, older
+served/generator builds, no per-record rows). Its generator is delivered, but a full
+pack for the chosen candidate and the independent human findings remain to be recorded.
+
 This section is the gate: this checklist and the script below are what a new
 deployment must satisfy. The dated register of what one earlier round did and did not
 verify is kept as history in `docs/archive/2026-09-15-beta-acceptance.md` — it records a
@@ -581,15 +590,22 @@ The deployment is one app image plus one database. To roll back:
   while the reader announces it (`benchmarks/table-keyboard-2026-09-17.md`). Cells are
   not focus targets, so cell-level arrow navigation inside a row is not delivered, and
   Orca's own Ctrl+Alt+arrow table commands are not exercised by that harness. Hermetic
-  fixtures for the stored-data
-  browser specs, which resolve IL-6 through the live (free) UniProt endpoint today,
-  remain open (B-45).
+  fixtures for the stored-data browser specs remain open (B-45): both controlled
+  target resolution and a small synthetic persisted investigation are needed for
+  the clean CI profile. Resolution currently reaches live UniProt; a resolve stub
+  alone would not remove the two data-dependent skips.
 - **Regression scope.** CI now runs the full backend suite against the shipped
   PostgreSQL+RDKit image and the browser smoke against the seeded compose stack
   (B-35), and the specs cover failed sources, stale responses, per-source retry,
   save/reopen and export-content parity (B-38); two stored-data specs skip loudly on
-  a bare stack instead of failing on absent data. Not covered: live sources and hosted
-  mode. The screen-reader pass is recorded (B-44) and the keyboard model changed with it
+  a bare stack instead of failing on absent data. Recorded CI run 35126623060 had
+  **6 passed + 2 skips**: export contents and per-source retry were not exercised
+  there, although both ran in the recorded local suite. B-45 is now a P2/NEXT
+  proposal to make those checks mandatory on an isolated synthetic CI fixture;
+  that fixture is not implemented by this documentation review. Not covered by the
+  browser suite: live-source correctness and hosted mode. Some target resolution
+  reaches an external endpoint today, so the suite is not yet source-network-independent.
+  The screen-reader pass is recorded (B-44) and the keyboard model changed with it
   (B-46), but the reader half stays a manual, desktop-bound check; the keyboard
   measurements are repeatable through `npm run check:table-keyboard` and are not wired
   into CI. Opening a patent from a target view is one history entry, so one

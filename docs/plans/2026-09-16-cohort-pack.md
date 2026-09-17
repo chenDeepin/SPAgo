@@ -4,6 +4,15 @@ Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-32 · Class CORE · P1.
 Operator-gated remainder (the human cross-read itself) is **not** done here; see the
 last section.
 
+**Planning review 2026-09-17 (`c0d2cdc`):** the machine half below remains delivered;
+the independent human half is explicitly open as P1/B-32 in the register. Follow the
+[pilot acceptance plan](2026-09-17-pilot-acceptance-plan.md) for that next stage.
+The committed compact artifact records served `d9f441a-dirty`, generator
+`eb486d0-dirty` and schema 0020; this checkout now contains migrations through 0022.
+It omits the per-record frame. Generate a full pack for the chosen candidate/data
+before cross-reading; the historical artifact is not current sign-off. No pack or
+source retrieval was rerun in this planning review.
+
 ## Vision alignment
 
 `PROMPT.md` §2.1 (evidence-linked chemistry: understand exactly what the retrieved
@@ -105,10 +114,9 @@ verdict read cap), human record: `benchmarks/cohort-pack-2026-09-16.md`.
   pack, and the local numbers describe this stored workspace only.
 - No patent-led BindingDB snapshot lookup was added (correcting the B-26 note is a
   disclosure fix, not a new access path).
-- `docs/online-capability.md` §5 still says "neither is a substitute for a
-  source-only baseline (B-32)"; now that the baseline exists in the pack, updating
-  that sentence and the §6 pointer is a coordinator/documentation follow-up, not
-  claimed done here.
+- The former capability-page source-only-baseline wording was corrected in the
+  subsequent documentation round; it is no longer an open engineering task. The
+  independent human review and a candidate-specific full pack remain open.
 - Hosted-shape verification of the pack (a run recorded against a deployed build)
   belongs to B-31's gate; this run was the local stack.
 

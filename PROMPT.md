@@ -1,82 +1,77 @@
 # SPAgo — Product Contract and Current Handoff
 
-> **Current handoff — 2026-09-17, implementation round 4 (product change).**
-> **B-43 delivered: one navigation step, one history entry.** Searching a publication
-> from an open target view pushed the same state twice, so Back landed on a duplicate
-> and needed a second press. Re-reproduced before the fix (history 2 → **4**, Back twice
-> to reach the target view) and verified after (2 → **3**, one Back restores the scope),
-> with B-39's per-entry filter state pinned in the same run (`?q=IL6&t=…&th=1` returns
-> with `th=1` and its candidate table). `npm run test:e2e` 8 passed. Check:
-> `apps/web/scripts/history-step-check.mjs`; record `docs/archive/2026-09-17-history-step.md`.
+> **Current handoff — 2026-09-17, planning-only re-review at `c0d2cdc`.**
+> The latest owner request is to inspect the updates, recommend the next step and
+> update documentation. No implementation queue, runtime acceptance, deployment,
+> commit or push is executed in this review. Next-stage Q&A and concrete plan:
+> [pilot acceptance plan](docs/plans/2026-09-17-pilot-acceptance-plan.md).
 >
-> **The register now holds no ungated engineering item.** Every remaining row is the
-> operator's (B-31 hosted acceptance; B-21's claims-source decision; B-09's scientific
-> review; B-11's provider choice; B-20's user base; B-16's admin-view decision) or gated
-> on a measured need or a decision this checkout cannot produce alone (B-40 reviewed
-> comparison task, B-05 dataset + ADR, B-07 bounded design, B-12 scaling need, B-22
-> source decision, B-27 user ask, B-28 repeated-batch volume, B-41 pilot friction,
-> B-45 no-network runner, B-47 model decision). `docs/plans/backlog.md` §1 states each
-> gate per row. The next implementation round therefore starts from a register update —
-> an item promoted by real evidence or an operator decision — not from the table as it
-> stands.
+> **Actual progress.** The prior planning review's main engineering gaps have
+> implementation and recorded verification: B-33 export-policy parity, B-34 build
+> identity, B-35 full backend CI, B-36 mixed-project scopes, B-37 exact citation
+> navigation, B-30 scoped refresh retraction, B-29 project analyses and B-39 reproducible
+> target state. B-38 adds browser error/stale-response/save/export checks; B-42 repairs
+> short viewports. B-44/B-46 have reader/keyboard measurements; B-43 fixes the duplicate
+> history push, with a recorded one-Back return that preserves the target filters.
+> These deliveries are not reopened by this review. B-08 closed with a negative
+> source-capability result; B-11's refusal half is delivered, its second provider later.
 >
-> **Same day, rounds 1–3.** **B-44 delivered** (round 2): a real screen reader (Orca
-> 42.0) was driven over both tables by `apps/web/scripts/at-pass.mjs`, with
-> `apps/web/scripts/x11-focus.py` giving the driven window the session's activation —
-> without it the reader announces nothing at all, a session fault the record names. It
-> found that no data cell carried `role="cell"`, so a reader heard "table with 1 row 6
-> columns" for a ten-row table; the fix makes it "table with 11 rows 6 columns" with
-> real cells. **B-46 delivered** (round 3): each table is one tab stop, the arrow keys
-> move the current row, and every row carries an `aria-label` so the reader announces
-> `Candidate 2 of 157: WEBQKRLKWNIYKK-UHFFFAOYSA-N, weak IC50 13810 nM, measured
-> binding, no patent mapping` (Tab stops inside the compound table 30 → 3, candidate
-> table → 1). **B-08 closed with a negative result** (round 2): no documented BindingDB
-> path supplies a source-declared assay description or variant context, so the
-> capability page was corrected rather than the adapter; the release's `pH`/`Temp (C)`
-> columns that no path maps are recorded as **B-47**.
+> **Verification shape.** Current CI configuration runs on main pushes and pull
+> requests: the full backend suite uses the shipped PostgreSQL/RDKit image, and the
+> browser runner uses a seeded compose stack with a checked build identity. Its
+> recorded browser result is **6 passed + 2 stored-data skips** (run 35126623060),
+> while the latest recorded local result is **8 passed**. The export/retry specs skip
+> on the bare CI stack, and target resolution has a live UniProt dependency. This
+> review read those records and current branches; it did not rerun or inspect remote
+> CI and does not claim that this HEAD or the currently running service passed today.
 >
-> **Actual stage.** A locally implemented product with browser-verified workflow
-> correctness, a full CI gate (every push runs the whole backend suite against the
-> shipped PostgreSQL+RDKit image and the e2e smoke against the seeded compose stack),
-> and a prepared scientific cross-read pack. **Hosted acceptance, the invited
-> scientist and the independent human cross-read remain open and operator-gated (B-31,
-> B-32's second half).** A local rehearsal, a green CI run or a pass on this desktop
-> never closes them.
+> **Next product milestone: B-31 real hosted pilot acceptance, supported by B-32.**
+> Host/TLS, provider/budget/data permission, a non-implementer scientist and an
+> independent scientific reader still need recorded decisions/evidence. The existing
+> cohort-pack generator is delivered; its human cross-read is explicitly open in the
+> priority table. The committed compact pack describes older build/schema 0020 state
+> and omits per-record rows; prepare a full pack for the chosen candidate (checkout
+> migrations now reach 0022), then record human findings. Do not backfill guessed
+> identities or treat a local pack as hosted or scientific acceptance.
 >
-> **Limits that matter to the product loop:**
-> - Cells are not focus targets: arrow keys move between rows, not within one, and
->   Orca's own Ctrl+Alt+arrow commands are untested here (it grabs them at the X level;
->   synthetic keys never reach the grab). A two-dimensional grid is not claimed.
-> - Reader evidence is one reader, one browser, one platform, one viewport, and the pass
->   is manual and desktop-bound, not part of CI.
-> - B-30's retraction needs a *complete* or *empty* ask; failed/partial asks and other
->   access paths are provably untouched, and 155 legacy rows with no recorded access
->   path are never retracted. Document-level corpus absence stays unclaimed.
-> - The cohort pack is machine-prepared evidence, not an independent review; B-31's
->   gate needs the human cross-read the pack is shaped for.
-> - One live model provider remains historically measured; a second one stays gated.
->   Claims text needs the operator's B-21 decision before any integration (B-22 stays P3).
-> - The optional companion's physical toolbar click and side-panel chrome remain
->   unverified. Full cross-family SAR (B-40), PDF/OCSR/M6, Markush and general chat are
->   not delivered.
+> **First engineering candidate: B-45, now P2/NEXT.** Existing data-dependent skips
+> justify a small isolated synthetic investigation fixture plus controlled resolution,
+> so clean CI actually executes export/retry without live sources or operator data.
+> A resolve stub alone cannot supply the stored rows. Test the real local export API;
+> do not mock the artifact under verification. This is parallel preparation while
+> operator/reviewer decisions are pending, not a replacement for B-31/B-32. No feature
+> is promoted just to keep an implementation queue running.
 >
-> **Next-stage order:** 1. B-31 retains the real hosted gate in
-> `docs/online-capability.md` §6 — host/TLS, readiness, owner isolation, restore,
-> provider smoke, source coverage, latency/cost, invited scientist and independent
-> reader, with the build-identity recorder and the cohort pack as its tooling.
-> Operator-only decisions stay explicit. 2. No ungated engineering item is queued: the
-> next implementation round needs a register update (evidence that promotes one of the
-> gated items, or the operator's decision), and §1 records why each open row waits.
+> **Remaining decisions and limits:**
+> - B-21's claims-source dossier is prepared, not an adopted source; B-09 catalog
+>   expansion follows actual pilot needs and scientific review. A second provider,
+>   cross-family SAR, assay-condition enrichment, batch reports and new services do
+>   not precede the pilot merely because the earlier queue was completed.
+> - The source-only/combined cohort distinction is implemented. Independent review
+>   of structures, stereochemistry, assay/units/target, occurrence and summary support
+>   remains unperformed; a valid citation or green suite is not scientific truth.
+> - Refresh retraction is bounded by target/source/access path and complete/empty
+>   answers; failed/partial asks and unknown legacy paths establish no absence.
+>   Document-level corpus absence remains outside the ordinary package contract.
+> - Reader evidence is one reader/browser/platform/viewport, manual and not CI.
+>   Cells are not focus targets and Orca's own Ctrl+Alt+arrow commands remain untested.
+> - The companion's physical toolbar click/side-panel chrome remain unverified.
+>   Claims integration, full cross-family SAR, PDF/OCSR/M6, Markush and general chat
+>   are not delivered. No hosted acceptance checkbox is closed by this review.
 >
-> **Evidence map:** scope and hosted gate `docs/online-capability.md`; operations
-> `docs/runbook.md` §H1–H10; per-item delivery records in `docs/plans/backlog.md` with
-> their plans and benchmarks under `docs/archive/`; accessibility evidence
-> `benchmarks/screen-reader-pass-2026-09-17.{md,txt}` and
-> `benchmarks/table-keyboard-2026-09-17.{md,txt}`; the cohort pack
-> `benchmarks/cohort-pack-2026-09-16.*`.
-> Older rounds in `docs/archive/` are historical records, not the current work queue.
-> The rest of this document is the standing product contract; aspirational capabilities
-> are not implementation claims.
+> **Start the next authorized round** from the plan's owner-input table, the B-31/B-32
+> acceptance sequence and [backlog §1](docs/plans/backlog.md#1-priority-order).
+> B-45 is the bounded engineering alternative while those inputs are pending.
+> The plan states the build/data evidence to collect; capability §6 remains the
+> authoritative gate and `docs/runbook.md` H1–H10 the operating procedure.
+>
+> **Evidence map:** delivery records and archived plans are linked in the register;
+> latest navigation record `docs/archive/2026-09-17-history-step.md`; scientific pack
+> record `docs/plans/2026-09-16-cohort-pack.md`; accessibility measurements
+> `benchmarks/screen-reader-pass-2026-09-17.*` and `benchmarks/table-keyboard-2026-09-17.*`.
+> Historical “no remaining engineering work” statements are superseded by this
+> review's B-45 scope decision. The rest of this document is the standing product
+> contract; aspirational capabilities are not implementation claims.
 
 You are building **SPAgo** (small molecule patent analysis GO), a patent-native medicinal chemistry workspace for small-molecule drug discovery.
 

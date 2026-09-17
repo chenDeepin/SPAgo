@@ -7,79 +7,35 @@ follows `AGENTS.md` §37 (`CORE` / `NEXT` / `LATER` / `REJECT`). An item marked
 **gate** needs an operator decision (host, provider, credential, source choice or user
 base) before engineering can finish it, not before engineering can start.
 
-Last updated: **2026-09-17, implementation round 4 — one history entry per navigation
-(product change).** **B-43 delivered:** `App.tsx::openPatent` pushed the same state twice
-when it left an open target scope, so Back needed two presses; it now pushes once
-(reproduced: history 2 → 4, two Backs; after: 2 → 3, one Back), with B-39's per-entry
-filter state pinned in the same run (`apps/web/scripts/history-step-check.mjs`; record
-`docs/archive/2026-09-17-history-step.md`). Verified: `npm run test:e2e` 8 passed.
-**With B-43 delivered the register has no ungated engineering item left** — every
-remaining row is the operator's or gated on a measured need or decision, and §1 says
-which. Round 3 the same day: **B-46 delivered** (each table is one tab stop, arrow keys
-move and are announced). Round 2: **B-44 delivered** (a real screen reader over both
-tables; the defect it found fixed with `role="cell"`) and **B-08 closed with a negative
-result**, which added B-46 and B-47. Round 1: documentation and archival.
-Previous update: **2026-09-17, implementation round 3 — the tables' keyboard model
-(product change).** **B-46 delivered:** each virtualized table is one tab stop, the arrow
-keys move the current row (with the reader announcing it, because every row now carries
-a name), and Tab crosses a 157-row candidate list in a fixed number of stops instead of
-one per row. Measured before/after, with the reader transcript:
-`benchmarks/table-keyboard-2026-09-17.{md,txt}`; plan and outcome:
-`docs/archive/2026-09-17-table-keyboard-model.md`. Not delivered and stated as a limit:
-cell-level arrow navigation inside a row, and Orca's own Ctrl+Alt+arrow commands.
-Verified: `npm run test:e2e` **8 passed**, `npm run check:table-keyboard` green,
-`scripts/run_checks.sh` green, served build identity `0d1d983-dirty`.
-Round 2 of the same day: **B-44 delivered** (a real screen reader over both tables; the
-defect it found — a table announced as "1 row" — fixed with `role="cell"`) and **B-08
-closed with a negative result** (no documented BindingDB path supplies a source-declared
-assay description or variant context), which added **B-46** and **B-47** to the register.
-Round 1 of the same day: documentation and archival (no product change).
-Previous update: **2026-09-17, implementation round 2 — the announcement pass and the
-source-capability check (product change).** Two P2/P3 items were worked in this
-checkout: **B-44 delivered** — a real screen reader (Orca 42.0) was driven over both
-virtualized tables, its utterances recorded, and the defect it found fixed (`role="cell"`
-on data-row children: the table a reader hears went from "1 row" to "11 rows");
-**B-08 closed with a negative result** — no documented BindingDB path supplies a
-source-declared assay description or variant context, and the capability page's wording
-was corrected instead of the adapter. Two items were added from what they measured:
-**B-46** (the tables' keyboard model: one tab stop per row, no arrow-key cell
-navigation, a silent row focus) at the head of P2, and **B-47** (assay-condition facts
-the source supplies and SPAgo drops) at P3. `AGENTS.md` §27 gained the rule the round
-needed: an announcement pass names its reader and platform, records the stream
-verbatim, and treats an empty stream as a session fault rather than a clean result.
-Verified before and after: backend suite **831 passed**, frontend build clean, browser
-suite **8 passed**, served build identity `9250b0c-dirty`. Details: §1's delivered
-table, §2's items, §6's log.
-Previous update: **2026-09-17 — documentation and archival round (no product change).**
-Every plan delivered in the 2026-09-16 rounds was re-checked against the current
-checkout (`scripts/run_checks.sh`: backend suite **831 passed**, frontend build clean)
-and its completed plan moved to `docs/archive/` with this register as the delivery
-record. The durable pages that still named delivered items as open gaps
-(`docs/online-capability.md`, `docs/architecture/overview.md`, `README.md`) were
-corrected in the same change, and `AGENTS.md` §0/§27 gained the plan-lifecycle,
-stale-gap and assistive-technology rules this round needed. Two open remainders were
-promoted to named items: **B-44** (the screen-reader pass B-19 left unperformed) and
-**B-45** (hermetic resolve fixtures for the stored-data browser specs). **B-11**'s
-remaining half moved to `LATER`/P3 — a second provider adds no capability the release
-gate asks for. **B-32**'s machine half and its plan stay active: the independent human
-cross-read remains the operator's.**
-Current stage: a locally implemented and previously exercised product, with selected
-live-source measurements and a local hosted-shape rehearsal; **hosted acceptance and
-independent scientific validation remain open**. Review findings, evidence limits and
-open questions: [archived product review Q&A](../archive/2026-09-16-product-review-qa.md).
+Last updated: **2026-09-17 — planning-only re-review at `c0d2cdc`.** The working
+checkout was clean at the start. Current code/configuration and recorded delivery
+artifacts were inspected; no application test, browser, source call, deployment or CI
+run was repeated in this review. Next-stage Q&A, owner decisions and acceptance steps:
+[pilot acceptance plan](2026-09-17-pilot-acceptance-plan.md).
 
-The earlier conclusion that only operator-gated work remains is superseded: static
-inspection found export-policy, saved-project navigation and citation-navigation gaps,
-and the existing CI does not run the database suite or browser smoke. **B-31** makes
-the existing hosted gate visible in the table. The implementation round that followed delivered all of it: **B-33** (export/screen
-policy parity, browser-reproduced then fixed), **B-34** (distinguishable build
-identity), **B-42** (the short-viewport table collapse found during B-33's browser
-verification), **B-35** (CI full-stack job), **B-36**, **B-37**, **B-30**, **B-19**'s
-keyboard half, **B-29**, **B-39** and **B-38**, with **B-32**'s machine half in the
-cohort pack. B-32's gate line dropped its B-34 dependency; the independent-reviewer
-gate stands. What remains is §1 and nothing else: the operator's acceptance gate
-(B-31), the gated decisions (B-21, B-09), the one unperformed acceptance check (B-44)
-and the P3 group.
+**Progress since the previous planning review.** B-33/B-34/B-35/B-36/B-37/B-30,
+B-19's keyboard work, B-29/B-39/B-38 and B-42/B-43/B-44/B-46 have delivered records
+and matching implementation. B-08 closed with a negative source-capability result;
+B-11's refusal explanation and B-21's feasibility dossier are prepared/delivered to
+those narrower scopes. The latest recorded local browser result is 8 passed;
+recorded CI run 35126623060 is 6 passed + 2 stored-data skips. Neither is a new result
+from this review or evidence of hosted acceptance.
+
+**What to do next.** B-31 remains the P0 hosted pilot gate. **B-32's independent
+human review is explicitly restored to the open table at P1**: its generator is
+implemented, but its human remainder was only mentioned in prose. The committed
+compact pack describes older build/schema state (0020 versus 0022 now in the
+checkout) and contains no per-record review frame; regenerate a full pack for the
+chosen acceptance candidate rather than treating it as current sign-off.
+**B-45 moves P3/LATER → P2/NEXT, first engineering candidate**, with scope expanded
+from resolve stubs to isolated synthetic investigation data: the known two CI skips
+leave important shipped behaviour unprotected on a fresh runner. Fixing that gap
+need not wait for flaky-network incidents or an operator's production data.
+
+No new feature item is added. B-21/B-09 remain gated, and the P3 group remains later.
+B-44 and B-46 are delivered, not pending acceptance. The earlier “no ungated
+engineering item” conclusion is superseded by the B-45 decision above. This round
+updates plans and documentation only; it does not start that implementation.
 
 ## 0. Standing constraints for everything below
 
@@ -102,12 +58,15 @@ Rank is top-to-bottom within a priority. Order reflects harm to the existing wor
 acceptance value and dependencies before coverage breadth or feature count; an empty
 priority group is not a reason to promote its successor. A gated item keeps its product
 priority, while independent engineering can proceed after an implementation round is
-authorized. The 2026-09-17 documentation round authorizes none of those actions; the
-next implementation round, when authorized, starts at the head of P2.
+authorized. This review authorizes no implementation or acceptance execution. B-31
+is the product priority, B-32 supplies its human-reviewed evidence, and B-45 is the
+first engineering candidate while those operator/reviewer decisions are pending.
 
 | Priority | ID | Item | Class | Effort | Gate / blocker |
 | --- | --- | --- | --- | --- | --- |
 | P0 | B-31 | Real hosted pilot acceptance | CORE | M + operator time | real host/TLS, provider/budget, invited scientist; B-32 evidence |
+| P1 | B-32 | Independent scientific cross-read (machine half delivered) | CORE | reviewer time | reviewer + full pack for the chosen build/data; feeds B-31 |
+| P2 | B-45 | Hermetic target fixtures so CI executes export/retry checks | NEXT | S–M | isolated synthetic investigation + controlled resolution; no operator data |
 | P2 | B-21 | Claim-text source decision (feasibility prepared) | NEXT | decision | operator: OPS registration, credentials, fair-use terms acceptance |
 | P2 | B-09 | Reviewed target-scope catalog expansion | NEXT | M | scientific review |
 | P3 | B-40 | Small cross-family SAR comparison with assay comparability | LATER | M–L | reviewed comparison task + matched assay context |
@@ -119,7 +78,6 @@ next implementation round, when authorized, starts at the head of P2.
 | P3 | B-07 | PubChem BioAssay bounded CID→AID path *(owner request group)* | LATER | M–L | bounded design |
 | P3 | B-41 | Pick an exact publication from an ambiguous lookup | LATER | S | validate frequency in pilot; exact-number workaround exists |
 | P3 | B-11 | Second-provider live evaluation (refusal half delivered) | LATER | M | operator: provider choice + budget; no §6 criterion requires a second provider |
-| P3 | B-45 | Hermetic resolve fixtures for the stored-data browser specs | LATER | S | measured CI flakiness or a no-network runner |
 | P3 | B-20 | Chinese UI / i18n | LATER | L | user-base decision |
 | P3 | B-16 | Operator usage visibility (decide: docs-only or small admin view) | LATER | S | pilot evidence that API/runbook is insufficient |
 | P3 | B-12 | Multi-worker deployment (shared in-flight model registry) | LATER | M | scaling need |
@@ -130,6 +88,17 @@ P1 = correctness and repeatability of the workflow the gate tests, before or alo
 the invited beta. P2 = the next implementation round candidates, in the order
 shown. P3 = deliberately later; a P3 item needs a decision or a measured need before it
 becomes P2.
+
+**What moved in this planning re-review.** B-32 returns as an explicit open P1
+human task; its engineering delivery is not reopened. B-45 rises to P2/NEXT because
+CI already skips export/retry on a clean stack, and a resolve stub alone cannot
+supply the persisted rows those checks need. The scope now includes a small synthetic
+CI dataset as well as controlled resolution; these fixtures are never imported into a
+user's workspace. B-21 and B-09 follow, still gated. No LATER product feature is
+promoted merely because the preceding implementation queue is finished.
+
+**Historical ordering notes.** The paragraphs below explain earlier decisions; the
+table above and this review supersede their “next item” statements.
 
 **What moved in the review round (2026-09-16).** B-09 is no longer the head: validating the current scientific
 cohort and repairing export/save/evidence continuity precede expanding that cohort.
@@ -190,8 +159,8 @@ pilot friction, B-45's no-network runner, B-47's model decision). The next imple
 round therefore starts from a register update — an item promoted by real evidence or an
 operator decision — not from the table as it stands.
 
-**Delivered from this register (kept out of the table, with the artifact that closed
-it):**
+**Delivery records (completed items stay out of the open table; B-32 records only
+its delivered machine half, and its human half remains above):**
 
 | ID | Delivered | Artifact |
 | --- | --- | --- |
@@ -230,6 +199,11 @@ it):**
 | B-43 | 2026-09-17 | One navigation step, one history entry. `App.tsx::openPatent` pushed the new query state once to leave an open target scope and then pushed the *same* state again as "a new query is a navigation step", so searching a publication from a target view created a duplicate entry and Back needed two presses. Fixed by pushing that state once (`leavingTarget` still counts as a navigation step; re-opening the record already on screen still does not). Reproduced before (`bf365a1-dirty`: history 2 → **4**, Back once landed on the duplicate, Back twice reached the target view) and verified after (2 → **3**, one Back restores the target view), with B-39's per-entry filter state pinned in the same run (`?q=IL6&t=…&th=1` comes back with `th=1` and its candidate table). `npm run test:e2e` 8 passed. Check: `apps/web/scripts/history-step-check.mjs`. Record: `docs/archive/2026-09-17-history-step.md`. Not proven: other browsers, and no other navigation path was re-audited. |
 
 ## 2. Items
+
+The delivery table determines completed scope. Original problem/acceptance statements
+under a delivered item are historical requests, not current defects or queued work.
+B-32 below separates its delivered machinery from its still-open human review.
+
 
 ### B-01 — Corpus scale-up workflow (batch extract/import, loaded-corpus surface)
 
@@ -840,6 +814,9 @@ exactly the honesty rule the last three rounds were about.
 
 ### B-29 — A stored analysis as a project artifact
 
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
+
 - **Problem.** A summary is now findable (B-10) but not *attachable*: a project can hold
   compounds and families, not the analysis that explains why they were picked. A
   scientist assembling a report still copies the summary text out by hand, and the copy
@@ -859,6 +836,9 @@ exactly the honesty rule the last three rounds were about.
 - **Class NEXT · P2 · M.**
 
 ### B-30 — A source refresh that retracts what its release no longer contains
+
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
 
 - **Problem.** Migration 0015 already carries the columns and the intent ("a source refresh
   could not retract a mapping the new release no longer contains"), and B-06 established
@@ -912,36 +892,36 @@ exactly the honesty rule the last three rounds were about.
 
 ### B-32 — Scientific cross-read and reproducible coverage cohorts
 
-- **Evidence.** `scripts/cohort_coverage.py` joins source outcomes to the workspace's
-  whole reference verdict, which can include supplements. The local cohort record
-  reports TSLP 1/2 qualifying, while the isolated rehearsal reports 0/1; they describe
-  different stored data, not conflicting measurements of an identical set. The
-  rehearsal also lacks stored IL-6/IL-6R results. Existing model evaluation mostly
-  checks output structure/citations; it does not establish scientific entailment.
-- **User gain / scope.** Understand exactly what the retrieved set and its summary
-  support (`PROMPT.md` §2.1). Define a small stratified public/synthetic review set:
-  source-only versus supplemented workspaces, direct versus functional evidence,
-  censor directions, stereochemistry, declared patents versus corpus occurrences,
-  thin/empty/failed sources, and an unsupported summary claim. No private data import
-  or new scientific fixture is authorized by this proposal.
-- **Artifact contract.** Carry build identity (B-34), schema, resolved accessions,
-  source/access-path/version, query bounds, policy, modality and supplement inclusion.
-  Report source-only coverage separately from the combined workspace verdict, with
-  denominators and unmatched/no-structure records explicit. Read verification
-  parameters from the artifact rather than hard-coding another configuration.
-- **Existing disclosure defect included.** `services/coverage.py::REPORT_NOTES` still
-  says no BindingDB snapshot is configured in this build. B-23 exists, while B-26 has
-  no dedicated snapshot leg. Make the report describe the actual access paths it can
-  account for; never imply a snapshot hit is a corpus occurrence or a complete
-  publication scan. Correcting this note does not add a patent-led snapshot lookup.
-- **Done evidence / gate.** An independent reader checks sampled structure/stereo,
-  assay/units/target assignment, occurrence and summary-claim support against original
-  sources; record discrepancies, resolutions and limits. A machine can prepare the
-  pack but cannot approve its own independent review. Small sealed fixtures and live
-  observations remain distinct; publish no universal accuracy claim from this sample.
-- **Class CORE · P1 · M plus reviewer time.** Feeds B-31; precedes catalog expansion.
+**Machine half delivered; independent human review OPEN.** See the active
+[cohort-pack record](2026-09-16-cohort-pack.md) and
+[pilot acceptance plan](2026-09-17-pilot-acceptance-plan.md). The generator, separate
+source-only/combined verdicts and corrected snapshot disclosure already exist; do not
+re-implement them.
+
+- **Current evidence.** `scripts/cohort_pack.py`, `services/reference.py` and the B-32
+  tests implement the pack/scoping contract. The committed `--compact` artifact is a
+  historical aggregate, generated from `eb486d0-dirty` against `d9f441a-dirty`, with
+  schema 0020. This checkout has migrations through 0022. The artifact explicitly
+  omits per-record rows and records no independent human decision.
+- **User gain / remaining scope.** An independent reader can check what the retrieved
+  structures, measurements, occurrences and summary claims actually support
+  (`PROMPT.md` §2.1). On the chosen candidate, regenerate the full review frame,
+  identify both generator and served build/database, separate source-only and
+  supplemented cohorts, then cross-read a bounded stratified sample with source
+  locators. Do not silently refresh sources while reviewing a frozen sample.
+- **Done evidence / gate.** Reviewer identity/date, exact sample ids and source links,
+  structure/stereo, assay/unit/target, declaration-versus-occurrence and summary-claim
+  findings, and a disposition for each discrepancy. Synthetic cases test rules, not
+  original-source content. The implementer or another machine cannot sign its own
+  independent review. Only this sample is checked; no global accuracy claim follows.
+- **Class CORE · P1 · reviewer time.** Its tooling is delivered; B-31 still depends on
+  the independent result. New scientific fixtures or private-data sharing are not
+  authorized by this documentation update.
 
 ### B-33 — Target screen/export filter and potency-policy parity
+
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
 
 - **Evidence.** `App.tsx` sends `thresholdOverride` / `evidenceClassFilter` to candidate
   and measurement reads, but its target `ExportMenu` props and `ExportMenu.tsx`'s
@@ -963,6 +943,9 @@ exactly the honesty rule the last three rounds were about.
 
 ### B-34 — Distinguishable build identity in verification artifacts
 
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
+
 - **Evidence.** `/healthz` exposes `api_version` from `__version__ = "0.1.0"`
   (`main.py`, `api/routes.py`, `__init__.py`); that cannot distinguish the many builds
   recorded under this version. Capability §6 asks for build identity, and the browser
@@ -978,6 +961,9 @@ exactly the honesty rule the last three rounds were about.
 - **Class CORE · P1 · S.** Enables reliable new evidence for B-31/B-32/B-35/B-38.
 
 ### B-35 — Full PostgreSQL/RDKit suite and existing browser smoke in CI
+
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
 
 - **Evidence.** B-14 runs `run_checks.sh --no-pg`: four test files plus `TestPlanner`,
   frontend typecheck/build. This is not every database-free test. B-17's one smoke is
@@ -999,6 +985,9 @@ exactly the honesty rule the last three rounds were about.
 
 ### B-36 — Reopen every saved scope in a mixed project
 
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
+
 - **Evidence.** `SaveCandidatesDialog.tsx` permits appending targets to an existing
   project. `App.tsx::openProject` picks the first usable item; the switcher enumerates
   families only, and the target project's banner has no scope switcher. Historical
@@ -1014,6 +1003,9 @@ exactly the honesty rule the last three rounds were about.
 - **Class CORE · P1 · M.**
 
 ### B-37 — Summary citation → exact supporting record
+
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
 
 - **Evidence.** `AiPanel.tsx` passes `fact_ref`, but `EvidencePanel.tsx` generally
   switches tab/expands activity; `TargetEvidencePanel.tsx` has explicit source/verdict
@@ -1032,6 +1024,9 @@ exactly the honesty rule the last three rounds were about.
 
 ### B-38 — Browser regression for failures, stale responses and saved work
 
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
+
 - **Evidence.** The single smoke in `apps/web/e2e/smoke.spec.ts` tests a happy path and
   CSV filename. Prior manual rounds found bugs that unit tests missed; history-dialog
   empty/error cases remain unexercised in its recorded plan.
@@ -1046,6 +1041,9 @@ exactly the honesty rule the last three rounds were about.
 - **Class NEXT · P2 · M.** Reuse B-17; B-35 can integrate the existing smoke first.
 
 ### B-39 — Reopen an investigation with its filters and policy
+
+**Delivered 2026-09-16; the original request below is historical.** Current delivery
+evidence is in §1; it is not an open implementation item.
 
 - **Evidence.** `state/url.ts` carries q/doc/c/t. `App.tsx` keeps modality, evidence
   filter and threshold override only in React state; refreshing returns those to their
@@ -1193,21 +1191,34 @@ item statement below is kept as the record of what was asked.
 - **Class NEXT · P2 · M.** The head of P2 because it is ungated, measured, and it is the
   operability of the product's main object rather than a new capability.
 
-### B-45 — Hermetic resolve fixtures for the stored-data browser specs
+### B-45 — Hermetic target fixtures so CI executes export/retry checks
 
-- **Evidence.** The two B-38 specs that read stored investigation data (`export-contents`,
-  `source-retry`, and the stored-data variant in `smoke`) reach the live UniProt resolve
-  for a target's accession; on a bare CI stack they skip loudly, which is honest but
-  leaves the export/retry behaviour unverified there.
-- **Scope if built.** A recorded resolve fixture (or a stub Playwright route) so the
-  stored-data specs can run without a network and without manufacturing data through
-  live source calls; the specs must still skip — never invent rows — when the stack
-  holds no investigation.
-- **Acceptance.** On a stack with fixtures applied and no network, the two specs pass
-  without live calls; on a bare stack they still skip with the reason. No app code
-  change expected.
-- **Class LATER · P3 · S.** Gate: measured CI flakiness or a no-network runner;
-  §34 keeps the fixture small, synthetic and provenance-recorded.
+- **Evidence rechecked at `c0d2cdc`.** `export-contents.spec.ts` skips when its fixed
+  IL6 candidate read is unavailable/empty; `source-retry.spec.ts` skips without stored
+  coverage. The fresh CI stack supplies neither investigation. Recorded run
+  35126623060 reports 6 passed + 2 skips; target resolution also reaches live UniProt
+  in the existing specs. The smoke has no additional stored-data skip. This is an
+  established coverage gap, not a hypothetical flaky-network problem.
+- **User gain / scope.** Automatically protect filtered scientific exports and source
+  recovery on every clean CI run (`PROMPT.md` §2.5; AGENTS §11/§27). Prepare a minimal
+  synthetic target/candidate/measurement/retrieval set only in the disposable test
+  database, using existing validated seed/import/service paths; control target
+  resolution and upstream responses. No new runtime service or production test API.
+- **Boundary.** A resolve stub alone is insufficient. Export-content checks must reach
+  the real local API/database/export code; do not mock the CSV being verified. The
+  retry browser test may keep its labelled upstream fixture (UI/request contract),
+  while backend tests own persistence/retraction. Do not use operator snapshots,
+  licensed rows or live calls to populate fixtures. Existing synthetic chemistry must
+  stay visibly synthetic with deterministic IDs and required provenance.
+- **Acceptance.** A clean CI run with the declared fixture profile actually executes
+  both export and retry checks (no data-absence skips), with app/test source egress
+  blocked or monitored and no dependence on UniProt availability. Missing required
+  fixtures or authorization/API failures fail that CI profile. An optional unseeded
+  workstation profile may still report explicit skips; it is not the CI gate. Record
+  build identity, executed/skipped counts and failure artifacts. These fixtures prove
+  local integration, not live-source correctness or B-31.
+- **Class NEXT · P2 · S–M.** Promoted and narrowed to shipped-workflow regression
+  assurance; it is the first engineering candidate, independently of operator gates.
 
 ### B-47 — Assay-condition facts the source supplies and SPAgo drops
 
@@ -1379,3 +1390,4 @@ the present proposal order; a previous “no remaining work” statement is not 
 | 2026-09-17 | **Implementation round 2 (owner-authorized queue).** *Evidence refreshed first on this checkout:* `scripts/run_checks.sh` — backend suite **831 passed** in 234.9 s, frontend build clean, exit 0. **B-44 delivered — the announcement pass is performed, not asserted.** `apps/web/scripts/at-pass.mjs` starts Orca 42.0 (speech-dispatcher 0.11.1 behind a private `dummy`-module instance, so the pass is silent), drives Chrome 142 with `--force-renderer-accessibility` through both tables by keyboard, and records every utterance the reader produced together with the accessibility tree Chrome exposed. Two session faults had to be solved and are now part of the record: `Page.bringToFront` left `_NET_ACTIVE_WINDOW` at `0x0` and Orca dropped 137 focus events while the log looked clean (`apps/web/scripts/x11-focus.py` gives the window the activation, re-asserted per step), and a wedged speech-dispatcher made Orca block before its main loop. **The pass found and this round fixed a real defect:** no data cell carried `role="cell"`, so the platform table counted the header row alone — a reader heard **"table with 1 row 6 columns"** for a ten-row table, and data-row children were `generic`/`none` with no cell objects at all. After the fix, the same view announces **"table with 11 rows 6 columns"**, cells carry content and index, and the candidate table's tree holds 70 cells; a same-build runtime reproduction (attribute stripped in the page) shows `cell` 70 → 0. B-19's keyboard rules were re-verified through the reader on the same build. Verified after: `npm run test:e2e` **8 passed**, `/healthz` build_id `9250b0c-dirty`. **B-08 closed with a negative result** (bounded read-only check: the live REST payload's affinity rows carry monomer id/SMILES/type/value; neither the documented output nor the operator release's 640 columns has an assay-text or variant column; `PubChem AID` is the one link and belongs to B-07) — with one correction to the item's premise, so the capability page now says the `assay_description` on a BindingDB REST row is SPAgo's own note, not a source's text. *Re-sorted, with the moves stated in §1:* **B-44 leaves the table as delivered**, **B-46 enters at the head of P2** (the keyboard model the pass measured: one tab stop per row, no arrow-key cell navigation, a silent row focus — ungated, measured, and the operability of the product's main object), **B-08 leaves the table closed** and **B-47 enters at P3** for the release's `pH`/`Temp (C)` columns that no path maps, gated on a decision about whether an assay-condition field belongs in the model. *Rules:* `AGENTS.md` §27 gained the announcement-pass rule — name the reader and platform, record the stream verbatim, treat an empty stream as a session fault, and note that the driven window must hold activation. *Vision check:* both worked items serve the existing loop (`PROMPT.md` §1/§2.5) — B-44 restores a claimed capability's verification, B-08's outcome is a corrected statement rather than a new surface, and B-46/B-47 were added only with the measurement that justifies them. *Not checked in this round:* no hosted acceptance, no live-source run other than the two documented BindingDB calls B-08's check made, and Orca's own Ctrl+Alt+arrow table commands (grabbed at the X level, unreachable by synthetic keys) remain untested. |
 | 2026-09-17 | **Implementation round 3 (owner-authorized queue).** **B-46 delivered — the tables' keyboard model.** Both virtualized tables now behave as one composite widget: roving `tabIndex` (the current row is the only `0`, its nested controls follow it), `ArrowDown`/`ArrowUp`/`Home`/`End` moving the current row with the virtualizer scrolling the target into view and focus following after it renders, and an `aria-label` on every row so the reader has something to say when focus lands on it. Two things the plan did not anticipate, both found by measuring: a *held* arrow key stalls if the position is read back from the focused element (the first attempt advanced 30 rows for 60 presses — the logical position is now tracked in a ref, 60 presses advance 60 rows), and the rows *had* to be named because with row-level focus the row's name is the reader's only channel (without it the pass recorded silence on every arrow move). Before/after: Tab stops inside the compound table **30 → 3**, candidate table → **1**, with Enter still opening the Evidence inspector and Space on a checkbox still selecting without inspecting (`npm run check:table-keyboard`); Orca 42.0 reads `Compound 2 of 10: BSYNRYMUTXBXSQ-UHFFFAOYSA-N, C9H8O4, 2 measurements, 2 patent labels` and `Candidate 2 of 157: WEBQKRLKWNIYKK-UHFFFAOYSA-N, weak IC50 13810 nM, measured binding, no patent mapping` in the same run, and the B-19 rules were re-verified through the reader on that build. Verified: `npm run test:e2e` **8 passed**, `scripts/run_checks.sh` green, served identity `0d1d983-dirty`. *Re-sorted:* **B-46 leaves the table as delivered**; the P2 head is now **B-21** (operator decision), then **B-09** (scientific review); **B-43** stays first among the ungated P3 defects. *Vision check:* this is the operability of the objects the workflow is built on (`PROMPT.md` §1/§2.5), not a new capability — no layout, control or destination was added. *Not delivered and stated as limits:* cell-level arrow navigation into a row's cells (the row name carries the content instead) and any claim about Orca's own Ctrl+Alt+arrow table commands; the reader pass stays manual and desktop-bound. |
 | 2026-09-17 | **Implementation round 4 (owner-authorized queue).** **B-43 delivered.** The item was re-reproduced on the current build before being treated as current (`bf365a1-dirty`, stored IL6 investigation): searching a publication from a target view pushed history 2 → **4** and needed two Backs, the first landing on a duplicate of the entry it was already on. Cause: `openPatent` pushed the new state once to leave the target scope and again as "a new query is a navigation step". Fixed by pushing that state once, with "re-opening the record already on screen" still a data refresh and leaving a target scope still a navigation step; after the fix history goes 2 → **3** and one Back restores the target view, with **B-39's per-entry filter state pinned in the same run** (`?q=IL6&t=…&th=1` returns with `th=1` and its candidate table). `npm run test:e2e` **8 passed** on the rebuilt stack; check `apps/web/scripts/history-step-check.mjs`; record `docs/archive/2026-09-17-history-step.md`. *Re-sorted:* **B-43 leaves the table**, and the register now holds **no ungated engineering item** — every remaining row is the operator's (B-31, B-21, B-09, B-11, B-20, B-16) or gated on a measured need or a decision this checkout cannot produce alone (B-40, B-05, B-07, B-12, B-22, B-27, B-28, B-41, B-45, B-47), stated per row in §1. *Vision check:* this repaired the navigation of the existing loop (`PROMPT.md` §2.5), adding no surface. *Not checked:* other browsers, and no other navigation path was re-audited — the fix is local to the step the item named. |
+| 2026-09-17 | **Planning-only re-review at `c0d2cdc`.** Checked current code/configuration and delivery records; no runtime, browser, CI or live-source run. B-31 remains P0; B-32's unperformed human review is restored to the open table as P1 (the machine half stays delivered). B-45 moves P3/LATER → P2/NEXT and expands from resolution-only stubs to a small isolated synthetic investigation plus controlled resolution, because export/retry skip on the fresh CI stack (recorded 6 passed + 2 skips). B-21/B-09 stay gated; no new product feature is promoted. Replaced contradictory current-state prose, labelled completed-item requests as history, and added the [pilot acceptance plan](2026-09-17-pilot-acceptance-plan.md) with owner inputs, full-pack freshness and the acceptance sequence. No product code, tests, services, deployment, commit or push in this round. |

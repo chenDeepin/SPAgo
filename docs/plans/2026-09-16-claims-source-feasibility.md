@@ -4,6 +4,12 @@ Date: 2026-09-16 · Register: `docs/plans/backlog.md` B-21 · Class NEXT (decisi
 deliverable) · Status: **feasibility prepared; the source/terms decision is the
 operator's** (OPS registration, credentials, terms acceptance).
 
+Planning review 2026-09-17: this is a prepared decision dossier, not a prerequisite
+for a pilot that retains the existing “claims were not assessed” limit. See the
+[pilot acceptance plan](2026-09-17-pilot-acceptance-plan.md). No external source or
+terms were rechecked in this review; the dated observations below must be verified
+before adopting a source or planning paid use.
+
 ## Vision alignment
 
 `PROMPT.md` §2.1 makes claims a product pillar, and every summary today states
@@ -15,7 +21,7 @@ chosen.
 
 ## What each candidate source actually offers for claim text
 
-### EPO OPS (the only authoritative claim-text source found)
+### EPO OPS (claim-text candidate in this comparison)
 
 - Endpoint: `GET /rest-services/published-data/publication/epo/{number}/claims`
   (OPS 3.2), plus `fulltext` variants and a two-step availability inquiry the
@@ -47,8 +53,9 @@ chosen.
   section" occurrence annotation is derivable; it is not claim text and must
   never be presented as such (§10).
 
-**Preliminary conclusion (for the operator to accept or reject):** OPS is the
-only source that can put the actual claim sentence in front of the reader;
+**Preliminary conclusion within the two paths compared here (for the operator to
+accept or reject):** OPS is the claim-text candidate; this is not an exhaustive
+survey or a claim that no other authoritative source exists.
 SureChEMBL can at most corroborate that a compound occurs in the claims
 section. They answer different questions and are not substitutes.
 
@@ -67,14 +74,20 @@ claims surface: claim text is a source fact, not a scope opinion.
 
 ## Bounded sample design (runs only after credentials exist)
 
-1. Cohort: every document of the loaded demo + acceptance families (tens, not
-   hundreds), plus the stored investigations' declared patents (US/EP/WO mix).
+1. Cohort: a bounded list of actual publication numbers from selected real-data
+   acceptance families and stored investigations' declared patents (US/EP/WO mix,
+   tens rather than hundreds). Exclude synthetic `DEMO-*` documents from live
+   requests and the coverage denominator. Record the exact list before querying;
+   synthetic claims fixtures may test parsing separately, not source availability.
 2. Per document: availability inquiry, then claims fetch; record claim count,
    language(s), per-claim paragraph counts, bytes, latency, and the quota-band
    headers consumed.
-3. Success criteria: ≥90 % of EP/WO/US documents in the sample return usable
-   claims text; per-claim identifiers parse deterministically; a compound
-   example's claim is locatable from the evidence inspector in one action.
+3. Proposed success target, to review with the sample: ≥90 % of its documents return
+   usable claims text, with results also broken down by authority/language. Per-claim
+   identifiers parse deterministically and the original numbered claim is locatable
+   from the evidence inspector. Fetching claim text does not establish a mapping from
+   a compound example to a claim or determine claim scope; such assertions need their
+   own evidence and remain outside this feasibility step.
 4. Failure criteria (any kills the integration, recorded as the negative
    result): per-claim identity is not recoverable from the response structure;
    the free-tier quota cannot cover the cohort's refresh cadence at the
